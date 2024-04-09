@@ -10,9 +10,9 @@ pub mod utils;
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn capabilities() -> PluginCapabilities {
     if check_environment_support() {
-        return PluginCapabilities::new(vec!["Monitors"], PluginImplementation::Both);
+        return PluginCapabilities::new(vec!["Monitors"], true, PluginImplementation::Both);
     }
     // TODO: make this only be used once -> currently 2 calls to this function are required, once
     // to disable the feature string and once to disable the inclusion of the interface
-    PluginCapabilities::new(vec![], PluginImplementation::Both)
+    PluginCapabilities::new(vec![], true, PluginImplementation::Both)
 }
