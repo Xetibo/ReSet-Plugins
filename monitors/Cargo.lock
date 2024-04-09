@@ -837,8 +837,8 @@ dependencies = [
 
 [[package]]
 name = "re_set-lib"
-version = "3.1.7"
-source = "git+https://github.com/Xetibo/ReSet-Lib#493b7dd2872f1b04aaf1c0c13a5d71bc74c9f627"
+version = "3.1.11"
+source = "git+https://github.com/Xetibo/ReSet-Lib?branch=audioobject#6da871ec1fa7c52277b70065ccbcfbe6d12073a6"
 dependencies = [
  "dbus",
  "dbus-crossroads",
