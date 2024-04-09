@@ -1,0 +1,18 @@
+[package]
+name = "reset-monitors"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+dbus = "0.9.7"
+# re_set-lib = "3.1.6"
+re_set-lib = { git = "https://github.com/Xetibo/ReSet-Lib" }
+dbus-crossroads = "0.5.2"
+dbus-tokio = "0.7.6"
+gtk = { version = "0.8.1", package = "gtk4", features = ["v4_12"] }
+glib = "0.19.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.115"
