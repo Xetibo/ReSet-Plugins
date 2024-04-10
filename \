@@ -102,16 +102,12 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     });
 
     gesture.connect_drag_update(move |drag, x, y| {
-        for monitor in monitor_data.borrow_mut().iter_mut() {
+        for rectangle in rectangles_drag_update.borrow_mut().iter_mut() {
             let x = x as i32;
             let y = y as i32;
-            // if rectangle.contains_point(x, y) {
-            //     rectangle.set_y(y);
-            //     rectangle.set_x(x);
-            // }
-            if monitor.is_coordinate_within(x, y) {
-                monitor.drag_x = x;
-                monitor.drag_y = -y;
+            if rectangle.contains_point(x, y) {
+                rectangle.set_y(y);
+                rectangle.set_x(x);
             }
         }
         drawing_ref.queue_draw();
@@ -184,8 +180,7 @@ fn drawing_callback(
             let height = height / factor;
             let width = width / factor;
             let offset_x = width_offset + monitor.drag_x + monitor.offset.0 / factor;
-            let offset_y =
-                max_height - height_offset * 2 - monitor.drag_y - (monitor.offset.1 / factor);
+            let offset_y = max_height - height_offset * 2- monitor.drag_x - (monitor.offset.1 / factor);
 
             context.set_source_color(&border_color);
 
