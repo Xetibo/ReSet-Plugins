@@ -56,6 +56,8 @@ pub struct Monitor {
     pub tearing: bool,
     pub offset: Offset,
     pub size: Size,
+    pub drag_x: i32,
+    pub drag_y: i32,
 }
 
 impl Monitor {
@@ -91,6 +93,8 @@ impl Monitor {
             tearing,
             offset: Offset(offset_x, offset_y),
             size: Size(width, height),
+            drag_x: 0,
+            drag_y: 0,
         }
     }
 
@@ -173,6 +177,8 @@ impl<'a> Get<'a> for Monitor {
             tearing,
             offset: Offset(offset.0, offset.1),
             size: Size(size.0, size.1),
+            drag_x: 0,
+            drag_y: 0,
         })
     }
 }
