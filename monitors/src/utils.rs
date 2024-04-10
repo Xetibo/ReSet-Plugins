@@ -93,6 +93,23 @@ impl Monitor {
             size: Size(width, height),
         }
     }
+
+    pub fn handle_transform(&self) -> (i32, i32) {
+        match self.transform {
+            0 => (self.size.0, self.size.1),
+            1 => (self.size.1, self.size.0),
+            2 => (self.size.0, self.size.1),
+            3 => (self.size.1, self.size.0),
+            4 => (self.size.0, self.size.1),
+            5 => (self.size.1, self.size.0),
+            6 => (self.size.0, self.size.1),
+            7 => (self.size.1, self.size.0),
+            _ => {
+                println!("got an unsupported transform");
+                (self.size.0, self.size.1)
+            }
+        }
+    }
 }
 
 impl Append for Monitor {
