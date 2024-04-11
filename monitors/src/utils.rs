@@ -42,6 +42,17 @@ pub struct MonitorData {
 }
 
 #[repr(C)]
+#[derive(Debug, Clone, Default)]
+pub struct DragInformation {
+    pub drag_x: i32,
+    pub drag_y: i32,
+    pub scaled_offset_x: i32,
+    pub scaled_offset_y: i32,
+    pub scaled_width: i32,
+    pub scaled_height: i32,
+}
+
+#[repr(C)]
 #[derive(Debug, Clone)]
 pub struct Monitor {
     pub id: u32,
@@ -56,8 +67,7 @@ pub struct Monitor {
     pub tearing: bool,
     pub offset: Offset,
     pub size: Size,
-    pub drag_x: i32,
-    pub drag_y: i32,
+    pub drag_information: DragInformation,
 }
 
 impl Monitor {
@@ -93,8 +103,7 @@ impl Monitor {
             tearing,
             offset: Offset(offset_x, offset_y),
             size: Size(width, height),
-            drag_x: 0,
-            drag_y: 0,
+            drag_information: DragInformation::default(),
         }
     }
 
@@ -177,8 +186,7 @@ impl<'a> Get<'a> for Monitor {
             tearing,
             offset: Offset(offset.0, offset.1),
             size: Size(size.0, size.1),
-            drag_x: 0,
-            drag_y: 0,
+            drag_information: DragInformation::default(),
         })
     }
 }
@@ -194,11 +202,19 @@ impl Monitor {
     /// These coordinates are calculated from the edge of the drawing box. Ensure the rest of the
     /// window is also taken into account when passing parameters as it will otherwise evaluate to
     /// false.
+    // pub fn is_coordinate_within(&self, x: i32, y: i32) -> bool {
+    //     x >= self.drag_information.scaled_offset_x
+    //         && x <= self.drag_information.scaled_offset_x + self.drag_information.scaled_width
+    //         && y >= self.drag_information.scaled_offset_y
+    //         && y <= self.drag_information.scaled_offset_y + self.drag_information.scaled_height
+    // }
     pub fn is_coordinate_within(&self, x: i32, y: i32) -> bool {
+        println!("{}, {}", x, y);
+        let (width, height) = self.handle_transform();
         x >= self.offset.0
-            && x <= self.offset.0 + self.size.0
+            && x <= self.offset.0 + width
             && y >= self.offset.1
-            && y <= self.offset.1 + self.size.1
+            && y <= self.offset.1 + height
     }
 }
 
