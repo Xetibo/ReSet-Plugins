@@ -66,8 +66,11 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             .build(),
     );
     let drawing_ref = drawing_area.clone();
+    let drawing_ref_end = drawing_area.clone();
 
     let monitor_data = Rc::new(RefCell::new(get_monitor_data()));
+    let start_ref = monitor_data.clone();
+    let update_ref = monitor_data.clone();
 
     let rectangles = drawing_callback(&drawing_area, border_color, color, monitor_data.clone());
     let rectangles_drag_start = rectangles.clone();
@@ -77,49 +80,104 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
     // TODO: do something with drag
     gesture.connect_drag_begin(move |drag, x, y| {
-        for rectangle in rectangles_drag_start.borrow_mut().iter_mut() {
+        for monitor in start_ref.borrow_mut().iter_mut() {
             let x = x as i32;
             let y = y as i32;
-            if rectangle.contains_point(x, y) {
-                rectangle.set_y(y);
-                rectangle.set_x(x);
+            if monitor.is_coordinate_within(x, y) {
+                monitor.drag_information.drag_active = true;
+                break;
             }
-            // unsafe {}
-            // cairo_matrix_transform_point(matrix, x, y)
-            // if x > rectangle.x()
-            //     && x < rectangle.x() + rectangle.width()
-            //     && y > rectangle.y()
-            //     && y < rectangle.y() + rectangle.height()
-            // {
-            //
-            //     println!("clicked within monitor 2");
-            // }
         }
         // drawing_ref.queue_draw();
 
-        println!("start drag at {} {} ", x, y);
         // TODO: get the area, check for overlap with rectangles, if so, drag and drop
     });
 
     gesture.connect_drag_update(move |drag, x, y| {
-        for monitor in monitor_data.borrow_mut().iter_mut() {
+        for monitor in update_ref.borrow_mut().iter_mut() {
             let x = x as i32;
             let y = y as i32;
-            // if rectangle.contains_point(x, y) {
-            //     rectangle.set_y(y);
-            //     rectangle.set_x(x);
-            // }
-            if monitor.is_coordinate_within(x, y) {
+            if monitor.drag_information.drag_active {
                 monitor.drag_information.drag_x = x;
                 monitor.drag_information.drag_y = -y;
+                break;
             }
         }
         drawing_ref.queue_draw();
-        println!("updated drag at {} {} ", x, y);
     });
 
-    gesture.connect_drag_end(|drag, x, y| {
-        println!("stopped drag at {} {} ", x, y);
+    gesture.connect_drag_end(move |drag, x, y| {
+        let mut endpoint_left: i32 = 0;
+        let mut endpoint_bottom: i32 = 0;
+        let mut endpoint_right: i32 = 0;
+        let mut endpoint_top: i32 = 0;
+        let mut snap_right = 0;
+        let mut snap_bottom = 0;
+        let mut snap_top = 0;
+        let mut snap_left = 0;
+        let mut iter = 0;
+        for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
+            if monitor.drag_information.drag_active {
+                monitor.drag_information.drag_active = false;
+                endpoint_right = monitor.drag_information.scaled_offset_x
+                    + monitor.drag_information.scaled_width;
+                endpoint_top = monitor.drag_information.scaled_offset_y;
+                endpoint_bottom = monitor.drag_information.scaled_offset_y
+                    - monitor.drag_information.scaled_height;
+                endpoint_left = monitor.drag_information.scaled_offset_y;
+                iter = i;
+                break;
+            }
+        }
+        for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
+            if i == iter {
+                continue;
+            }
+            if endpoint_right.abs_diff(monitor.drag_information.scaled_offset_x) < 10 {
+                snap_right = monitor.drag_information.scaled_offset_x;
+            }
+            if endpoint_left.abs_diff(
+                monitor.drag_information.scaled_offset_x + monitor.drag_information.scaled_width,
+            ) < 10
+            {
+                snap_left = monitor.drag_information.scaled_offset_x
+                    + monitor.drag_information.scaled_width;
+            }
+            println!(
+                "difference is {} ",
+                endpoint_bottom.abs_diff(monitor.drag_information.scaled_offset_y)
+            );
+            if endpoint_bottom.abs_diff(monitor.drag_information.scaled_offset_y) < 10 {
+                snap_bottom = monitor.drag_information.scaled_offset_y;
+            }
+            if endpoint_top.abs_diff(
+                monitor.drag_information.scaled_offset_y - monitor.drag_information.scaled_height,
+            ) < 10
+            {
+                snap_top = monitor.drag_information.scaled_offset_y
+                    - monitor.drag_information.scaled_height;
+            }
+        }
+        let mut monitor = monitor_data.borrow_mut();
+        let monitor = monitor.get_mut(iter).unwrap();
+        if snap_right != 0 {
+            println!("snapped horizontally to right at {}", snap_right);
+            monitor.offset.0 = snap_right - monitor.drag_information.scaled_width;
+        }
+        if snap_bottom != 0 {
+            println!("snapped vertically to bottom at {}", snap_bottom);
+            monitor.offset.1 = snap_bottom - monitor.drag_information.scaled_height;
+        }
+        if snap_top != 0 {
+            println!("snapped vertically to top at {}", snap_top);
+            monitor.offset.1 = snap_bottom + monitor.drag_information.scaled_height;
+        }
+        if snap_left != 0 {
+            println!("snapped horizontally to left at {}", snap_left);
+            monitor.offset.0 = snap_right + monitor.drag_information.scaled_width;
+        }
+
+        drawing_ref_end.queue_draw();
     });
 
     drawing_area.add_controller(gesture);
@@ -142,7 +200,7 @@ fn drawing_callback(
     let rectangles = Rc::new(RefCell::new(Vec::new()));
     let rectangle_ref = rectangles.clone();
     area.set_draw_func(move |area, context, _, _| {
-        // get height of window and width of drawinwidget
+        // get height of window and width of drawingwidget
         let native = area.native().unwrap();
         let surface = native.surface().unwrap();
         let max_height = surface.height() / 3;
@@ -154,8 +212,12 @@ fn drawing_callback(
         // logic to ensure max width and height with offsets and sized do not overflow drawing area
         let mut max_monitor_width = 0;
         let mut max_monitor_height = 0;
+        let mut min_monitor_width = 0;
+        let mut min_monitor_height = 0;
         for monitor in monitor_data.borrow().iter() {
             let (width, height) = monitor.handle_transform();
+            let current_min_height = monitor.offset.1;
+            let current_min_width = monitor.offset.0;
             let current_max_height = monitor.offset.1.abs() + height;
             let current_max_width = monitor.offset.0.abs() + width;
             if current_max_width > max_monitor_width {
@@ -163,6 +225,12 @@ fn drawing_callback(
             }
             if current_max_height > max_monitor_height {
                 max_monitor_height = current_max_height;
+            }
+            if current_min_width < min_monitor_width {
+                min_monitor_width = current_min_width;
+            }
+            if current_min_height < min_monitor_height {
+                min_monitor_height = current_min_width;
             }
         }
 
@@ -183,9 +251,11 @@ fn drawing_callback(
             let (width, height) = monitor.handle_transform();
             let height = height / factor;
             let width = width / factor;
-            let offset_x =
-                width_offset + monitor.drag_information.drag_x + monitor.offset.0 / factor;
-            let offset_y = max_height
+            let offset_x = min_monitor_width
+                + width_offset
+                + monitor.drag_information.drag_x
+                + monitor.offset.0 / factor;
+            let offset_y = min_monitor_height + max_height
                 - height_offset * 2
                 - monitor.drag_information.drag_y
                 - (monitor.offset.1 / factor);
