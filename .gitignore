@@ -1,3 +1,2 @@
-/monitors/target/
-/keyboard_plugin/target/
+**/target/**
 .idea/
