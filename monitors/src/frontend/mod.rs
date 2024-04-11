@@ -110,8 +110,8 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             //     rectangle.set_x(x);
             // }
             if monitor.is_coordinate_within(x, y) {
-                monitor.drag_x = x;
-                monitor.drag_y = -y;
+                monitor.drag_information.drag_x = x;
+                monitor.drag_information.drag_y = -y;
             }
         }
         drawing_ref.queue_draw();
@@ -178,14 +178,21 @@ fn drawing_callback(
         let height_offset = (max_height - (max_monitor_height / max_height)) / 2;
 
         let mut rectangled = rectangle_ref.borrow_mut();
-        for monitor in monitor_data.borrow().iter() {
+        for monitor in monitor_data.borrow_mut().iter_mut() {
             // handle transform which could invert height and width
             let (width, height) = monitor.handle_transform();
             let height = height / factor;
             let width = width / factor;
-            let offset_x = width_offset + monitor.drag_x + monitor.offset.0 / factor;
-            let offset_y =
-                max_height - height_offset * 2 - monitor.drag_y - (monitor.offset.1 / factor);
+            let offset_x =
+                width_offset + monitor.drag_information.drag_x + monitor.offset.0 / factor;
+            let offset_y = max_height
+                - height_offset * 2
+                - monitor.drag_information.drag_y
+                - (monitor.offset.1 / factor);
+            monitor.drag_information.scaled_offset_x = offset_x;
+            monitor.drag_information.scaled_offset_y = offset_y;
+            monitor.drag_information.scaled_width = width;
+            monitor.drag_information.scaled_height = height;
 
             context.set_source_color(&border_color);
 
