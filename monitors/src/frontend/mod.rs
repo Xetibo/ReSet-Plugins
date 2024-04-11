@@ -218,8 +218,8 @@ fn drawing_callback(
             let (width, height) = monitor.handle_transform();
             let current_min_height = monitor.offset.1;
             let current_min_width = monitor.offset.0;
-            let current_max_height = monitor.offset.1.abs() + height;
-            let current_max_width = monitor.offset.0.abs() + width;
+            let current_max_height = monitor.offset.1 + height;
+            let current_max_width = monitor.offset.0 + width;
             if current_max_width > max_monitor_width {
                 max_monitor_width = current_max_width;
             }
