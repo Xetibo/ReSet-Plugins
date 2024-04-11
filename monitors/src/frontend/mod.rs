@@ -1,14 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
-use glib::translate::Uninitialized;
 use gtk::{
-    builders::{EventControllerMotionBuilder, GestureDragBuilder},
-    cairo::{ffi::cairo_matrix_transform_point, Matrix},
-    ffi::{GtkEventController, GtkEventControllerMotion},
-    gdk::{prelude::SurfaceExt, Rectangle},
-    prelude::GestureExt,
+    gdk::prelude::SurfaceExt,
     prelude::{GestureDragExt, NativeExt},
-    DrawingArea, EventController, EventControllerMotion, GestureDrag,
+    DrawingArea, GestureDrag,
 };
 #[allow(deprecated)]
 use gtk::{
@@ -72,14 +67,11 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let start_ref = monitor_data.clone();
     let update_ref = monitor_data.clone();
 
-    let rectangles = drawing_callback(&drawing_area, border_color, color, monitor_data.clone());
-    let rectangles_drag_start = rectangles.clone();
-    let rectangles_drag_update = rectangles.clone();
-    let rectangles_drag_end = rectangles.clone();
+    drawing_callback(&drawing_area, border_color, color, monitor_data.clone());
     let gesture = GestureDrag::builder().build();
 
     // TODO: do something with drag
-    gesture.connect_drag_begin(move |drag, x, y| {
+    gesture.connect_drag_begin(move |_drag, x, y| {
         for monitor in start_ref.borrow_mut().iter_mut() {
             let x = x as i32;
             let y = y as i32;
@@ -93,38 +85,43 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         // TODO: get the area, check for overlap with rectangles, if so, drag and drop
     });
 
-    gesture.connect_drag_update(move |drag, x, y| {
+    gesture.connect_drag_update(move |_drag, x, y| {
         for monitor in update_ref.borrow_mut().iter_mut() {
             let x = x as i32;
             let y = y as i32;
             if monitor.drag_information.drag_active {
-                monitor.drag_information.drag_x = x;
-                monitor.drag_information.drag_y = -y;
+                monitor.drag_information.drag_x = x * monitor.drag_information.factor;
+                monitor.drag_information.drag_y = y * monitor.drag_information.factor;
                 break;
             }
         }
         drawing_ref.queue_draw();
     });
 
-    gesture.connect_drag_end(move |drag, x, y| {
+    gesture.connect_drag_end(move |_drag, _x, _y| {
         let mut endpoint_left: i32 = 0;
         let mut endpoint_bottom: i32 = 0;
         let mut endpoint_right: i32 = 0;
         let mut endpoint_top: i32 = 0;
-        let mut snap_right = 0;
-        let mut snap_bottom = 0;
-        let mut snap_top = 0;
-        let mut snap_left = 0;
+        let mut snap_right_left = 0;
+        let mut snap_bottom_bottom = 0;
+        let mut snap_top_top = 0;
+        let mut snap_left_right = 0;
+        let mut snap_top_bottom = 0;
+        let mut snap_bottom_top = 0;
+        let mut snap_right_right = 0;
+        let mut snap_left_left = 0;
+        // top to top, right to left, bottom to bottom, left to right
+        // top to bottom, right to right, bottom to top, left to left
+        let mut use_snap = (false, false, false, false, false, false, false, false);
         let mut iter = 0;
         for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
             if monitor.drag_information.drag_active {
                 monitor.drag_information.drag_active = false;
-                endpoint_right = monitor.drag_information.scaled_offset_x
-                    + monitor.drag_information.scaled_width;
-                endpoint_top = monitor.drag_information.scaled_offset_y;
-                endpoint_bottom = monitor.drag_information.scaled_offset_y
-                    - monitor.drag_information.scaled_height;
-                endpoint_left = monitor.drag_information.scaled_offset_y;
+                endpoint_bottom = monitor.offset.1 + monitor.drag_information.drag_y;
+                endpoint_left = monitor.offset.0 + monitor.drag_information.drag_x;
+                endpoint_right = endpoint_left + monitor.drag_information.width;
+                endpoint_top = endpoint_bottom + monitor.drag_information.height;
                 iter = i;
                 break;
             }
@@ -133,49 +130,82 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             if i == iter {
                 continue;
             }
-            if endpoint_right.abs_diff(monitor.drag_information.scaled_offset_x) < 10 {
-                snap_right = monitor.drag_information.scaled_offset_x;
-            }
-            if endpoint_left.abs_diff(
-                monitor.drag_information.scaled_offset_x + monitor.drag_information.scaled_width,
-            ) < 10
+            // right to left and left to right
+            if endpoint_right.abs_diff(monitor.offset.0) < 100 {
+                snap_right_left = monitor.offset.0;
+                use_snap.1 = true;
+            } else if endpoint_left.abs_diff(monitor.offset.0 + monitor.drag_information.width)
+                < 100
             {
-                snap_left = monitor.drag_information.scaled_offset_x
-                    + monitor.drag_information.scaled_width;
+                snap_left_right = monitor.offset.0 + monitor.drag_information.width;
+                use_snap.3 = true;
             }
-            println!(
-                "difference is {} ",
-                endpoint_bottom.abs_diff(monitor.drag_information.scaled_offset_y)
-            );
-            if endpoint_bottom.abs_diff(monitor.drag_information.scaled_offset_y) < 10 {
-                snap_bottom = monitor.drag_information.scaled_offset_y;
-            }
-            if endpoint_top.abs_diff(
-                monitor.drag_information.scaled_offset_y - monitor.drag_information.scaled_height,
-            ) < 10
+
+            // top to top and bottom to bottom
+            if endpoint_bottom.abs_diff(monitor.offset.1) < 100 {
+                snap_bottom_bottom = monitor.offset.1;
+                use_snap.2 = true;
+            } else if endpoint_top.abs_diff(monitor.offset.1 + monitor.drag_information.height)
+                < 100
             {
-                snap_top = monitor.drag_information.scaled_offset_y
-                    - monitor.drag_information.scaled_height;
+                snap_top_top = monitor.offset.1 - monitor.drag_information.height;
+                use_snap.0 = true;
+            }
+
+            // right to right and left to left
+            if endpoint_right.abs_diff(monitor.offset.0 + monitor.drag_information.width) < 100 {
+                snap_right_right = monitor.offset.0 + monitor.drag_information.width;
+                use_snap.4 = true;
+            } else if endpoint_left.abs_diff(monitor.offset.0) < 100 {
+                snap_left_left = monitor.offset.0;
+                use_snap.5 = true;
+            }
+
+            // top to bottom and bottom to top
+            if endpoint_top.abs_diff(monitor.offset.1) < 100 {
+                snap_top_bottom = monitor.offset.1;
+                use_snap.6 = true;
+            } else if endpoint_bottom.abs_diff(monitor.offset.1 + monitor.drag_information.height)
+                < 100
+            {
+                snap_bottom_top = monitor.offset.1 + monitor.drag_information.height;
+                use_snap.7 = true;
             }
         }
         let mut monitor = monitor_data.borrow_mut();
         let monitor = monitor.get_mut(iter).unwrap();
-        if snap_right != 0 {
-            println!("snapped horizontally to right at {}", snap_right);
-            monitor.offset.0 = snap_right - monitor.drag_information.scaled_width;
+        if use_snap.1 {
+            println!("snap right to left");
+            monitor.offset.0 = snap_right_left - monitor.drag_information.width;
+        } else if use_snap.3 {
+            println!("snap left to right");
+            monitor.offset.0 = snap_left_right;
+        } else if use_snap.4 {
+            println!("snap right to right");
+            monitor.offset.0 = snap_right_right + monitor.drag_information.height;
+        } else if use_snap.5 {
+            println!("snap left to left");
+            monitor.offset.0 = snap_left_left;
+        } else {
+            monitor.offset.0 += monitor.drag_information.drag_x;
         }
-        if snap_bottom != 0 {
-            println!("snapped vertically to bottom at {}", snap_bottom);
-            monitor.offset.1 = snap_bottom - monitor.drag_information.scaled_height;
+        if use_snap.2 {
+            println!("snap bottom to bottom");
+            monitor.offset.1 = snap_bottom_bottom;
+        } else if use_snap.0 {
+            println!("snap top to top");
+            monitor.offset.1 = snap_top_top + monitor.drag_information.height;
+        } else if use_snap.6 {
+            println!("snap top to bottom");
+            monitor.offset.1 = snap_top_bottom + monitor.drag_information.height;
+        } else if use_snap.7 {
+            println!("snap bottom to top");
+            monitor.offset.1 = snap_bottom_top;
+        } else {
+            monitor.offset.1 += monitor.drag_information.drag_y;
         }
-        if snap_top != 0 {
-            println!("snapped vertically to top at {}", snap_top);
-            monitor.offset.1 = snap_bottom + monitor.drag_information.scaled_height;
-        }
-        if snap_left != 0 {
-            println!("snapped horizontally to left at {}", snap_left);
-            monitor.offset.0 = snap_right + monitor.drag_information.scaled_width;
-        }
+        monitor.drag_information.drag_x = 0;
+        monitor.drag_information.drag_y = 0;
 
         drawing_ref_end.queue_draw();
     });
@@ -196,14 +226,12 @@ fn drawing_callback(
     border_color: gtk::gdk::RGBA,
     color: gtk::gdk::RGBA,
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
-) -> Rc<RefCell<Vec<Rectangle>>> {
-    let rectangles = Rc::new(RefCell::new(Vec::new()));
-    let rectangle_ref = rectangles.clone();
+) {
     area.set_draw_func(move |area, context, _, _| {
         // get height of window and width of drawingwidget
         let native = area.native().unwrap();
         let surface = native.surface().unwrap();
-        let max_height = surface.height() / 3;
+        let max_height = surface.height() / 10 * 4;
         let max_width = area.width();
 
         area.set_height_request(max_height);
@@ -235,8 +263,8 @@ fn drawing_callback(
         }
 
         // bigger factor will be used in order to not break ratio
-        let width_factor = max_monitor_width / max_width + 2;
-        let height_factor = max_monitor_height / max_height + 2;
+        let width_factor = (max_monitor_width - min_monitor_width) / max_width + 2;
+        let height_factor = (max_monitor_height - min_monitor_height) / max_height + 2;
         let factor = if width_factor > height_factor {
             width_factor
         } else {
@@ -245,27 +273,29 @@ fn drawing_callback(
         let width_offset =
             (max_width - (max_monitor_width / factor) - (min_monitor_width / factor)) / 2;
         let height_offset =
-            (max_height - (max_monitor_height / max_height) - (min_monitor_height / factor)) / 2;
+            (max_height - (max_monitor_height / factor) - (min_monitor_height / factor)) / 2;
 
-        let mut rectangled = rectangle_ref.borrow_mut();
         for monitor in monitor_data.borrow_mut().iter_mut() {
             // handle transform which could invert height and width
             let (width, height) = monitor.handle_transform();
+            let offset_x = monitor.drag_information.drag_x + monitor.offset.0;
+            let offset_y = monitor.drag_information.drag_y + monitor.offset.1;
+
+            println!(
+                "{} {}",
+                monitor.drag_information.drag_x, monitor.drag_information.drag_y
+            );
+
+            monitor.drag_information.width = width;
+            monitor.drag_information.height = height;
+            monitor.drag_information.factor = factor;
+            monitor.drag_information.border_offset_x = width_offset;
+            monitor.drag_information.border_offset_y = height_offset;
+
+            let offset_x = width_offset + offset_x / factor;
+            let offset_y = height_offset + offset_y / factor;
             let height = height / factor;
             let width = width / factor;
-            let offset_x =
-                width_offset + monitor.drag_information.drag_x + monitor.offset.0 / factor;
-            let offset_y = max_height
-                - height_offset * 2
-                - monitor.drag_information.drag_y
-                - (monitor.offset.1 / factor);
-            monitor.drag_information.scaled_offset_x = offset_x;
-            monitor.drag_information.scaled_offset_y = offset_y;
-            monitor.drag_information.scaled_width = width;
-            monitor.drag_information.scaled_height = height;
-            monitor.drag_information.factor = factor;
-            monitor.drag_information.min_offset_x = min_monitor_width;
-            monitor.drag_information.min_offset_y = min_monitor_height;
 
             context.set_source_color(&border_color);
 
@@ -273,22 +303,18 @@ fn drawing_callback(
             // top
             let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width + 5, 5);
             context.add_rectangle(&rec);
-            rectangled.push(rec);
 
             // right
             let rec = gtk::gdk::Rectangle::new(offset_x + width, offset_y, 5, height + 5);
             context.add_rectangle(&rec);
-            rectangled.push(rec);
 
             // bottom
             let rec = gtk::gdk::Rectangle::new(offset_x, offset_y + height, width + 5, 5);
             context.add_rectangle(&rec);
-            rectangled.push(rec);
 
             // left
             let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, 5, height + 5);
             context.add_rectangle(&rec);
-            rectangled.push(rec);
 
             context.fill().expect("Could not fill context");
 
@@ -296,9 +322,7 @@ fn drawing_callback(
             let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width, height);
             context.set_source_color(&color);
             context.add_rectangle(&rec);
-            rectangled.push(rec);
             context.fill().expect("Could not fill context");
         }
     });
-    rectangles
 }

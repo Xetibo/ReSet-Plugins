@@ -28,7 +28,6 @@ pub fn get_monitor_data() -> Vec<Monitor> {
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
     let res: Result<(Vec<Monitor>,), Error> = proxy.method_call(INTERFACE, "GetMonitors", ());
-    dbg!(&res);
     if res.is_err() {
         return Vec::new();
     }
@@ -46,23 +45,12 @@ pub struct MonitorData {
 pub struct DragInformation {
     pub drag_x: i32,
     pub drag_y: i32,
-    pub scaled_offset_x: i32,
-    pub scaled_offset_y: i32,
-    pub scaled_width: i32,
-    pub scaled_height: i32,
+    pub border_offset_x: i32,
+    pub border_offset_y: i32,
+    pub width: i32,
+    pub height: i32,
     pub factor: i32,
-    pub min_offset_x: i32,
-    pub min_offset_y: i32,
     pub drag_active: bool,
-}
-
-impl DragInformation {
-    pub fn convert_to_real_pos(&self) -> (i32, i32) {
-        (
-            self.scaled_offset_x * self.factor - self.min_offset_x,
-            self.scaled_offset_y * self.factor - self.min_offset_y,
-        )
-    }
 }
 
 #[repr(C)]
@@ -216,31 +204,15 @@ impl Monitor {
     /// window is also taken into account when passing parameters as it will otherwise evaluate to
     /// false.
     pub fn is_coordinate_within(&self, x: i32, y: i32) -> bool {
-        println!(
-            "{}, {}, {}, {}, {}, {}",
-            x,
-            y,
-            self.drag_information.scaled_offset_x,
-            self.drag_information.scaled_offset_y,
-            self.drag_information.scaled_width,
-            self.drag_information.scaled_height
-        );
-        x >= self.drag_information.scaled_offset_x
-            && x <= self.drag_information.scaled_offset_x + self.drag_information.scaled_width
-            && y >= self.drag_information.scaled_offset_y
-            && y <= self.drag_information.scaled_offset_y + self.drag_information.scaled_height
+        let offset_x = self.offset.0 / self.drag_information.factor;
+        let offset_y = self.offset.1 / self.drag_information.factor;
+        let height = self.drag_information.height / self.drag_information.factor;
+        let width = self.drag_information.width / self.drag_information.factor;
+        x >= self.drag_information.border_offset_x + offset_x
+            && x <= self.drag_information.border_offset_x + offset_x + width
+            && y >= self.drag_information.border_offset_y + offset_y
+            && y <= self.drag_information.border_offset_y + offset_y + height
     }
-    // pub fn is_coordinate_within(&self, x: i32, y: i32) -> bool {
-    //     let (width, height) = self.handle_transform();
-    //     println!(
-    //         "{}, {}, {}, {}, {}, {}",
-    //         x, y, self.offset.0, self.offset.1, width, height
-    //     );
-    //     x >= self.offset.0
-    //         && x <= self.offset.0 + width
-    //         && y >= self.offset.1
-    //         && y <= self.offset.1 + height
-    // }
 }
 
 #[repr(C)]
