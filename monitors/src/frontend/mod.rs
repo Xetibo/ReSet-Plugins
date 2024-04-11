@@ -251,11 +251,11 @@ fn drawing_callback(
             let (width, height) = monitor.handle_transform();
             let height = height / factor;
             let width = width / factor;
-            let offset_x = min_monitor_width
+            let offset_x = min_monitor_width / factor
                 + width_offset
                 + monitor.drag_information.drag_x
                 + monitor.offset.0 / factor;
-            let offset_y = min_monitor_height + max_height
+            let offset_y = min_monitor_height / factor + max_height
                 - height_offset * 2
                 - monitor.drag_information.drag_y
                 - (monitor.offset.1 / factor);
@@ -263,6 +263,9 @@ fn drawing_callback(
             monitor.drag_information.scaled_offset_y = offset_y;
             monitor.drag_information.scaled_width = width;
             monitor.drag_information.scaled_height = height;
+            monitor.drag_information.factor = factor;
+            monitor.drag_information.min_offset_x = min_monitor_width;
+            monitor.drag_information.min_offset_y = min_monitor_height;
 
             context.set_source_color(&border_color);
 

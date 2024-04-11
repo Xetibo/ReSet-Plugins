@@ -50,7 +50,19 @@ pub struct DragInformation {
     pub scaled_offset_y: i32,
     pub scaled_width: i32,
     pub scaled_height: i32,
+    pub factor: i32,
+    pub min_offset_x: i32,
+    pub min_offset_y: i32,
     pub drag_active: bool,
+}
+
+impl DragInformation {
+    pub fn convert_to_real_pos(&self) -> (i32, i32) {
+        (
+            self.scaled_offset_x * self.factor - self.min_offset_x,
+            self.scaled_offset_y * self.factor - self.min_offset_y,
+        )
+    }
 }
 
 #[repr(C)]
