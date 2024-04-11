@@ -54,7 +54,7 @@ pub struct DragInformation {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Monitor {
     pub id: u32,
     pub name: String,
@@ -69,6 +69,7 @@ pub struct Monitor {
     pub offset: Offset,
     pub size: Size,
     pub drag_information: DragInformation,
+    pub available_modes: Vec<AvailableMode>,
 }
 
 impl Monitor {
@@ -90,6 +91,7 @@ impl Monitor {
         offset_y: i32,
         width: i32,
         height: i32,
+        available_modes: Vec<AvailableMode>,
     ) -> Self {
         Self {
             id,
@@ -105,6 +107,7 @@ impl Monitor {
             offset: Offset(offset_x, offset_y),
             size: Size(width, height),
             drag_information: DragInformation::default(),
+            available_modes,
         }
     }
 
@@ -130,10 +133,12 @@ impl Append for Monitor {
     fn append_by_ref(&self, iter: &mut arg::IterAppend) {
         iter.append_struct(|i| {
             i.append(self.id);
-            i.append(self.name.clone());
-            i.append(self.make.clone());
-            i.append(self.model.clone());
-            i.append(self.serial.clone());
+            i.append((
+                self.name.clone(),
+                self.make.clone(),
+                self.model.clone(),
+                self.serial.clone(),
+            ));
             i.append(self.refresh_rate);
             i.append(self.scale);
             i.append(self.transform);
@@ -141,6 +146,7 @@ impl Append for Monitor {
             i.append(self.vrr);
             i.append(self.offset);
             i.append(self.size);
+            i.append(self.available_modes.clone())
         });
     }
 }
@@ -149,10 +155,7 @@ impl<'a> Get<'a> for Monitor {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
         let (
             id,
-            name,
-            make,
-            model,
-            serial,
+            (name, make, model, serial),
             refresh_rate,
             scale,
             transform,
@@ -160,12 +163,10 @@ impl<'a> Get<'a> for Monitor {
             tearing,
             offset,
             size,
+            available_modes,
         ) = <(
             u32,
-            String,
-            String,
-            String,
-            String,
+            (String, String, String, String),
             u32,
             Scale,
             u32,
@@ -173,6 +174,7 @@ impl<'a> Get<'a> for Monitor {
             bool,
             Offset,
             Size,
+            Vec<AvailableMode>,
         )>::get(i)?;
         Some(Self {
             id,
@@ -188,6 +190,7 @@ impl<'a> Get<'a> for Monitor {
             offset: Offset(offset.0, offset.1),
             size: Size(size.0, size.1),
             drag_information: DragInformation::default(),
+            available_modes,
         })
     }
 }
@@ -195,7 +198,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(ussssu(uu)ubb(ii)(ii))\0") }
+        unsafe { Signature::from_slice_unchecked("(u(ssss)u(uu)ubb(ii)(ii)a((ii)u))\0") }
     }
 }
 
@@ -216,7 +219,7 @@ impl Monitor {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Offset(pub i32, pub i32);
 
 impl<'a> Get<'a> for Offset {
@@ -243,7 +246,7 @@ impl Arg for Offset {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Size(pub i32, pub i32);
 
 impl<'a> Get<'a> for Size {
@@ -270,7 +273,7 @@ impl Arg for Size {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Scale(pub u32, pub u32);
 
 impl<'a> Get<'a> for Scale {
@@ -319,5 +322,35 @@ impl Default for PluginInstantiationError {
 impl Display for PluginInstantiationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.0)
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AvailableMode {
+    pub size: Size,
+    pub refresh_rate: u32,
+}
+
+impl<'a> Get<'a> for AvailableMode {
+    fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
+        let (size, refresh_rate) = <(Size, u32)>::get(i)?;
+        Some(Self { size, refresh_rate })
+    }
+}
+
+impl Append for AvailableMode {
+    fn append_by_ref(&self, iter: &mut arg::IterAppend) {
+        iter.append_struct(|i| {
+            i.append(self.size);
+            i.append(self.refresh_rate);
+        });
+    }
+}
+
+impl Arg for AvailableMode {
+    const ARG_TYPE: arg::ArgType = ArgType::Struct;
+    fn signature() -> Signature<'static> {
+        unsafe { Signature::from_slice_unchecked("((ii)u)\0") }
     }
 }

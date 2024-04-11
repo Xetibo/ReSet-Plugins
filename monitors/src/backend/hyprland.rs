@@ -1,6 +1,6 @@
 // NOTE: This implementation is for the hyprland compositor
 
-use crate::utils::Monitor;
+use crate::utils::{AvailableMode, Monitor, Size};
 use std::process::Command;
 
 pub fn hy_get_monitor_information() -> Vec<Monitor> {
@@ -40,6 +40,7 @@ pub struct HyprMonitor {
     transform: i64,
     vrr: bool,
     activelyTearing: bool,
+    availableModes: Vec<String>,
 }
 
 impl HyprMonitor {
@@ -52,7 +53,7 @@ impl HyprMonitor {
             self.make,
             self.model,
             self.serial,
-            self.refreshRate as u32,
+            self.refreshRate.round() as u32,
             scale_int,
             scale_float,
             self.transform as u32,
@@ -62,6 +63,22 @@ impl HyprMonitor {
             self.y as i32,
             self.width as i32,
             self.height as i32,
+            string_to_modes(self.availableModes),
         )
     }
+}
+
+fn string_to_modes(available_modes: Vec<String>) -> Vec<AvailableMode> {
+    let mut converted_modes = Vec::new();
+    for mode in available_modes {
+        let (resolution, refresh_rate) = mode.split_once('@').unwrap();
+        let (resolution_x, resolution_y) = resolution.split_once('x').unwrap();
+        let float_hz: f64 = refresh_rate.strip_suffix("Hz").unwrap().parse().unwrap();
+        let refresh_rate: u32 = float_hz.round() as u32;
+        converted_modes.push(AvailableMode {
+            size: Size(resolution_x.parse().unwrap(), resolution_y.parse().unwrap()),
+            refresh_rate,
+        });
+    }
+    converted_modes
 }
