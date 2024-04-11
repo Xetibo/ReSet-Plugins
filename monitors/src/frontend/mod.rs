@@ -243,9 +243,9 @@ fn drawing_callback(
             height_factor
         };
         let width_offset =
-            (max_width - (max_monitor_width / factor) + (min_monitor_width / factor)) / 2;
+            (max_width - (max_monitor_width / factor) - (min_monitor_width / factor)) / 2;
         let height_offset =
-            (max_height - (max_monitor_height / max_height) + (min_monitor_height / factor)) / 2;
+            (max_height - (max_monitor_height / max_height) - (min_monitor_height / factor)) / 2;
 
         let mut rectangled = rectangle_ref.borrow_mut();
         for monitor in monitor_data.borrow_mut().iter_mut() {
