@@ -47,6 +47,8 @@ pub struct DragInformation {
     pub drag_y: i32,
     pub border_offset_x: i32,
     pub border_offset_y: i32,
+    pub origin_x: i32,
+    pub origin_y: i32,
     pub width: i32,
     pub height: i32,
     pub factor: i32,
@@ -216,6 +218,29 @@ impl Monitor {
             && y >= self.drag_information.border_offset_y + offset_y
             && y <= self.drag_information.border_offset_y + offset_y + height
     }
+
+    // same as above but without factor as this is a purely monitor specific overlap without a
+    // mouse pointer.
+    fn is_monitor_coordinate_within(&self, x: i32, y: i32) -> bool {
+        let offset_x = self.offset.0;
+        let offset_y = self.offset.1;
+        let height = self.drag_information.height;
+        let width = self.drag_information.width;
+        x > self.drag_information.border_offset_x + offset_x
+            && x < self.drag_information.border_offset_x + offset_x + width
+            && y > self.drag_information.border_offset_y + offset_y
+            && y < self.drag_information.border_offset_y + offset_y + height
+    }
+
+    /// Checks whether or not the currently dragged monitor has any overlap with existing monitors.
+    /// If this is the case, then the monitor should be reset to original position on drop.
+    pub fn get_intersect(&self, offset_x: i32, offset_y: i32, width: i32, height: i32) -> bool {
+        let top_left = self.is_monitor_coordinate_within(offset_x, offset_y + height);
+        let top_right = self.is_monitor_coordinate_within(offset_x + width, offset_y + height);
+        let bottom_left = self.is_monitor_coordinate_within(offset_x, offset_y);
+        let bottom_right = self.is_monitor_coordinate_within(offset_x + width, offset_y);
+        top_left || top_right || bottom_left || bottom_right
+    }
 }
 
 #[repr(C)]
@@ -353,4 +378,22 @@ impl Arg for AvailableMode {
     fn signature() -> Signature<'static> {
         unsafe { Signature::from_slice_unchecked("((ii)u)\0") }
     }
+}
+
+#[derive(Eq, PartialEq, PartialOrd, Ord)]
+pub enum SnapDirectionHorizontal {
+    RightRight(i32),
+    RightLeft(i32),
+    LeftLeft(i32),
+    LeftRight(i32),
+    None,
+}
+
+#[derive(Eq, PartialEq, PartialOrd, Ord)]
+pub enum SnapDirectionVertical {
+    TopTop(i32),
+    TopBottom(i32),
+    BottomBottom(i32),
+    BottomTop(i32),
+    None,
 }

@@ -1,27 +1,21 @@
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use adw::{
-    ffi::AdwPreferencesGroup,
     traits::{ActionRowExt, ComboRowExt, PreferencesGroupExt, PreferencesRowExt},
     PreferencesGroup,
 };
-use glib::property::PropertySet;
-use gtk::{
-    ffi::GtkListBox,
-    gdk::prelude::SurfaceExt,
-    graphene::Box,
-    prelude::{GestureDragExt, NativeExt},
-    DrawingArea, GestureDrag, ListBox, StringList,
-};
 #[allow(deprecated)]
 use gtk::{
-    prelude::{BoxExt, StyleContextExt, WidgetExt},
-    prelude::{DrawingAreaExtManual, GdkCairoContextExt},
-    Orientation,
+    gdk::prelude::SurfaceExt,
+    prelude::{
+        BoxExt, ButtonExt, DrawingAreaExtManual, GdkCairoContextExt, GestureDragExt, NativeExt,
+        StyleContextExt, WidgetExt,
+    },
+    DrawingArea, GestureDrag, Orientation, StringList,
 };
 use re_set_lib::utils::plugin::SidebarInfo;
 
-use crate::utils::{get_monitor_data, Monitor};
+use crate::utils::{get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical};
 
 #[no_mangle]
 pub extern "C" fn frontend_startup() {
@@ -30,13 +24,11 @@ pub extern "C" fn frontend_startup() {
 
 #[no_mangle]
 pub extern "C" fn frontend_shutdown() {
-    println!("frontend shutdown called");
 }
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
-    println!("frontend data called");
     let info = SidebarInfo {
         name: "Monitors",
         icon_name: "preferences-desktop-display-symbolic",
@@ -48,6 +40,18 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .hexpand(true)
         .vexpand(true)
         .build();
+
+    let apply_row = gtk::Box::new(Orientation::Vertical, 5);
+    let apply = gtk::Button::new();
+    apply.connect_clicked(|_| {
+        println!("what");
+    });
+    apply.set_label("Apply");
+    apply.set_hexpand(false);
+    apply.set_halign(gtk::Align::End);
+    apply_row.append(&apply);
+    main_box.append(&apply_row);
+
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
     // NOTE: intentional use of deprecated logic as there is no currently available alternative
@@ -89,6 +93,8 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             let y = y as i32;
             if monitor.is_coordinate_within(x, y) {
                 monitor.drag_information.drag_active = true;
+                monitor.drag_information.origin_x = monitor.offset.0;
+                monitor.drag_information.origin_y = monitor.offset.1;
                 if let Some(child) = settings_box_ref.first_child() {
                     settings_box_ref.remove(&child);
                 }
@@ -122,17 +128,10 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         let mut endpoint_bottom: i32 = 0;
         let mut endpoint_right: i32 = 0;
         let mut endpoint_top: i32 = 0;
-        let mut snap_right_left = 0;
-        let mut snap_bottom_bottom = 0;
-        let mut snap_top_top = 0;
-        let mut snap_left_right = 0;
-        let mut snap_top_bottom = 0;
-        let mut snap_bottom_top = 0;
-        let mut snap_right_right = 0;
-        let mut snap_left_left = 0;
-        // top to top, right to left, bottom to bottom, left to right
-        // top to bottom, right to right, bottom to top, left to left
-        let mut use_snap = (false, false, false, false, false, false, false, false);
+        let mut previous_width: i32 = 0;
+        let mut previous_height: i32 = 0;
+        let mut snap_horizontal = SnapDirectionHorizontal::None;
+        let mut snap_vertical = SnapDirectionVertical::None;
         let mut iter = 0;
         for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
             if monitor.drag_information.drag_active {
@@ -141,87 +140,84 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
                 endpoint_left = monitor.offset.0 + monitor.drag_information.drag_x;
                 endpoint_right = endpoint_left + monitor.drag_information.width;
                 endpoint_top = endpoint_bottom + monitor.drag_information.height;
+                previous_width = monitor.drag_information.width;
+                previous_height = monitor.drag_information.height;
                 iter = i;
                 break;
             }
         }
+        let mut intersected = false;
         for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
             if i == iter {
                 continue;
             }
-            // right to left and left to right
-            if endpoint_right.abs_diff(monitor.offset.0) < 100 {
-                snap_right_left = monitor.offset.0;
-                use_snap.1 = true;
-            } else if endpoint_left.abs_diff(monitor.offset.0 + monitor.drag_information.width)
-                < 100
-            {
-                snap_left_right = monitor.offset.0 + monitor.drag_information.width;
-                use_snap.3 = true;
+            let endpoint_other_left = monitor.offset.0;
+            let endpoint_other_bottom = monitor.offset.1;
+            let endpoint_other_right = endpoint_other_left + monitor.drag_information.width;
+            let endpoint_other_top = endpoint_other_bottom + monitor.drag_information.height;
+
+            if endpoint_right.abs_diff(endpoint_other_left) < 100 {
+                snap_horizontal = SnapDirectionHorizontal::RightLeft(endpoint_other_left);
+            } else if endpoint_left.abs_diff(endpoint_other_right) < 100 {
+                snap_horizontal = SnapDirectionHorizontal::LeftRight(endpoint_other_right);
+            } else if endpoint_right.abs_diff(endpoint_other_right) < 100 {
+                snap_horizontal = SnapDirectionHorizontal::RightRight(endpoint_other_right);
+            } else if endpoint_left.abs_diff(endpoint_other_left) < 100 {
+                snap_horizontal = SnapDirectionHorizontal::LeftLeft(endpoint_other_left);
             }
 
-            // top to top and bottom to bottom
-            if endpoint_bottom.abs_diff(monitor.offset.1) < 100 {
-                snap_bottom_bottom = monitor.offset.1;
-                use_snap.2 = true;
-            } else if endpoint_top.abs_diff(monitor.offset.1 + monitor.drag_information.height)
-                < 100
-            {
-                snap_top_top = monitor.offset.1 - monitor.drag_information.height;
-                use_snap.0 = true;
+            if endpoint_top.abs_diff(endpoint_other_top) < 100 {
+                snap_vertical = SnapDirectionVertical::TopTop(endpoint_other_top);
+            } else if endpoint_bottom.abs_diff(endpoint_other_bottom) < 100 {
+                snap_vertical = SnapDirectionVertical::BottomBottom(endpoint_other_bottom);
+            } else if endpoint_top.abs_diff(endpoint_other_bottom) < 100 {
+                snap_vertical = SnapDirectionVertical::TopBottom(endpoint_other_bottom);
+            } else if endpoint_bottom.abs_diff(endpoint_other_top) < 100 {
+                snap_vertical = SnapDirectionVertical::BottomTop(endpoint_other_top);
             }
 
-            // right to right and left to left
-            if endpoint_right.abs_diff(monitor.offset.0 + monitor.drag_information.width) < 100 {
-                snap_right_right = monitor.offset.0 + monitor.drag_information.width;
-                use_snap.4 = true;
-            } else if endpoint_left.abs_diff(monitor.offset.0) < 100 {
-                snap_left_left = monitor.offset.0;
-                use_snap.5 = true;
-            }
-
-            // top to bottom and bottom to top
-            if endpoint_top.abs_diff(monitor.offset.1) < 100 {
-                snap_top_bottom = monitor.offset.1;
-                use_snap.6 = true;
-            } else if endpoint_bottom.abs_diff(monitor.offset.1 + monitor.drag_information.height)
-                < 100
+            if monitor.get_intersect(
+                endpoint_left,
+                endpoint_bottom,
+                previous_width,
+                previous_height,
+            ) && (snap_vertical == SnapDirectionVertical::None
+                || snap_horizontal == SnapDirectionHorizontal::None)
             {
-                snap_bottom_top = monitor.offset.1 + monitor.drag_information.height;
-                use_snap.7 = true;
+                intersected = true;
+                break;
             }
         }
         let mut monitor = monitor_data.borrow_mut();
         let monitor = monitor.get_mut(iter).unwrap();
-        if use_snap.1 {
-            println!("snap right to left");
-            monitor.offset.0 = snap_right_left - monitor.drag_information.width;
-        } else if use_snap.3 {
-            println!("snap left to right");
-            monitor.offset.0 = snap_left_right;
-        } else if use_snap.4 {
-            println!("snap right to right");
-            monitor.offset.0 = snap_right_right + monitor.drag_information.height;
-        } else if use_snap.5 {
-            println!("snap left to left");
-            monitor.offset.0 = snap_left_left;
+        if intersected {
+            monitor.offset.0 = monitor.drag_information.origin_x;
+            monitor.offset.1 = monitor.drag_information.origin_y;
+            drawing_ref_end.queue_draw();
         } else {
-            monitor.offset.0 += monitor.drag_information.drag_x;
-        }
-        if use_snap.2 {
-            println!("snap bottom to bottom");
-            monitor.offset.1 = snap_bottom_bottom;
-        } else if use_snap.0 {
-            println!("snap top to top");
-            monitor.offset.1 = snap_top_top + monitor.drag_information.height;
-        } else if use_snap.6 {
-            println!("snap top to bottom");
-            monitor.offset.1 = snap_top_bottom + monitor.drag_information.height;
-        } else if use_snap.7 {
-            println!("snap bottom to top");
-            monitor.offset.1 = snap_bottom_top;
-        } else {
-            monitor.offset.1 += monitor.drag_information.drag_y;
+            match snap_horizontal {
+                SnapDirectionHorizontal::RightRight(snap)
+                | SnapDirectionHorizontal::RightLeft(snap) => {
+                    monitor.offset.0 = snap - monitor.drag_information.width;
+                }
+                SnapDirectionHorizontal::LeftRight(snap)
+                | SnapDirectionHorizontal::LeftLeft(snap) => {
+                    monitor.offset.0 = snap;
+                }
+                SnapDirectionHorizontal::None => {
+                    monitor.offset.0 += monitor.drag_information.drag_x
+                }
+            }
+            match snap_vertical {
+                SnapDirectionVertical::TopTop(snap) | SnapDirectionVertical::TopBottom(snap) => {
+                    monitor.offset.1 = snap - monitor.drag_information.height;
+                }
+                SnapDirectionVertical::BottomTop(snap)
+                | SnapDirectionVertical::BottomBottom(snap) => {
+                    monitor.offset.1 = snap;
+                }
+                SnapDirectionVertical::None => monitor.offset.1 += monitor.drag_information.drag_y,
+            }
         }
         monitor.drag_information.drag_x = 0;
         monitor.drag_information.drag_y = 0;
@@ -250,6 +246,7 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
         name.set_title(&monitor.name);
         name.set_subtitle(&monitor.make);
     }
+    name.set_sensitive(true);
     settings.add(&name);
 
     let vrr = adw::SwitchRow::new();
@@ -262,19 +259,28 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
     });
     settings.add(&vrr);
 
-    let model_list = StringList::new(&["0", "90", "180", "270"]);
+    let model_list = StringList::new(&[
+        "0",
+        "90",
+        "180",
+        "270",
+        "0-flipped",
+        "90-flipped",
+        "180-flipped",
+        "270-flipped",
+    ]);
     let transform = adw::ComboRow::new();
     transform.set_title("Transform");
     transform.set_model(Some(&model_list));
     match clicked_monitor.borrow().transform {
         0 => transform.set_selected(0),
-        4 => transform.set_selected(0),
         1 => transform.set_selected(1),
-        5 => transform.set_selected(1),
         2 => transform.set_selected(2),
-        6 => transform.set_selected(2),
         3 => transform.set_selected(3),
-        7 => transform.set_selected(3),
+        4 => transform.set_selected(4),
+        5 => transform.set_selected(5),
+        6 => transform.set_selected(6),
+        7 => transform.set_selected(7),
         _ => println!("Unexpected value for transform"),
     }
     let transform_ref = clicked_monitor.clone();
@@ -306,9 +312,7 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
     {
         let monitor = clicked_monitor.borrow();
         for (i, rate) in refresh_rate_set.into_iter().enumerate() {
-
             let lel = rate.parse::<u32>().unwrap();
-            println!("lel is {} and refresh_rate {}",lel, monitor.refresh_rate);
             if lel == monitor.refresh_rate {
                 index = i;
             }
@@ -319,7 +323,7 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
     refresh_rate.set_title("Refresh-Rate");
     refresh_rate.set_model(Some(&model_list));
     refresh_rate.set_selected(index as u32);
-    refresh_rate.connect_selected_item_notify(move |state| {
+    refresh_rate.connect_selected_item_notify(move |_state| {
         println!("clicked on refresh rate");
     });
     settings.add(&refresh_rate);
@@ -343,7 +347,7 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
     resolution.set_title("Resolution");
     resolution.set_model(Some(&model_list));
     resolution.set_selected(index as u32);
-    resolution.connect_selected_item_notify(move |state| {
+    resolution.connect_selected_item_notify(move |_state| {
         println!("clicked on resolution");
     });
     settings.add(&resolution);
@@ -352,7 +356,7 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
     let primary = adw::ComboRow::new();
     primary.set_title("Primary Monitor");
     primary.set_model(Some(&model_list));
-    primary.connect_selected_item_notify(move |state| {
+    primary.connect_selected_item_notify(move |_state| {
         println!("clicked on primary");
     });
     settings.add(&primary);
@@ -396,7 +400,7 @@ fn drawing_callback(
                 min_monitor_width = current_min_width;
             }
             if current_min_height < min_monitor_height {
-                min_monitor_height = current_min_width;
+                min_monitor_height = current_min_height;
             }
         }
 
@@ -418,11 +422,6 @@ fn drawing_callback(
             let (width, height) = monitor.handle_transform();
             let offset_x = monitor.drag_information.drag_x + monitor.offset.0;
             let offset_y = monitor.drag_information.drag_y + monitor.offset.1;
-
-            println!(
-                "{} {}",
-                monitor.drag_information.drag_x, monitor.drag_information.drag_y
-            );
 
             monitor.drag_information.width = width;
             monitor.drag_information.height = height;
