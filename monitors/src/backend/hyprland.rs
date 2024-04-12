@@ -14,6 +14,13 @@ pub fn hy_get_monitor_information() -> Vec<Monitor> {
     monitors
 }
 
+pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {
+    Command::new("hyprctl")
+        .args(["--batch", &monitor_to_configstring(monitors)])
+        .spawn()
+        .expect("Could not enable specified monitor");
+}
+
 fn get_json() -> Vec<u8> {
     Command::new("hyprctl")
         .args(["-j", "monitors"])
@@ -66,6 +73,26 @@ impl HyprMonitor {
             string_to_modes(self.availableModes),
         )
     }
+}
+
+fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
+    let mut strings = Vec::new();
+
+    for monitor in monitors {
+        strings.push(format!(
+            "keyword monitor {},{}x{}@{},{}x{},{}.{},transform,{};",
+            monitor.name,
+            &monitor.size.0.to_string(),
+            &monitor.size.1.to_string(),
+            &monitor.refresh_rate.to_string(),
+            &monitor.offset.0.to_string(),
+            &monitor.offset.1.to_string(),
+            &monitor.scale.0.to_string(),
+            &monitor.scale.1.to_string(),
+            &monitor.transform.to_string()
+        ));
+    }
+    strings.concat()
 }
 
 fn string_to_modes(available_modes: Vec<String>) -> Vec<AvailableMode> {

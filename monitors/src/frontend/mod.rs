@@ -1,9 +1,12 @@
-use std::{cell::RefCell, collections::HashSet, rc::Rc};
+use std::{cell::RefCell, collections::HashSet, rc::Rc, time::Duration};
 
 use adw::{
     traits::{ActionRowExt, ComboRowExt, PreferencesGroupExt, PreferencesRowExt},
     PreferencesGroup,
 };
+use dbus::{blocking::Connection, Error};
+use glib::object::CastNone;
+use gtk::StringObject;
 #[allow(deprecated)]
 use gtk::{
     gdk::prelude::SurfaceExt,
@@ -15,7 +18,10 @@ use gtk::{
 };
 use re_set_lib::utils::plugin::SidebarInfo;
 
-use crate::utils::{get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical};
+use crate::{
+    r#const::{BASE, DBUS_PATH, INTERFACE},
+    utils::{get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical},
+};
 
 #[no_mangle]
 pub extern "C" fn frontend_startup() {
@@ -23,8 +29,7 @@ pub extern "C" fn frontend_startup() {
 }
 
 #[no_mangle]
-pub extern "C" fn frontend_shutdown() {
-}
+pub extern "C" fn frontend_shutdown() {}
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -43,9 +48,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
     let apply_row = gtk::Box::new(Orientation::Vertical, 5);
     let apply = gtk::Button::new();
-    apply.connect_clicked(|_| {
-        println!("what");
-    });
     apply.set_label("Apply");
     apply.set_hexpand(false);
     apply.set_halign(gtk::Align::End);
@@ -54,6 +56,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
+    let settings_box_ref_apply = settings_box.clone();
     // NOTE: intentional use of deprecated logic as there is no currently available alternative
     // Gnome also uses the same functionality to get the same color for drawing the monitors
     #[allow(deprecated)]
@@ -62,6 +65,8 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let color = context.lookup_color("headerbar_border_color").unwrap();
     #[allow(deprecated)]
     let border_color = context.lookup_color("accent_color").unwrap();
+    #[allow(deprecated)]
+    let dragging_color = context.lookup_color("blue_5").unwrap();
 
     // NOTE: ensure the size is known before!
     // Otherwise the height or width inside the set_draw_func is 0!
@@ -80,15 +85,36 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let start_ref = monitor_data.clone();
     let update_ref = monitor_data.clone();
 
-    settings_box.append(&get_monitor_settings_group(Rc::new(RefCell::new(
-        monitor_data.borrow().first().unwrap().clone(),
-    ))));
+    let apply_ref = monitor_data.clone();
+    apply.connect_clicked(move |_| {
+        let conn = Connection::new_session().unwrap();
+        let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
+        let res: Result<(), Error> =
+            proxy.method_call(INTERFACE, "SetMonitors", (apply_ref.borrow().clone(),));
+        if res.is_err() {
+            println!("error on save");
+        }
+        if let Some(child) = settings_box_ref_apply.first_child() {
+            settings_box_ref_apply.remove(&child);
+        }
+        // TODO: make this use the currently selected one
+        settings_box_ref_apply.append(&get_monitor_settings_group(apply_ref.clone(), 0));
+    });
 
-    drawing_callback(&drawing_area, border_color, color, monitor_data.clone());
+    settings_box.append(&get_monitor_settings_group(monitor_data.clone(), 0));
+
+    drawing_callback(
+        &drawing_area,
+        border_color,
+        color,
+        dragging_color,
+        monitor_data.clone(),
+    );
     let gesture = GestureDrag::builder().build();
 
     gesture.connect_drag_begin(move |_drag, x, y| {
-        for monitor in start_ref.borrow_mut().iter_mut() {
+        let mut iter = 0;
+        for (index, monitor) in start_ref.borrow_mut().iter_mut().enumerate() {
             let x = x as i32;
             let y = y as i32;
             if monitor.is_coordinate_within(x, y) {
@@ -98,12 +124,11 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
                 if let Some(child) = settings_box_ref.first_child() {
                     settings_box_ref.remove(&child);
                 }
-                settings_box_ref.append(&get_monitor_settings_group(Rc::new(RefCell::new(
-                    monitor.clone(),
-                ))));
+                iter = index;
                 break;
             }
         }
+        settings_box_ref.append(&get_monitor_settings_group(start_ref.clone(), iter));
 
         // drawing_ref.queue_draw();
 
@@ -237,25 +262,26 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     (info, boxes)
 }
 
-fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> PreferencesGroup {
+fn get_monitor_settings_group(
+    clicked_monitor: Rc<RefCell<Vec<Monitor>>>,
+    index: usize,
+) -> PreferencesGroup {
     let settings = PreferencesGroup::new();
 
     let name = adw::ComboRow::new();
-    {
-        let monitor = clicked_monitor.borrow();
-        name.set_title(&monitor.name);
-        name.set_subtitle(&monitor.make);
-    }
+    let monitors = clicked_monitor.borrow();
+    let monitor = monitors.get(index).unwrap();
+    name.set_title(&monitor.name);
+    name.set_subtitle(&monitor.make);
     name.set_sensitive(true);
     settings.add(&name);
 
     let vrr = adw::SwitchRow::new();
     vrr.set_title("Variable Refresh-Rate");
-    vrr.set_active(clicked_monitor.borrow().vrr);
+    vrr.set_active(monitor.vrr);
     let vrr_ref = clicked_monitor.clone();
     vrr.connect_active_notify(move |state| {
-        vrr_ref.borrow_mut().vrr = state.is_active();
-        println!("clicked on monitor set vrr");
+        vrr_ref.borrow_mut().get_mut(index).unwrap().vrr = state.is_active();
     });
     settings.add(&vrr);
 
@@ -272,7 +298,7 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
     let transform = adw::ComboRow::new();
     transform.set_title("Transform");
     transform.set_model(Some(&model_list));
-    match clicked_monitor.borrow().transform {
+    match monitor.transform {
         0 => transform.set_selected(0),
         1 => transform.set_selected(1),
         2 => transform.set_selected(2),
@@ -286,6 +312,7 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
     let transform_ref = clicked_monitor.clone();
     transform.connect_selected_item_notify(move |dropdown| {
         let mut monitor = transform_ref.borrow_mut();
+        let monitor = monitor.get_mut(index).unwrap();
         match model_list.string(dropdown.selected()).unwrap().as_str() {
             "0" => monitor.transform = 0,
             "90" => monitor.transform = 1,
@@ -302,29 +329,38 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
 
     let mut refresh_rate_set = HashSet::new();
     let mut resolutions = HashSet::new();
-    for mode in clicked_monitor.borrow().available_modes.iter() {
+    for mode in monitor.available_modes.iter() {
         refresh_rate_set.insert(mode.refresh_rate.to_string());
         resolutions.insert((mode.size.0.to_string(), mode.size.1.to_string()));
     }
     let refresh_rate_set: Vec<String> = refresh_rate_set.into_iter().collect();
     let model_list = StringList::new(&[]);
     let mut index = 0;
-    {
-        let monitor = clicked_monitor.borrow();
-        for (i, rate) in refresh_rate_set.into_iter().enumerate() {
-            let lel = rate.parse::<u32>().unwrap();
-            if lel == monitor.refresh_rate {
-                index = i;
-            }
-            model_list.append(&rate);
+    for (i, rate) in refresh_rate_set.into_iter().enumerate() {
+        let lel = rate.parse::<u32>().unwrap();
+        if lel == monitor.refresh_rate {
+            index = i;
         }
+        model_list.append(&rate);
     }
     let refresh_rate = adw::ComboRow::new();
     refresh_rate.set_title("Refresh-Rate");
     refresh_rate.set_model(Some(&model_list));
     refresh_rate.set_selected(index as u32);
-    refresh_rate.connect_selected_item_notify(move |_state| {
-        println!("clicked on refresh rate");
+    let refresh_rate_ref = clicked_monitor.clone();
+    refresh_rate.connect_selected_item_notify(move |dropdown| {
+        refresh_rate_ref
+            .borrow_mut()
+            .get_mut(index)
+            .unwrap()
+            .refresh_rate = dropdown
+            .selected_item()
+            .and_downcast_ref::<StringObject>()
+            .unwrap()
+            .string()
+            .to_string()
+            .parse()
+            .unwrap();
     });
     settings.add(&refresh_rate);
 
@@ -332,23 +368,28 @@ fn get_monitor_settings_group(clicked_monitor: Rc<RefCell<Monitor>>) -> Preferen
     resolution_set.sort();
     let model_list = StringList::new(&[]);
     let mut index = 0;
-    {
-        let monitor = clicked_monitor.borrow();
-        for (i, (x, y)) in resolution_set.into_iter().enumerate() {
-            if x.parse::<i32>().unwrap() == monitor.size.0
-                && y.parse::<i32>().unwrap() == monitor.size.1
-            {
-                index = i;
-            }
-            model_list.append(&(x + "x" + &y));
+    for (i, (x, y)) in resolution_set.into_iter().enumerate() {
+        if x.parse::<i32>().unwrap() == monitor.size.0
+            && y.parse::<i32>().unwrap() == monitor.size.1
+        {
+            index = i;
         }
+        model_list.append(&(x + "x" + &y));
     }
     let resolution = adw::ComboRow::new();
     resolution.set_title("Resolution");
     resolution.set_model(Some(&model_list));
     resolution.set_selected(index as u32);
-    resolution.connect_selected_item_notify(move |_state| {
-        println!("clicked on resolution");
+    let resolution_ref = clicked_monitor.clone();
+    resolution.connect_selected_item_notify(move |dropdown| {
+        let selected = dropdown.selected_item();
+        let selected = selected.and_downcast_ref::<StringObject>().unwrap();
+        let selected = selected.string().to_string();
+        let (x, y) = selected.split_once('x').unwrap();
+        let mut monitor = resolution_ref.borrow_mut();
+        let monitor = monitor.get_mut(index).unwrap();
+        monitor.size.0 = x.parse().unwrap();
+        monitor.size.1 = y.parse().unwrap();
     });
     settings.add(&resolution);
 
@@ -367,6 +408,7 @@ fn drawing_callback(
     area: &DrawingArea,
     border_color: gtk::gdk::RGBA,
     color: gtk::gdk::RGBA,
+    draggin_color: gtk::gdk::RGBA,
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
 ) {
     area.set_draw_func(move |area, context, _, _| {
@@ -434,9 +476,19 @@ fn drawing_callback(
             let height = height / factor;
             let width = width / factor;
 
-            context.set_source_color(&border_color);
+            // monitor
+            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width, height);
+            if monitor.drag_information.drag_active {
+                context.set_source_color(&draggin_color);
+            } else {
+                context.set_source_color(&color);
+            }
+            context.add_rectangle(&rec);
+            context.fill().expect("Could not fill context");
 
             // borders
+            context.set_source_color(&border_color);
+
             // top
             let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width + 5, 5);
             context.add_rectangle(&rec);
@@ -454,14 +506,8 @@ fn drawing_callback(
             context.add_rectangle(&rec);
             context.fill().expect("Could not fill context");
 
-            // monitor
-            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width, height);
-            context.set_source_color(&color);
-            context.add_rectangle(&rec);
-            context.fill().expect("Could not fill context");
-
+            // text
             // TODO: change to different color
-            context.set_source_color(&border_color);
             context.set_font_size((140 / factor) as f64);
             context.move_to((offset_x + 10) as f64, (offset_y + 30) as f64);
             context

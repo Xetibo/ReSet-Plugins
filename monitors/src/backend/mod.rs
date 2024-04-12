@@ -8,6 +8,8 @@ use crate::{
     utils::{get_environment, Monitor, MonitorData},
 };
 
+use self::hyprland::hy_apply_monitor_information;
+
 pub mod hyprland;
 
 #[no_mangle]
@@ -27,7 +29,6 @@ pub extern "C" fn name() -> String {
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
-    println!("dbus interface called");
     let mut cross = cross.write().unwrap();
     let interface = setup_dbus_interface(&mut cross);
     match get_environment().as_str() {
@@ -80,6 +81,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
+                    hy_apply_monitor_information(&monitors);
                     d.monitors = monitors;
                     Ok(())
                 },
