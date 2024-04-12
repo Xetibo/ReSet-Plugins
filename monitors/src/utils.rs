@@ -53,6 +53,7 @@ pub struct DragInformation {
     pub height: i32,
     pub factor: i32,
     pub drag_active: bool,
+    pub clicked: bool,
 }
 
 #[repr(C)]

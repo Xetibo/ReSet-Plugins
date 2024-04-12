@@ -6,7 +6,6 @@ use adw::{
 };
 use dbus::{blocking::Connection, Error};
 use glib::object::CastNone;
-use gtk::StringObject;
 #[allow(deprecated)]
 use gtk::{
     gdk::prelude::SurfaceExt,
@@ -16,6 +15,7 @@ use gtk::{
     },
     DrawingArea, GestureDrag, Orientation, StringList,
 };
+use gtk::{GestureClick, StringObject};
 use re_set_lib::utils::plugin::SidebarInfo;
 
 use crate::{
@@ -79,10 +79,12 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             .build(),
     );
     let drawing_ref = drawing_area.clone();
+    let drawing_ref_apply = drawing_area.clone();
     let drawing_ref_end = drawing_area.clone();
 
     let monitor_data = Rc::new(RefCell::new(get_monitor_data()));
     let start_ref = monitor_data.clone();
+    let clicked_ref = monitor_data.clone();
     let update_ref = monitor_data.clone();
 
     let apply_ref = monitor_data.clone();
@@ -97,8 +99,15 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         if let Some(child) = settings_box_ref_apply.first_child() {
             settings_box_ref_apply.remove(&child);
         }
-        // TODO: make this use the currently selected one
-        settings_box_ref_apply.append(&get_monitor_settings_group(apply_ref.clone(), 0));
+        let mut index = 0;
+        for (i, monitor) in apply_ref.borrow().iter().enumerate() {
+            if monitor.drag_information.clicked {
+                index = i;
+            };
+        }
+        apply_ref.replace(get_monitor_data());
+        settings_box_ref_apply.append(&get_monitor_settings_group(apply_ref.clone(), index));
+        drawing_ref_apply.queue_draw();
     });
 
     settings_box.append(&get_monitor_settings_group(monitor_data.clone(), 0));
@@ -110,6 +119,20 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         dragging_color,
         monitor_data.clone(),
     );
+    let clicked = GestureClick::builder().build();
+
+    clicked.connect_pressed(move |_, _, x, y| {
+        for monitor in clicked_ref.borrow_mut().iter_mut() {
+            let x = x as i32;
+            let y = y as i32;
+            if monitor.is_coordinate_within(x, y) {
+                monitor.drag_information.clicked = true;
+            } else if monitor.drag_information.clicked {
+                monitor.drag_information.clicked = false;
+            }
+        }
+    });
+
     let gesture = GestureDrag::builder().build();
 
     gesture.connect_drag_begin(move |_drag, x, y| {
@@ -119,6 +142,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             let y = y as i32;
             if monitor.is_coordinate_within(x, y) {
                 monitor.drag_information.drag_active = true;
+                monitor.drag_information.clicked = true;
                 monitor.drag_information.origin_x = monitor.offset.0;
                 monitor.drag_information.origin_y = monitor.offset.1;
                 if let Some(child) = settings_box_ref.first_child() {
@@ -129,8 +153,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             }
         }
         settings_box_ref.append(&get_monitor_settings_group(start_ref.clone(), iter));
-
-        // drawing_ref.queue_draw();
 
         // TODO: get the area, check for overlap with rectangles, if so, drag and drop
     });
@@ -251,6 +273,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     });
 
     drawing_area.add_controller(gesture);
+    drawing_area.add_controller(clicked);
 
     main_box.append(&*drawing_area);
     main_box.append(&settings_box);
