@@ -45,34 +45,20 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<Box>) {
 
     let nav_view = NavigationView::new();
     main.append(&nav_view);
+    
+    create_keyboard_main_page(&all_keyboard_layouts, &nav_view);
+    create_add_keyboard_page(&all_keyboard_layouts, &nav_view);
 
-    let front_page_box = &Box::new(Orientation::Vertical, 0);
-    let front_page = NavigationPage::builder()
-        .tag("main")
-        .child(front_page_box)
-        .build();
-    nav_view.add(&front_page);
+    (info, vec![main])
+}
 
+fn create_add_keyboard_page(all_keyboard_layouts: &Value, nav_view: &NavigationView) {
     let add_keyboard_page_box = Box::new(Orientation::Vertical, 0);
     let add_keyboard_page = NavigationPage::builder()
         .tag("add_keyboard")
         .child(&add_keyboard_page_box)
         .build();
     nav_view.add(&add_keyboard_page);
-
-    let keyboard_list = PreferencesGroup::builder()
-        .title("Keyboard Layouts")
-        .description("Includes keyboard layouts and input methods")
-        .build();
-    front_page_box.append(&keyboard_list);
-
-    let add_layout_button = Button::builder()
-        .icon_name("value-increase-symbolic")
-        .valign(Align::Start)
-        .build();
-    keyboard_list.set_header_suffix(Some(&add_layout_button));
-    add_layout_button.set_action_name(Some("navigation.push"));
-    add_layout_button.set_action_target_value(Some(&Variant::from("add_keyboard")));
 
     let search_box = Box::new(Orientation::Horizontal, 5);
     add_keyboard_page_box.append(&search_box);
@@ -101,10 +87,10 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<Box>) {
         add_layout_button.set_sensitive(false);
     }));
 
-    add_layout_button.connect_clicked(move |x| {
+    add_layout_button.connect_clicked(clone!(@weak nav_view => move |_| {
         nav_view.pop();
         // todo somehow add new layout to saved keyboard layouts
-    });
+    }));
 
     for keyboard_layout in all_keyboard_layouts.get("layouts").unwrap().as_sequence().unwrap().iter() {
         let desc = keyboard_layout.get("description").unwrap().as_str().unwrap();
@@ -132,14 +118,31 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<Box>) {
             label.label().to_lowercase().contains(search_text.to_lowercase().as_str())
         });
     }));
-
-    set_saved_layouts(keyboard_list, all_keyboard_layouts);
-    (info, vec![main])
 }
 
-fn set_saved_layouts(keyboard_list: PreferencesGroup, all_keyboard_layouts: Value) {
-    let mut i = 0;
+fn create_keyboard_main_page(all_keyboard_layouts: &Value, nav_view: &NavigationView) {
+    let front_page_box = &Box::new(Orientation::Vertical, 0);
+    let front_page = NavigationPage::builder()
+        .tag("main")
+        .child(front_page_box)
+        .build();
+    nav_view.add(&front_page);
 
+    let keyboard_list = PreferencesGroup::builder()
+        .title("Keyboard Layouts")
+        .description("Includes keyboard layouts and input methods")
+        .build();
+    front_page_box.append(&keyboard_list);
+
+    let add_layout_button = Button::builder()
+        .icon_name("value-increase-symbolic")
+        .valign(Align::Start)
+        .build();
+    keyboard_list.set_header_suffix(Some(&add_layout_button));
+    add_layout_button.set_action_name(Some("navigation.push"));
+    add_layout_button.set_action_target_value(Some(&Variant::from("add_keyboard")));
+    
+    let mut i = 0;
     // todo somehow find where keyboard layouts are saved
     for keyboard_layout in all_keyboard_layouts.get("layouts").unwrap().as_sequence().unwrap().iter() {
         if i > 5 { break; }
