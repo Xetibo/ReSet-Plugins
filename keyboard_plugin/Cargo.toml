@@ -13,3 +13,6 @@ adw = { version = "0.6.0", package = "libadwaita", features = ["v1_4"] }
 dbus = "0.9.7"
 glib = "0.19.3"
 gdk4 = "0.8.1"
+serde = "1.0"
+serde_yaml = "0.9.34"
+xkb = "0.3.0"
