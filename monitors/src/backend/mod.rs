@@ -40,7 +40,7 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
             },
         ),
         _ => println!("Environment not supported!"),
-    }
+    };
 }
 
 #[no_mangle]
@@ -71,10 +71,7 @@ pub fn setup_dbus_interface(
                 "GetMonitors",
                 (),
                 ("monitors",),
-                move |_, d: &mut MonitorData, ()| {
-                    println!("Dbus function test called");
-                    Ok((d.monitors.clone(),))
-                },
+                move |_, d: &mut MonitorData, ()| Ok((d.monitors.clone(),)),
             );
             c.method(
                 "SetMonitors",

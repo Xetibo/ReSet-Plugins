@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashSet, rc::Rc, time::Duration};
 
 use adw::{
-    traits::{ActionRowExt, ComboRowExt, PreferencesGroupExt, PreferencesRowExt},
+    prelude::{ActionRowExt, ComboRowExt, PreferencesGroupExt, PreferencesRowExt},
     PreferencesGroup,
 };
 use dbus::{blocking::Connection, Error};
@@ -136,11 +136,12 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let gesture = GestureDrag::builder().build();
 
     gesture.connect_drag_begin(move |_drag, x, y| {
-        let mut iter = 0;
+        let mut iter = -1;
         for (index, monitor) in start_ref.borrow_mut().iter_mut().enumerate() {
             let x = x as i32;
             let y = y as i32;
             if monitor.is_coordinate_within(x, y) {
+                println!("drag begin");
                 monitor.drag_information.drag_active = true;
                 monitor.drag_information.clicked = true;
                 monitor.drag_information.origin_x = monitor.offset.0;
@@ -148,11 +149,17 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
                 if let Some(child) = settings_box_ref.first_child() {
                     settings_box_ref.remove(&child);
                 }
-                iter = index;
+                iter = index as i32;
                 break;
             }
         }
-        settings_box_ref.append(&get_monitor_settings_group(start_ref.clone(), iter));
+        if iter == -1 {
+            return;
+        }
+        settings_box_ref.append(&get_monitor_settings_group(
+            start_ref.clone(),
+            iter as usize,
+        ));
 
         // TODO: get the area, check for overlap with rectangles, if so, drag and drop
     });
@@ -179,7 +186,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         let mut previous_height: i32 = 0;
         let mut snap_horizontal = SnapDirectionHorizontal::None;
         let mut snap_vertical = SnapDirectionVertical::None;
-        let mut iter = 0;
+        let mut iter = -1;
         for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
             if monitor.drag_information.drag_active {
                 monitor.drag_information.drag_active = false;
@@ -189,11 +196,15 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
                 endpoint_top = endpoint_bottom + monitor.drag_information.height;
                 previous_width = monitor.drag_information.width;
                 previous_height = monitor.drag_information.height;
-                iter = i;
+                iter = i as i32;
                 break;
             }
         }
         let mut intersected = false;
+        if iter == -1 {
+            return;
+        }
+        let iter = iter as usize;
         for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
             if i == iter {
                 continue;
@@ -416,14 +427,14 @@ fn get_monitor_settings_group(
     });
     settings.add(&resolution);
 
-    let model_list = StringList::new(&["this", "should", "be", "taken", "from", "the", "monitor"]);
-    let primary = adw::ComboRow::new();
-    primary.set_title("Primary Monitor");
-    primary.set_model(Some(&model_list));
-    primary.connect_selected_item_notify(move |_state| {
-        println!("clicked on primary");
-    });
-    settings.add(&primary);
+    // let model_list = StringList::new(&["this", "should", "be", "taken", "from", "the", "monitor"]);
+    // let primary = adw::ComboRow::new();
+    // primary.set_title("Primary Monitor");
+    // primary.set_model(Some(&model_list));
+    // primary.connect_selected_item_notify(move |_state| {
+    //     println!("clicked on primary");
+    // });
+    // settings.add(&primary);
     settings
 }
 

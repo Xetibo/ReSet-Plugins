@@ -9,7 +9,8 @@ pub fn hy_get_monitor_information() -> Vec<Monitor> {
         serde_json::from_str(&String::from_utf8(get_json()).expect("Could not parse json"))
             .expect("Could not parse json");
     for monitor in hypr_monitors {
-        monitors.push(monitor.convert_to_regular_monitor())
+        let monitor = monitor.convert_to_regular_monitor();
+        monitors.push(monitor);
     }
     monitors
 }
