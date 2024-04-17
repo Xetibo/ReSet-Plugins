@@ -915,6 +915,7 @@ dependencies = [
  "dbus",
  "dbus-crossroads",
  "dbus-tokio",
+ "directories-next",
  "glib",
  "gtk4",
  "libadwaita",

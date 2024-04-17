@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashSet, rc::Rc, time::Duration};
+use std::{cell::RefCell, collections::HashSet, f64::consts, rc::Rc, time::Duration};
 
 use adw::{
     prelude::{ActionRowExt, ComboRowExt, PreferencesGroupExt, PreferencesRowExt},
@@ -16,11 +16,13 @@ use gtk::{
     DrawingArea, GestureDrag, Orientation, StringList,
 };
 use gtk::{GestureClick, StringObject};
-use re_set_lib::utils::plugin::SidebarInfo;
+use re_set_lib::{utils::plugin::SidebarInfo, LOG};
 
 use crate::{
     r#const::{BASE, DBUS_PATH, INTERFACE},
-    utils::{get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical},
+    utils::{
+        get_environment, get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical,
+    },
 };
 
 #[no_mangle]
@@ -46,17 +48,37 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .vexpand(true)
         .build();
 
-    let apply_row = gtk::Box::new(Orientation::Vertical, 5);
+    let apply_row = gtk::Box::new(Orientation::Horizontal, 5);
+
     let apply = gtk::Button::new();
     apply.set_label("Apply");
     apply.set_hexpand(false);
     apply.set_halign(gtk::Align::End);
     apply_row.append(&apply);
+
+    let reset = gtk::Button::new();
+    reset.set_label("Reset");
+    reset.set_hexpand(false);
+    reset.set_halign(gtk::Align::End);
+    apply_row.append(&reset);
+
     main_box.append(&apply_row);
+
+    // TODO: permantently save
+    // if is_config_writable() {
+    //     let save_row = gtk::Box::new(Orientation::Vertical, 5);
+    //     let save = gtk::Button::new();
+    //     save.set_label("Save");
+    //     save.set_hexpand(false);
+    //     save.set_halign(gtk::Align::End);
+    //     save_row.append(&save);
+    //     main_box.append(&save_row);
+    // }
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
     let settings_box_ref_apply = settings_box.clone();
+    let settings_box_ref_reset = settings_box.clone();
     // NOTE: intentional use of deprecated logic as there is no currently available alternative
     // Gnome also uses the same functionality to get the same color for drawing the monitors
     #[allow(deprecated)]
@@ -80,6 +102,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     );
     let drawing_ref = drawing_area.clone();
     let drawing_ref_apply = drawing_area.clone();
+    let drawing_ref_reset = drawing_area.clone();
     let drawing_ref_end = drawing_area.clone();
 
     let monitor_data = Rc::new(RefCell::new(get_monitor_data()));
@@ -108,6 +131,24 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         apply_ref.replace(get_monitor_data());
         settings_box_ref_apply.append(&get_monitor_settings_group(apply_ref.clone(), index));
         drawing_ref_apply.queue_draw();
+    });
+
+    let reset_ref = monitor_data.clone();
+    reset.connect_clicked(move |_| {
+        if let Some(child) = settings_box_ref_reset.first_child() {
+            settings_box_ref_reset.remove(&child);
+        }
+        let mut index = 0;
+        for (i, monitor) in reset_ref.borrow_mut().iter_mut().enumerate() {
+            monitor.offset.0 = monitor.drag_information.origin_x;
+            monitor.offset.1 = monitor.drag_information.origin_y;
+            if monitor.drag_information.clicked {
+                index = i;
+            };
+        }
+        reset_ref.replace(get_monitor_data());
+        settings_box_ref_reset.append(&get_monitor_settings_group(reset_ref.clone(), index));
+        drawing_ref_reset.queue_draw();
     });
 
     settings_box.append(&get_monitor_settings_group(monitor_data.clone(), 0));
@@ -141,7 +182,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             let x = x as i32;
             let y = y as i32;
             if monitor.is_coordinate_within(x, y) {
-                println!("drag begin");
                 monitor.drag_information.drag_active = true;
                 monitor.drag_information.clicked = true;
                 monitor.drag_information.origin_x = monitor.offset.0;
@@ -523,22 +563,63 @@ fn drawing_callback(
             // borders
             context.set_source_color(&border_color);
 
+            context.set_line_width(5.0);
             // top
-            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width + 5, 5);
-            context.add_rectangle(&rec);
-
-            // right
-            let rec = gtk::gdk::Rectangle::new(offset_x + width, offset_y, 5, height + 5);
-            context.add_rectangle(&rec);
-
-            // bottom
-            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y + height, width + 5, 5);
-            context.add_rectangle(&rec);
-
-            // left
-            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, 5, height + 5);
+            // let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width + 5, 5);
+            let rec = gtk::gdk::Rectangle::new(offset_x + 5, offset_y - 5, width - 5, 5);
             context.add_rectangle(&rec);
             context.fill().expect("Could not fill context");
+            context.arc(
+                offset_x as f64 + 7.5,
+                (offset_y + height) as f64 - 2.5,
+                5.0,
+                consts::FRAC_PI_2,
+                consts::PI,
+            );
+            context.stroke().expect("Could not fill context");
+
+            // right
+            // let rec = gtk::gdk::Rectangle::new(offset_x + width, offset_y, 5, height + 5);
+            let rec = gtk::gdk::Rectangle::new(offset_x + width, offset_y, 5, height);
+            context.add_rectangle(&rec);
+            // arcs are radian...
+            context.fill().expect("Could not fill context");
+            context.arc(
+                (offset_x + width) as f64 - 2.5,
+                offset_y as f64 + 2.5,
+                5.0,
+                consts::PI + consts::FRAC_PI_2,
+                consts::PI * 2.0,
+            );
+            context.stroke().expect("Could not fill context");
+
+            // bottom
+            // let rec = gtk::gdk::Rectangle::new(offset_x, offset_y + height, width + 5, 5);
+            let rec = gtk::gdk::Rectangle::new(offset_x + 5, offset_y + height, width - 5, 5);
+            context.add_rectangle(&rec);
+            context.fill().expect("Could not fill context");
+            context.arc(
+                (offset_x + width) as f64 - 2.5,
+                (offset_y + height) as f64 - 2.5,
+                5.0,
+                0.0,
+                consts::FRAC_PI_2,
+            );
+            context.stroke().expect("Could not fill context");
+
+            // left
+            // let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, 5, height + 5);
+            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, 5, height);
+            context.add_rectangle(&rec);
+            context.fill().expect("Could not fill context");
+            context.arc(
+                offset_x as f64 + 7.5,
+                offset_y as f64 + 2.5,
+                5.0,
+                consts::PI,
+                consts::PI + consts::FRAC_PI_2,
+            );
+            context.stroke().expect("Could not fill context");
 
             // text
             // TODO: change to different color
