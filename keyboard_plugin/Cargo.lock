@@ -393,9 +393,9 @@ dependencies = [
 
 [[package]]
 name = "glib"
-version = "0.19.3"
+version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01e191cc1af1f35b9699213107068cd3fe05d9816275ac118dc785a0dd8faebf"
+checksum = "ae1407b2ce171e654720be10d57d4054d3ff2f10a13d5b37e6819b41439832f7"
 dependencies = [
  "bitflags 2.5.0",
  "futures-channel",
@@ -591,12 +591,6 @@ dependencies = [
  "equivalent",
  "hashbrown",
 ]
-
-[[package]]
-name = "itoa"
-version = "1.0.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
 name = "lazy_static"
@@ -907,8 +901,8 @@ dependencies = [
 
 [[package]]
 name = "re_set-lib"
-version = "3.1.7"
-source = "git+https://github.com/Xetibo/ReSet-Lib#493b7dd2872f1b04aaf1c0c13a5d71bc74c9f627"
+version = "3.1.11"
+source = "git+https://github.com/Xetibo/ReSet-Lib#a723530ad4b97beb9420ad58b4e1e29f10650895"
 dependencies = [
  "dbus",
  "dbus-crossroads",
@@ -918,6 +912,7 @@ dependencies = [
  "libpulse-binding",
  "once_cell",
  "serial_test",
+ "toml",
 ]
 
 [[package]]
@@ -974,14 +969,15 @@ name = "reset-keyboard-plugin"
 version = "0.1.0"
 dependencies = [
  "dbus",
+ "dbus-crossroads",
+ "directories-next",
  "gdk4",
  "glib",
  "gtk4",
  "libadwaita",
  "re_set-lib",
- "serde",
- "serde_yaml",
- "xkb",
+ "toml",
+ "xkbregistry",
 ]
 
 [[package]]
@@ -1011,12 +1007,6 @@ dependencies = [
  "linux-raw-sys",
  "windows-sys",
 ]
-
-[[package]]
-name = "ryu"
-version = "1.0.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e86697c916019a8588c99b5fac3cead74ec0b4b819707a682fd4d23fa0ce1ba1"
 
 [[package]]
 name = "scopeguard"
@@ -1057,19 +1047,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb3622f419d1296904700073ea6cc23ad690adbd66f13ea683df73298736f0c1"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "serde_yaml"
-version = "0.9.34+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
-dependencies = [
- "indexmap",
- "itoa",
- "ryu",
- "serde",
- "unsafe-libyaml",
 ]
 
 [[package]]
@@ -1229,12 +1206,6 @@ name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
-
-[[package]]
-name = "unsafe-libyaml"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "version-compare"
@@ -1430,21 +1401,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "xkb"
-version = "0.3.0"
+name = "xkbregistry"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2819e26f5465d84288b45c72864c40d55ac0684daea1973494caa3b2cea2e0f"
-dependencies = [
- "bitflags 1.3.2",
- "libc",
- "xkbcommon-sys",
-]
-
-[[package]]
-name = "xkbcommon-sys"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56f7dbb61bc8fd714a64f750e9c259952f079afe701256dd2118602c0ae15c90"
+checksum = "7681305d45edbd55cf623a61402035bca05a5801cace126c452aa21cc90cbcf8"
 dependencies = [
  "bindgen",
  "libc",
