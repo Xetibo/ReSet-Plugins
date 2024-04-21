@@ -71,10 +71,7 @@ pub fn setup_dbus_interface(
                 "GetMonitors",
                 (),
                 ("monitors",),
-                move |_, d: &mut MonitorData, ()| {
-                    dbg!(&d.monitors);
-                    Ok((d.monitors.clone(),))
-                },
+                move |_, d: &mut MonitorData, ()| Ok((d.monitors.clone(),)),
             );
             c.method(
                 "SetMonitors",
