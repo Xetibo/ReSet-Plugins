@@ -1,15 +1,19 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use adw::{ActionRow, NavigationPage, NavigationView, PreferencesGroup};
 use adw::gio::{ActionEntry, SimpleActionGroup};
-use adw::prelude::{PreferencesGroupExt};
+use adw::prelude::PreferencesGroupExt;
 use glib::{clone, Variant, VariantTy};
 use gtk::{Align, Button, Orientation};
 use gtk::prelude::*;
 
 use crate::backend::get_saved_layouts;
-use crate::frontend::{add_listener, update_input};
+use crate::frontend::{add_listener, get_keyboard_list_frontend, update_input};
 
 pub fn create_keyboard_main_page(nav_view: &NavigationView) {
-    let mut user_layouts = get_saved_layouts();
+    let mut user_layouts = Rc::new(RefCell::new(get_saved_layouts()));
+    let all_keyboard_layouts = get_keyboard_list_frontend();
 
     let front_page_box = &gtk::Box::new(Orientation::Vertical, 0);
     let front_page = NavigationPage::builder()
@@ -24,36 +28,41 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
         .build();
     front_page_box.append(&keyboard_list);
 
-    let entry2 = ActionEntry::builder("changeorder")
+    let change_order_entry = ActionEntry::builder("changeorder")
         .parameter_type(Some(&VariantTy::TUPLE))
         .activate(clone!(@strong user_layouts => move |_, _, description| {
-            let (from, to) = description.unwrap().get::<(String, String)>().unwrap();
-            let layout = user_layouts.iter().find(|x| x.description == from).unwrap();
-            
-            // let from_index = user_layouts.iter().position(|x| x.description == from).unwrap();
-            // user_layouts.remove(from_index);
-            // 
-            // let to_index = user_layouts.iter().position(|x| x.description == to).unwrap();
-            // user_layouts.insert(to_index, layout.clone());
-            
-            dbg!(from, to);
-            // todo do stuff to list
+            let (from_index, to_index) = description.unwrap().get::<(i32, i32)>().unwrap();
+            {
+                let mut user_layout_borrow= user_layouts.borrow_mut();
+                let layout = user_layout_borrow[from_index as usize].clone();
+
+                user_layout_borrow.remove(from_index as usize);
+                user_layout_borrow.insert(to_index as usize, layout);
+            }
             update_input(&user_layouts);
         }))
         .build();
 
     let action_group = SimpleActionGroup::new();
-    let entry = ActionEntry::builder("addlayout")
+    let add_layout_entry = ActionEntry::builder("addlayout")
         .parameter_type(Some(&String::static_variant_type()))
         .activate(clone!(@weak keyboard_list, @strong user_layouts => move |_, _, description| {
             let layout_description = description.unwrap().str().unwrap();
             let layout_row = ActionRow::builder().title(layout_description).build();
-            keyboard_list.add(&layout_row);
-            add_listener(&keyboard_list, layout_row);
+            {
+                let mut user_layout_borrow= user_layouts.borrow_mut();
+                let layout = all_keyboard_layouts.iter()
+                    .find(|x| x.description == layout_description)
+                    .unwrap();
+                
+                user_layout_borrow.push(layout.clone());
+                keyboard_list.add(&layout_row);
+                add_listener(&keyboard_list, layout_row);
+            }
             update_input(&user_layouts);
         }))
         .build();
-    action_group.add_action_entries([entry, entry2]);
+    action_group.add_action_entries([add_layout_entry, change_order_entry]);
     nav_view.insert_action_group("keyboard", Some(&action_group));
 
     let add_layout_button = Button::builder()
@@ -64,7 +73,7 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
     add_layout_button.set_action_name(Some("navigation.push"));
     add_layout_button.set_action_target_value(Some(&Variant::from("add_keyboard")));
 
-    for layout in user_layouts {
+    for layout in user_layouts.borrow().iter() {
         let layout_row = ActionRow::builder().title(layout.description.clone()).build();
         add_listener(&keyboard_list, layout_row);
     }

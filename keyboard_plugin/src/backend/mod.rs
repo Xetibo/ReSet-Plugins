@@ -61,12 +61,11 @@ pub fn get_saved_layouts() -> Vec<KeyboardLayout> {
             .filter(|x| x.variant.as_ref().unwrap_or(&String::new()) == &variant.trim())
             .collect();
         if let Some(asdf) =layouts.first() {
-            let option = asdf.clone().clone();
+            let option = (*asdf).clone();
             kb.push(option);
-
         }
     }
-    kb.clone()
+    kb
 }
 
 fn get_keyboard_list_backend() -> Vec<KeyboardLayout> {
