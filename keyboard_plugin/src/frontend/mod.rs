@@ -1,10 +1,13 @@
+use std::cell::RefCell;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::time::Duration;
 
 use adw::{ActionRow, gdk, PreferencesGroup};
 use adw::prelude::{PreferencesGroupExt, PreferencesRowExt};
+use dbus::arg::Append;
 use dbus::blocking::Connection;
 use dbus::Error;
 use gdk4::ContentProvider;
@@ -12,7 +15,6 @@ use glib::{clone, Variant};
 use gtk::{Align, EventController, Label, ListBox, WidgetPaintable};
 use gtk::{DragSource, prelude::*};
 use re_set_lib::utils::config::CONFIG;
-use re_set_lib::utils::plugin::PluginTestFunc;
 
 use crate::keyboard_layout::KeyboardLayout;
 use crate::r#const::{BASE, DBUS_PATH, INTERFACE};
@@ -68,8 +70,8 @@ pub fn add_listener(keyboard_list: &PreferencesGroup, layout_row: ActionRow) {
             let listbox = listbox.downcast_ref::<ListBox>().unwrap();
 
             if droptarget_row.title() != selected_row.title() {
-                let from_to = Variant::from((selected_row.title().as_str(), droptarget_row.title().as_str()));
                 let index = droptarget_row.index();
+                let from_to = Variant::from((selected_row.index(), index));
                 keyboard_list.remove(&selected_row);
                 listbox.insert(&selected_row, index);
                 let res = keyboard_list.activate_action("keyboard.changeorder", Some(&from_to));
@@ -82,8 +84,7 @@ pub fn add_listener(keyboard_list: &PreferencesGroup, layout_row: ActionRow) {
     layout_row.add_controller(EventController::from(target));
 }
 
-pub fn update_input(user_layouts: &Vec<KeyboardLayout>) {
-    dbg!("apply input order");
+pub fn update_input(user_layouts: &Rc<RefCell<Vec<KeyboardLayout>>>) {
     let path;
     if let Some(test) = CONFIG.get("Keyboard").unwrap().get("path") {
         path = test.as_str().unwrap().to_string();
@@ -98,7 +99,21 @@ pub fn update_input(user_layouts: &Vec<KeyboardLayout>) {
         .open(PathBuf::from(path))
         .expect("Failed to open file");
 
-    let string = format!("input {{\n    kb_layout={}\n    kb_variant={}\n}}", "ch, us", "");
+    let mut layout_string = String::new();
+    let mut variant_string = String::new();
+    for x in user_layouts.borrow().iter() {
+        layout_string += &x.name;
+        layout_string += ", ";
+        if let Some(var) = &x.variant {
+            variant_string += &var;
+        }
+        variant_string += ", ";
+    };
+
+    layout_string = layout_string.trim_end_matches(", ").to_string();
+    variant_string = variant_string.trim_end_matches(", ").to_string();
+
+    let string = format!("input {{\n    kb_layout={}\n    kb_variant={}\n}}", layout_string, variant_string);
 
     input_config.write_all(string.as_bytes()).expect("Failed to write to file");
     input_config.sync_all().expect("Failed to sync file");
