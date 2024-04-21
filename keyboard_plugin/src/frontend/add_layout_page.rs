@@ -39,7 +39,8 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
     add_layout_button.connect_clicked(clone!(@weak nav_view, @weak list => move |button| {
         let selected_row = list.selected_row().unwrap();
         let description = selected_row.first_child().unwrap().downcast_ref::<Label>().unwrap().text().to_string();
-        let res = button.activate_action("keyboard.addlayout", Some(&Variant::from(description)));
+        button.activate_action("keyboard.addlayout", Some(&Variant::from(description)))
+            .expect("Failed to activate action.");
         nav_view.pop();
     }));
     
