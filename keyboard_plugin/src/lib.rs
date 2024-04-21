@@ -50,7 +50,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<Box>) {
     (info, vec![main])
 }
 
-
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn name() -> String {
