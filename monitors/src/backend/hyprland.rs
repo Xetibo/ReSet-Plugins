@@ -1,6 +1,6 @@
 // NOTE: This implementation is for the hyprland compositor
 
-use crate::utils::{AvailableMode, Monitor, Size};
+use crate::utils::{get_environment, AvailableMode, Monitor, Size};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -17,6 +17,13 @@ pub fn hy_get_monitor_information() -> Vec<Monitor> {
         monitors.push(monitor);
     }
     monitors
+}
+
+pub fn apply_monitor_configuration(monitors: &Vec<Monitor>) {
+    match get_environment().as_str() {
+        "Hyprland" => hy_apply_monitor_information(monitors),
+        _ => println!("Environment not supported!"),
+    };
 }
 
 pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {

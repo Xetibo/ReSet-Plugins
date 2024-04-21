@@ -8,7 +8,7 @@ use crate::{
     utils::{get_environment, Monitor, MonitorData},
 };
 
-use self::hyprland::hy_apply_monitor_information;
+use self::hyprland::apply_monitor_configuration;
 
 pub mod hyprland;
 
@@ -60,7 +60,6 @@ pub extern "C" fn backend_tests() -> Vec<PluginTestFunc> {
     Vec::new()
 }
 
-// TODO: make this return an option in order to show not supported environments
 pub fn setup_dbus_interface(
     cross: &mut RwLockWriteGuard<CrossWrapper>,
 ) -> dbus_crossroads::IfaceToken<MonitorData> {
@@ -78,7 +77,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    hy_apply_monitor_information(&monitors);
+                    apply_monitor_configuration(&monitors);
                     d.monitors = monitors;
                     Ok(())
                 },
