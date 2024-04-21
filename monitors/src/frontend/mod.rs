@@ -1,10 +1,12 @@
-use std::{cell::RefCell, collections::HashSet, f64::consts, rc::Rc, time::Duration};
+use std::{
+    cell::RefCell, cmp::Ordering, collections::HashSet, f64::consts, rc::Rc, time::Duration,
+};
 
 use adw::{
     prelude::{ActionRowExt, ComboRowExt, PreferencesGroupExt, PreferencesRowExt},
     PreferencesGroup,
 };
-use dbus::{blocking::Connection, Error};
+use dbus::{arg::RefArg, blocking::Connection, Error};
 use glib::object::CastNone;
 #[allow(deprecated)]
 use gtk::{
@@ -350,6 +352,8 @@ fn get_monitor_settings_group(
     name.set_sensitive(true);
     settings.add(&name);
 
+    dbg!(&monitor.available_modes);
+
     let vrr = adw::SwitchRow::new();
     vrr.set_title("Variable Refresh-Rate");
     vrr.set_active(monitor.vrr);
@@ -401,25 +405,84 @@ fn get_monitor_settings_group(
     });
     settings.add(&transform);
 
-    let mut refresh_rate_set = HashSet::new();
-    let mut resolutions = HashSet::new();
+    let mut resolutions = Vec::new();
     for mode in monitor.available_modes.iter() {
-        refresh_rate_set.insert(mode.refresh_rate.to_string());
-        resolutions.insert((mode.size.0.to_string(), mode.size.1.to_string()));
+        resolutions.push((mode.size.0, mode.size.1));
     }
-    let refresh_rate_set: Vec<String> = refresh_rate_set.into_iter().collect();
+
+    let refresh_rate = adw::ComboRow::new();
+    let refresh_rate_combo_ref = refresh_rate.clone();
     let model_list = StringList::new(&[]);
     let mut index = 0;
-    for (i, rate) in refresh_rate_set.into_iter().enumerate() {
-        let lel = rate.parse::<u32>().unwrap();
-        if lel == monitor.refresh_rate {
+    for (i, (x, y)) in resolutions.into_iter().enumerate() {
+        if x == monitor.size.0 && y == monitor.size.1 {
             index = i;
         }
-        model_list.append(&rate);
+        model_list.append(&(x.to_string() + "x" + &y.to_string()));
     }
-    let refresh_rate = adw::ComboRow::new();
+    let resolution = adw::ComboRow::new();
+    resolution.set_title("Resolution");
+    resolution.set_model(Some(&model_list));
+    resolution.set_selected(index as u32);
+    let resolution_ref = clicked_monitor.clone();
+    resolution.connect_selected_item_notify(move |dropdown| {
+        let selected = dropdown.selected_item();
+        let selected = selected.and_downcast_ref::<StringObject>().unwrap();
+        let selected = selected.string().to_string();
+        let (x, y) = selected.split_once('x').unwrap();
+        let mut monitor = resolution_ref.borrow_mut();
+        let monitor = monitor.get_mut(index).unwrap();
+        let refresh_rates = monitor
+            .available_modes
+            .get(index)
+            .unwrap()
+            .refresh_rates
+            .clone();
+        let highest = refresh_rates.first().unwrap();
+        monitor.refresh_rate = *highest;
+        monitor.size.0 = x.parse().unwrap();
+        monitor.size.1 = y.parse().unwrap();
+
+        let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.to_string()).collect();
+        let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
+        let refresh_rate_model = StringList::new(&refresh_rates);
+        refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
+    });
+    settings.add(&resolution);
+
+    let mode = monitor.available_modes.get(index).unwrap();
+    let refresh_rates = mode.refresh_rates.clone();
+
+    let mut index = 0;
+    for (i, refresh_rate) in refresh_rates.iter().enumerate() {
+        if *refresh_rate == monitor.refresh_rate {
+            index = i;
+        }
+    }
+
+    let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.to_string()).collect();
+    let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
+    dbg!(&refresh_rates);
+    let refresh_rate_model = StringList::new(&refresh_rates);
+    refresh_rate.set_model(Some(&refresh_rate_model));
+    // let mut refresh_rate_set: Vec<u32> = refresh_rate_set.into_iter().collect();
+    // refresh_rate_set.sort_unstable_by(|a, b| {
+    //     if a < b {
+    //         Ordering::Greater
+    //     } else {
+    //         Ordering::Less
+    //     }
+    // });
+    // dbg!(&refresh_rate_set);
+    // let model_list = StringList::new(&[]);
+    // let mut index = 0;
+    // for (i, rate) in refresh_rate_set.into_iter().enumerate() {
+    //     if rate == monitor.refresh_rate {
+    //         index = i;
+    //     }
+    //     model_list.append(&rate.to_string());
+    // }
     refresh_rate.set_title("Refresh-Rate");
-    refresh_rate.set_model(Some(&model_list));
     refresh_rate.set_selected(index as u32);
     let refresh_rate_ref = clicked_monitor.clone();
     refresh_rate.connect_selected_item_notify(move |dropdown| {
@@ -437,35 +500,6 @@ fn get_monitor_settings_group(
             .unwrap();
     });
     settings.add(&refresh_rate);
-
-    let mut resolution_set: Vec<(String, String)> = resolutions.into_iter().collect();
-    resolution_set.sort();
-    let model_list = StringList::new(&[]);
-    let mut index = 0;
-    for (i, (x, y)) in resolution_set.into_iter().enumerate() {
-        if x.parse::<i32>().unwrap() == monitor.size.0
-            && y.parse::<i32>().unwrap() == monitor.size.1
-        {
-            index = i;
-        }
-        model_list.append(&(x + "x" + &y));
-    }
-    let resolution = adw::ComboRow::new();
-    resolution.set_title("Resolution");
-    resolution.set_model(Some(&model_list));
-    resolution.set_selected(index as u32);
-    let resolution_ref = clicked_monitor.clone();
-    resolution.connect_selected_item_notify(move |dropdown| {
-        let selected = dropdown.selected_item();
-        let selected = selected.and_downcast_ref::<StringObject>().unwrap();
-        let selected = selected.string().to_string();
-        let (x, y) = selected.split_once('x').unwrap();
-        let mut monitor = resolution_ref.borrow_mut();
-        let monitor = monitor.get_mut(index).unwrap();
-        monitor.size.0 = x.parse().unwrap();
-        monitor.size.1 = y.parse().unwrap();
-    });
-    settings.add(&resolution);
 
     // let model_list = StringList::new(&["this", "should", "be", "taken", "from", "the", "monitor"]);
     // let primary = adw::ComboRow::new();

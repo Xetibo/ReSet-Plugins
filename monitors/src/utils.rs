@@ -5,8 +5,19 @@ use dbus::{
     blocking::Connection,
     Error, Signature,
 };
+use gtk::{Align, Label};
 
 use crate::r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS};
+
+pub fn create_title() -> Label {
+    Label::builder()
+        .label("Keyboard")
+        .css_classes(vec!["resetSettingLabel"])
+        .halign(Align::Start)
+        .margin_start(5)
+        .margin_bottom(10)
+        .build()
+}
 
 pub fn get_environment() -> String {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP");
@@ -201,7 +212,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(u(ssss)u(uu)ubb(ii)(ii)a((ii)u))\0") }
+        unsafe { Signature::from_slice_unchecked("(u(ssss)u(uu)ubb(ii)(ii)a((ii)au))\0") }
     }
 }
 
@@ -272,7 +283,7 @@ impl Arg for Offset {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Size(pub i32, pub i32);
 
 impl<'a> Get<'a> for Size {
@@ -352,16 +363,19 @@ impl Display for PluginInstantiationError {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct AvailableMode {
     pub size: Size,
-    pub refresh_rate: u32,
+    pub refresh_rates: Vec<u32>,
 }
 
 impl<'a> Get<'a> for AvailableMode {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
-        let (size, refresh_rate) = <(Size, u32)>::get(i)?;
-        Some(Self { size, refresh_rate })
+        let (size, refresh_rates) = <(Size, Vec<u32>)>::get(i)?;
+        Some(Self {
+            size,
+            refresh_rates,
+        })
     }
 }
 
@@ -369,7 +383,12 @@ impl Append for AvailableMode {
     fn append_by_ref(&self, iter: &mut arg::IterAppend) {
         iter.append_struct(|i| {
             i.append(self.size);
-            i.append(self.refresh_rate);
+            let sig = unsafe { Signature::from_slice_unchecked("u\0") };
+            i.append_array(&sig, |i| {
+                for refresh_rate in self.refresh_rates.iter() {
+                    i.append(refresh_rate);
+                }
+            });
         });
     }
 }
@@ -377,7 +396,7 @@ impl Append for AvailableMode {
 impl Arg for AvailableMode {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("((ii)u)\0") }
+        unsafe { Signature::from_slice_unchecked("((ii)au)\0") }
     }
 }
 

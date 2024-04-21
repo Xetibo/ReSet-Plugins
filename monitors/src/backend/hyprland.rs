@@ -1,7 +1,11 @@
 // NOTE: This implementation is for the hyprland compositor
 
 use crate::utils::{AvailableMode, Monitor, Size};
-use std::process::Command;
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+    process::Command,
+};
 
 pub fn hy_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
@@ -98,15 +102,38 @@ fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
 
 fn string_to_modes(available_modes: Vec<String>) -> Vec<AvailableMode> {
     let mut converted_modes = Vec::new();
-    for mode in available_modes {
+    let mut resolutions: HashMap<&str, HashSet<u32>> = HashMap::new();
+    for mode in available_modes.iter() {
         let (resolution, refresh_rate) = mode.split_once('@').unwrap();
-        let (resolution_x, resolution_y) = resolution.split_once('x').unwrap();
+        let entry = resolutions.get_mut(resolution);
+        if let Some(entry) = entry {
+            let float_hz: f64 = refresh_rate.strip_suffix("Hz").unwrap().parse().unwrap();
+            let refresh_rates: u32 = float_hz.round() as u32;
+            entry.insert(refresh_rates);
+            continue;
+        }
+        resolutions.insert(resolution, HashSet::new());
+        let entry = resolutions.get_mut(resolution).unwrap();
         let float_hz: f64 = refresh_rate.strip_suffix("Hz").unwrap().parse().unwrap();
-        let refresh_rate: u32 = float_hz.round() as u32;
+        let refresh_rates: u32 = float_hz.round() as u32;
+        entry.insert(refresh_rates);
+    }
+    for (resolution, refresh_rates) in resolutions {
+        let (resolution_x, resolution_y) = resolution.split_once('x').unwrap();
+        let mut refresh_rates: Vec<u32> = refresh_rates.into_iter().collect();
+        refresh_rates.sort_unstable();
+        refresh_rates.reverse();
         converted_modes.push(AvailableMode {
             size: Size(resolution_x.parse().unwrap(), resolution_y.parse().unwrap()),
-            refresh_rate,
+            refresh_rates,
         });
     }
+    converted_modes.sort_unstable_by(|a, b| {
+        if a.size > b.size {
+            Ordering::Greater
+        } else {
+            Ordering::Less
+        }
+    });
     converted_modes
 }
