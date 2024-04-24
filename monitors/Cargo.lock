@@ -875,8 +875,8 @@ dependencies = [
 
 [[package]]
 name = "re_set-lib"
-version = "3.1.11"
-source = "git+https://github.com/Xetibo/ReSet-Lib#ea5c675d7fb799726b6e434c0dc7ca1b970578df"
+version = "3.3.0"
+source = "git+https://github.com/Xetibo/ReSet-Lib?branch=dashie#f2b9c13a78da6790ec732e4dd6b61c3fc2466cc8"
 dependencies = [
  "dbus",
  "dbus-crossroads",
@@ -886,6 +886,7 @@ dependencies = [
  "libpulse-binding",
  "once_cell",
  "serial_test",
+ "toml",
 ]
 
 [[package]]

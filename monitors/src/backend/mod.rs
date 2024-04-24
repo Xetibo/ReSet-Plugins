@@ -8,7 +8,7 @@ use crate::{
     utils::{get_environment, Monitor, MonitorData},
 };
 
-use self::hyprland::apply_monitor_configuration;
+use self::hyprland::{apply_monitor_configuration, save_monitor_configuration};
 
 pub mod hyprland;
 
@@ -78,6 +78,16 @@ pub fn setup_dbus_interface(
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
                     apply_monitor_configuration(&monitors);
+                    d.monitors = monitors;
+                    Ok(())
+                },
+            );
+            c.method(
+                "SaveMonitors",
+                ("monitors",),
+                (),
+                move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
+                    save_monitor_configuration(&monitors);
                     d.monitors = monitors;
                     Ok(())
                 },

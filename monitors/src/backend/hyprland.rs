@@ -1,9 +1,14 @@
 // NOTE: This implementation is for the hyprland compositor
 
+use re_set_lib::utils::config::CONFIG;
+
 use crate::utils::{get_environment, AvailableMode, Monitor, Size};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
+    fs::OpenOptions,
+    io::Write,
+    path::PathBuf,
     process::Command,
 };
 
@@ -31,6 +36,46 @@ pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {
         .args(["--batch", &monitor_to_configstring(monitors)])
         .spawn()
         .expect("Could not enable specified monitor");
+}
+
+pub fn save_monitor_configuration(monitors: &Vec<Monitor>) {
+    match get_environment().as_str() {
+        "Hyprland" => hy_save_monitor_configuration(monitors),
+        _ => println!("Environment not supported!"),
+    };
+}
+
+pub fn get_default_path() -> String {
+    let dirs = directories_next::ProjectDirs::from("org", "Xetibo", "ReSet").unwrap();
+    let buf = dirs.config_dir().join("monitor.conf");
+    let path = buf.to_str().unwrap();
+    String::from(path)
+}
+pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
+    let path;
+    if let Some(test) = CONFIG.get("Monitor").unwrap().get("path") {
+        path = test.as_str().unwrap().to_string();
+    } else {
+        path = get_default_path();
+    }
+
+    let mut input_config = OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .open(PathBuf::from(path))
+        .expect("Failed to open file");
+
+    let mut layout_string = String::new();
+    let mut variant_string = String::new();
+
+    let string = format!("pingpang");
+
+    input_config.set_len(0).expect("Failed to truncate file");
+    input_config
+        .write_all(string.as_bytes())
+        .expect("Failed to write to file");
+    input_config.sync_all().expect("Failed to sync file");
 }
 
 fn get_json() -> Vec<u8> {

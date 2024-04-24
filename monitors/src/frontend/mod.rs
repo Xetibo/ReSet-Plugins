@@ -5,7 +5,7 @@ use adw::{
     PreferencesGroup,
 };
 use dbus::{blocking::Connection, Error};
-use glib::object::CastNone;
+use glib::{clone, object::CastNone};
 #[allow(deprecated)]
 use gtk::{
     gdk::prelude::SurfaceExt,
@@ -15,8 +15,8 @@ use gtk::{
     },
     DrawingArea, GestureDrag, Orientation, StringList,
 };
-use gtk::{GestureClick, StringObject};
-use re_set_lib::utils::plugin::SidebarInfo;
+use gtk::{prelude::FrameExt, GestureClick, StringObject};
+use re_set_lib::utils::{gtk::utils::create_title, plugin::SidebarInfo};
 
 use crate::{
     r#const::{BASE, DBUS_PATH, INTERFACE},
@@ -45,33 +45,35 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .hexpand(true)
         .vexpand(true)
         .build();
+    main_box.append(&create_title("Monitors"));
 
     let apply_row = gtk::Box::new(Orientation::Horizontal, 5);
 
-    let apply = gtk::Button::new();
-    apply.set_label("Apply");
-    apply.set_hexpand(false);
-    apply.set_halign(gtk::Align::End);
+    let apply = gtk::Button::builder()
+        .label("Apply")
+        .hexpand_set(false)
+        .halign(gtk::Align::End)
+        .sensitive(false)
+        .build();
     apply_row.append(&apply);
 
-    let reset = gtk::Button::new();
-    reset.set_label("Reset");
-    reset.set_hexpand(false);
-    reset.set_halign(gtk::Align::End);
+    let save = gtk::Button::builder()
+        .label("Save")
+        .hexpand_set(false)
+        .halign(gtk::Align::End)
+        .sensitive(false)
+        .build();
+    apply_row.append(&save);
+
+    let reset = gtk::Button::builder()
+        .label("Reset")
+        .hexpand_set(false)
+        .halign(gtk::Align::End)
+        .sensitive(false)
+        .build();
     apply_row.append(&reset);
 
     main_box.append(&apply_row);
-
-    // TODO: permantently save
-    // if is_config_writable() {
-    //     let save_row = gtk::Box::new(Orientation::Vertical, 5);
-    //     let save = gtk::Button::new();
-    //     save.set_label("Save");
-    //     save.set_hexpand(false);
-    //     save.set_halign(gtk::Align::End);
-    //     save_row.append(&save);
-    //     main_box.append(&save_row);
-    // }
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
@@ -87,6 +89,11 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let border_color = context.lookup_color("accent_color").unwrap();
     #[allow(deprecated)]
     let dragging_color = context.lookup_color("blue_5").unwrap();
+
+    let drawing_frame = gtk::Frame::builder()
+        .margin_top(10)
+        .margin_bottom(10)
+        .build();
 
     // NOTE: ensure the size is known before!
     // Otherwise the height or width inside the set_draw_func is 0!
@@ -109,7 +116,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let update_ref = monitor_data.clone();
 
     let apply_ref = monitor_data.clone();
-    apply.connect_clicked(move |_| {
+    apply.connect_clicked(clone!(@weak save, @weak reset => move |button| {
         let conn = Connection::new_session().unwrap();
         let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
         let res: Result<(), Error> =
@@ -121,7 +128,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             settings_box_ref_apply.remove(&child);
         }
         let mut index = 0;
-        for (i, monitor) in apply_ref.borrow().iter().enumerate() {
+        for (i, monitor) in apply_ref.borrow_mut().iter_mut().enumerate() {
             if monitor.drag_information.clicked {
                 index = i;
             };
@@ -129,15 +136,19 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         apply_ref.replace(get_monitor_data());
         settings_box_ref_apply.append(&get_monitor_settings_group(apply_ref.clone(), index));
         drawing_ref_apply.queue_draw();
-    });
+        button.set_sensitive(false);
+        reset.set_sensitive(false);
+        save.set_sensitive(false);
+    }));
 
     let reset_ref = monitor_data.clone();
-    reset.connect_clicked(move |_| {
+    reset.connect_clicked(clone!(@weak save, @weak apply => move |button| {
         if let Some(child) = settings_box_ref_reset.first_child() {
             settings_box_ref_reset.remove(&child);
         }
         let mut index = 0;
         for (i, monitor) in reset_ref.borrow_mut().iter_mut().enumerate() {
+            monitor.drag_information.changed = false;
             monitor.offset.0 = monitor.drag_information.origin_x;
             monitor.offset.1 = monitor.drag_information.origin_y;
             if monitor.drag_information.clicked {
@@ -147,7 +158,10 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         reset_ref.replace(get_monitor_data());
         settings_box_ref_reset.append(&get_monitor_settings_group(reset_ref.clone(), index));
         drawing_ref_reset.queue_draw();
-    });
+        button.set_sensitive(false);
+        save.set_sensitive(false);
+        apply.set_sensitive(false);
+    }));
 
     settings_box.append(&get_monitor_settings_group(monitor_data.clone(), 0));
 
@@ -215,7 +229,8 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         drawing_ref.queue_draw();
     });
 
-    gesture.connect_drag_end(move |_drag, _x, _y| {
+    gesture.connect_drag_end(clone!(@weak apply, @weak save, @weak reset  => move |_drag, _x, _y| {
+        let mut changed = false;
         let mut endpoint_left: i32 = 0;
         let mut endpoint_bottom: i32 = 0;
         let mut endpoint_right: i32 = 0;
@@ -227,11 +242,16 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         let mut iter = -1;
         for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
             if monitor.drag_information.drag_active {
+                if monitor.drag_information.drag_x != monitor.drag_information.origin_x
+                    && monitor.drag_information.drag_y != monitor.drag_information.origin_y
+                {
+                    changed = true;
+                }
                 monitor.drag_information.drag_active = false;
                 endpoint_bottom = monitor.offset.1 + monitor.drag_information.drag_y;
                 endpoint_left = monitor.offset.0 + monitor.drag_information.drag_x;
                 endpoint_right = endpoint_left + monitor.drag_information.width;
-                endpoint_top = endpoint_bottom + monitor.drag_information.height;
+                endpoint_top = endpoint_bottom - monitor.drag_information.height;
                 previous_width = monitor.drag_information.width;
                 previous_height = monitor.drag_information.height;
                 iter = i as i32;
@@ -250,7 +270,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             let endpoint_other_left = monitor.offset.0;
             let endpoint_other_bottom = monitor.offset.1;
             let endpoint_other_right = endpoint_other_left + monitor.drag_information.width;
-            let endpoint_other_top = endpoint_other_bottom + monitor.drag_information.height;
+            let endpoint_other_top = endpoint_other_bottom - monitor.drag_information.height;
 
             if endpoint_right.abs_diff(endpoint_other_left) < 100 {
                 snap_horizontal = SnapDirectionHorizontal::RightLeft(endpoint_other_left);
@@ -272,15 +292,32 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
                 snap_vertical = SnapDirectionVertical::BottomTop(endpoint_other_top);
             }
 
-            if monitor.get_intersect(
-                endpoint_left,
-                endpoint_bottom,
-                previous_width,
-                previous_height,
-            ) && (snap_vertical == SnapDirectionVertical::None
-                || snap_horizontal == SnapDirectionHorizontal::None)
+            // both required for a real intersect
+            let intersect_horizontal = monitor.intersect_horizontal(endpoint_left, previous_width);                        
+            let intersect_vertical = monitor.intersect_vertical(endpoint_bottom, previous_height);                        
+
+            // in case of an intersect, right to right/left to left snapping not allowed -> snap into intersect
+            let allow_snap_horizontal = match snap_horizontal {
+                SnapDirectionHorizontal::RightRight(_) => false,
+                SnapDirectionHorizontal::RightLeft(_) => true,
+                SnapDirectionHorizontal::LeftLeft(_) => false,
+                SnapDirectionHorizontal::LeftRight(_) => true,
+                SnapDirectionHorizontal::None => false,
+            };
+            // same here with top to top and bottom to bottom
+            let allow_snap_vertical = match snap_vertical {
+                SnapDirectionVertical::TopTop(_) => false,
+                SnapDirectionVertical::TopBottom(_) => true,
+                SnapDirectionVertical::BottomBottom(_) => false,
+                SnapDirectionVertical::BottomTop(_) => true,
+                SnapDirectionVertical::None => false,
+            };
+
+            if  intersect_horizontal && intersect_vertical && 
+                (!allow_snap_vertical || !allow_snap_horizontal) 
             {
                 intersected = true;
+                changed = false;
                 break;
             }
         }
@@ -306,7 +343,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             }
             match snap_vertical {
                 SnapDirectionVertical::TopTop(snap) | SnapDirectionVertical::TopBottom(snap) => {
-                    monitor.offset.1 = snap - monitor.drag_information.height;
+                    monitor.offset.1 = snap + monitor.drag_information.height;
                 }
                 SnapDirectionVertical::BottomTop(snap)
                 | SnapDirectionVertical::BottomBottom(snap) => {
@@ -319,12 +356,19 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         monitor.drag_information.drag_y = 0;
 
         drawing_ref_end.queue_draw();
-    });
+        // refs
+        if changed {
+            reset.set_sensitive(changed);
+            apply.set_sensitive(changed);
+            save.set_sensitive(changed);
+        }
+    }));
 
     drawing_area.add_controller(gesture);
     drawing_area.add_controller(clicked);
 
-    main_box.append(&*drawing_area);
+    drawing_frame.set_child(Some(&*drawing_area));
+    main_box.append(&drawing_frame);
     main_box.append(&settings_box);
 
     drawing_area.queue_draw();
@@ -553,7 +597,7 @@ fn drawing_callback(
             let width = width / factor;
 
             // monitor
-            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width, height);
+            let rec = gtk::gdk::Rectangle::new(offset_x + 5, offset_y + 5, width - 5, height - 5);
             if monitor.drag_information.drag_active {
                 context.set_source_color(&draggin_color);
             } else {
@@ -568,7 +612,7 @@ fn drawing_callback(
             context.set_line_width(5.0);
             // top
             // let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, width + 5, 5);
-            let rec = gtk::gdk::Rectangle::new(offset_x + 5, offset_y - 5, width - 5, 5);
+            let rec = gtk::gdk::Rectangle::new(offset_x + 5, offset_y, width - 5, 5);
             context.add_rectangle(&rec);
             context.fill().expect("Could not fill context");
             context.arc(
@@ -582,13 +626,13 @@ fn drawing_callback(
 
             // right
             // let rec = gtk::gdk::Rectangle::new(offset_x + width, offset_y, 5, height + 5);
-            let rec = gtk::gdk::Rectangle::new(offset_x + width, offset_y, 5, height);
+            let rec = gtk::gdk::Rectangle::new(offset_x + width, offset_y + 5, 5, height - 5);
             context.add_rectangle(&rec);
             // arcs are radian...
             context.fill().expect("Could not fill context");
             context.arc(
                 (offset_x + width) as f64 - 2.5,
-                offset_y as f64 + 2.5,
+                offset_y as f64 + 7.5,
                 5.0,
                 consts::PI + consts::FRAC_PI_2,
                 consts::PI * 2.0,
@@ -611,12 +655,12 @@ fn drawing_callback(
 
             // left
             // let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, 5, height + 5);
-            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y, 5, height);
+            let rec = gtk::gdk::Rectangle::new(offset_x, offset_y + 5, 5, height - 5);
             context.add_rectangle(&rec);
             context.fill().expect("Could not fill context");
             context.arc(
                 offset_x as f64 + 7.5,
-                offset_y as f64 + 2.5,
+                offset_y as f64 + 7.5,
                 5.0,
                 consts::PI,
                 consts::PI + consts::FRAC_PI_2,

@@ -1,23 +1,11 @@
 use std::{fmt::Display, time::Duration};
 
+use crate::r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS};
 use dbus::{
     arg::{self, Append, Arg, ArgType, Get},
     blocking::Connection,
     Error, Signature,
 };
-use gtk::{Align, Label};
-
-use crate::r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS};
-
-pub fn create_title() -> Label {
-    Label::builder()
-        .label("Keyboard")
-        .css_classes(vec!["resetSettingLabel"])
-        .halign(Align::Start)
-        .margin_start(5)
-        .margin_bottom(10)
-        .build()
-}
 
 pub fn get_environment() -> String {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP");
@@ -65,6 +53,7 @@ pub struct DragInformation {
     pub factor: i32,
     pub drag_active: bool,
     pub clicked: bool,
+    pub changed: bool,
 }
 
 #[repr(C)]
@@ -231,27 +220,26 @@ impl Monitor {
             && y <= self.drag_information.border_offset_y + offset_y + height
     }
 
-    // same as above but without factor as this is a purely monitor specific overlap without a
-    // mouse pointer.
-    fn is_monitor_coordinate_within(&self, x: i32, y: i32) -> bool {
-        let offset_x = self.offset.0;
-        let offset_y = self.offset.1;
-        let height = self.drag_information.height;
-        let width = self.drag_information.width;
-        x > self.drag_information.border_offset_x + offset_x
-            && x < self.drag_information.border_offset_x + offset_x + width
-            && y > self.drag_information.border_offset_y + offset_y
-            && y < self.drag_information.border_offset_y + offset_y + height
-    }
-
     /// Checks whether or not the currently dragged monitor has any overlap with existing monitors.
     /// If this is the case, then the monitor should be reset to original position on drop.
-    pub fn get_intersect(&self, offset_x: i32, offset_y: i32, width: i32, height: i32) -> bool {
-        let top_left = self.is_monitor_coordinate_within(offset_x, offset_y + height);
-        let top_right = self.is_monitor_coordinate_within(offset_x + width, offset_y + height);
-        let bottom_left = self.is_monitor_coordinate_within(offset_x, offset_y);
-        let bottom_right = self.is_monitor_coordinate_within(offset_x + width, offset_y);
-        top_left || top_right || bottom_left || bottom_right
+    pub fn intersect_horizontal(&self, offset_x: i32, width: i32) -> bool {
+        // current monitor left side is right of other right
+        let left = self.drag_information.border_offset_x + self.offset.0 >= offset_x + width;
+        // current monitor right is left of other left
+        let right =
+            self.drag_information.border_offset_x + self.offset.0 + self.drag_information.width
+                <= offset_x;
+        !left && !right
+    }
+
+    pub fn intersect_vertical(&self, offset_y: i32, height: i32) -> bool {
+        // current monitor bottom is higher than other top
+        let bottom = self.drag_information.border_offset_y + self.offset.1 >= offset_y + height;
+        // current monitor top is lower than other bottom
+        let top =
+            self.drag_information.border_offset_y + self.offset.1 + self.drag_information.height
+                <= offset_y;
+        !bottom && !top
     }
 }
 
