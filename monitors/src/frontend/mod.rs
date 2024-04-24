@@ -10,12 +10,16 @@ use glib::{clone, object::CastNone};
 use gtk::{
     gdk::prelude::SurfaceExt,
     prelude::{
-        BoxExt, ButtonExt, DrawingAreaExtManual, GdkCairoContextExt, GestureDragExt, NativeExt,
-        StyleContextExt, WidgetExt,
+        ActionMapExtManual, BoxExt, ButtonExt, DrawingAreaExtManual, GdkCairoContextExt,
+        GestureDragExt, NativeExt, StaticVariantType, StyleContextExt, WidgetExt,
     },
     DrawingArea, GestureDrag, Orientation, StringList,
 };
-use gtk::{prelude::FrameExt, GestureClick, StringObject};
+use gtk::{
+    gio::{ActionEntry, SimpleActionGroup},
+    prelude::FrameExt,
+    GestureClick, StringObject,
+};
 use re_set_lib::utils::{gtk::utils::create_title, plugin::SidebarInfo};
 
 use crate::{
@@ -46,6 +50,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .vexpand(true)
         .build();
     main_box.append(&create_title("Monitors"));
+    let main_box_ref = main_box.clone();
 
     let apply_row = gtk::Box::new(Orientation::Horizontal, 5);
 
@@ -89,6 +94,8 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let border_color = context.lookup_color("accent_color").unwrap();
     #[allow(deprecated)]
     let dragging_color = context.lookup_color("blue_5").unwrap();
+    #[allow(deprecated)]
+    let clicked_color = context.lookup_color("blue_4").unwrap();
 
     let drawing_frame = gtk::Frame::builder()
         .margin_top(10)
@@ -116,7 +123,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let update_ref = monitor_data.clone();
 
     let apply_ref = monitor_data.clone();
-    apply.connect_clicked(clone!(@weak save, @weak reset => move |button| {
+    apply.connect_clicked(move |button| {
         let conn = Connection::new_session().unwrap();
         let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
         let res: Result<(), Error> =
@@ -136,13 +143,16 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         apply_ref.replace(get_monitor_data());
         settings_box_ref_apply.append(&get_monitor_settings_group(apply_ref.clone(), index));
         drawing_ref_apply.queue_draw();
-        button.set_sensitive(false);
-        reset.set_sensitive(false);
-        save.set_sensitive(false);
-    }));
+        button
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(false)),
+            )
+            .expect("Could not execute reset action");
+    });
 
     let reset_ref = monitor_data.clone();
-    reset.connect_clicked(clone!(@weak save, @weak apply => move |button| {
+    reset.connect_clicked(move |button| {
         if let Some(child) = settings_box_ref_reset.first_child() {
             settings_box_ref_reset.remove(&child);
         }
@@ -158,11 +168,21 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         reset_ref.replace(get_monitor_data());
         settings_box_ref_reset.append(&get_monitor_settings_group(reset_ref.clone(), index));
         drawing_ref_reset.queue_draw();
-        button.set_sensitive(false);
-        save.set_sensitive(false);
-        apply.set_sensitive(false);
-    }));
-
+        button
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(false)),
+            )
+            .expect("Could not execute reset action");
+    });
+    {
+        monitor_data
+            .borrow_mut()
+            .get_mut(0)
+            .unwrap()
+            .drag_information
+            .clicked = true;
+    }
     settings_box.append(&get_monitor_settings_group(monitor_data.clone(), 0));
 
     drawing_callback(
@@ -170,6 +190,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         border_color,
         color,
         dragging_color,
+        clicked_color,
         monitor_data.clone(),
     );
     let clicked = GestureClick::builder().build();
@@ -229,7 +250,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         drawing_ref.queue_draw();
     });
 
-    gesture.connect_drag_end(clone!(@weak apply, @weak save, @weak reset  => move |_drag, _x, _y| {
+    gesture.connect_drag_end(move |_drag, _x, _y| {
         let mut changed = false;
         let mut endpoint_left: i32 = 0;
         let mut endpoint_bottom: i32 = 0;
@@ -293,8 +314,8 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             }
 
             // both required for a real intersect
-            let intersect_horizontal = monitor.intersect_horizontal(endpoint_left, previous_width);                        
-            let intersect_vertical = monitor.intersect_vertical(endpoint_bottom, previous_height);                        
+            let intersect_horizontal = monitor.intersect_horizontal(endpoint_left, previous_width);
+            let intersect_vertical = monitor.intersect_vertical(endpoint_bottom, previous_height);
 
             // in case of an intersect, right to right/left to left snapping not allowed -> snap into intersect
             let allow_snap_horizontal = match snap_horizontal {
@@ -313,8 +334,9 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
                 SnapDirectionVertical::None => false,
             };
 
-            if  intersect_horizontal && intersect_vertical && 
-                (!allow_snap_vertical || !allow_snap_horizontal) 
+            if intersect_horizontal
+                && intersect_vertical
+                && (!allow_snap_vertical || !allow_snap_horizontal)
             {
                 intersected = true;
                 changed = false;
@@ -358,16 +380,33 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         drawing_ref_end.queue_draw();
         // refs
         if changed {
-            reset.set_sensitive(changed);
-            apply.set_sensitive(changed);
-            save.set_sensitive(changed);
+            main_box_ref
+                .activate_action(
+                    "monitor.reset_monitor_buttons",
+                    Some(&glib::Variant::from(true)),
+                )
+                .expect("Could not execute reset action");
         }
-    }));
+    });
 
     drawing_area.add_controller(gesture);
     drawing_area.add_controller(clicked);
 
     drawing_frame.set_child(Some(&*drawing_area));
+    let action_group = SimpleActionGroup::new();
+    let reset_monitor_buttons = ActionEntry::builder("reset_monitor_buttons")
+        .parameter_type(Some(&bool::static_variant_type()))
+        .activate(
+            clone!(@weak reset, @weak apply, @weak save => move |_, _, description| {
+                let enable = description.unwrap().get::<bool>().unwrap();
+                apply.set_sensitive(enable);
+                save.set_sensitive(enable);
+                reset.set_sensitive(enable);
+            }),
+        )
+        .build();
+    action_group.add_action_entries([reset_monitor_buttons]);
+    main_box.insert_action_group("monitor", Some(&action_group));
     main_box.append(&drawing_frame);
     main_box.append(&settings_box);
 
@@ -380,13 +419,13 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
 fn get_monitor_settings_group(
     clicked_monitor: Rc<RefCell<Vec<Monitor>>>,
-    index: usize,
+    monitor_index: usize,
 ) -> PreferencesGroup {
     let settings = PreferencesGroup::new();
 
     let name = adw::ComboRow::new();
     let monitors = clicked_monitor.borrow();
-    let monitor = monitors.get(index).unwrap();
+    let monitor = monitors.get(monitor_index).unwrap();
     name.set_title(&monitor.name);
     name.set_subtitle(&monitor.make);
     name.set_sensitive(true);
@@ -397,7 +436,13 @@ fn get_monitor_settings_group(
     vrr.set_active(monitor.vrr);
     let vrr_ref = clicked_monitor.clone();
     vrr.connect_active_notify(move |state| {
-        vrr_ref.borrow_mut().get_mut(index).unwrap().vrr = state.is_active();
+        vrr_ref.borrow_mut().get_mut(monitor_index).unwrap().vrr = state.is_active();
+        state
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(true)),
+            )
+            .expect("Could not activate reset action");
     });
     settings.add(&vrr);
 
@@ -428,7 +473,7 @@ fn get_monitor_settings_group(
     let transform_ref = clicked_monitor.clone();
     transform.connect_selected_item_notify(move |dropdown| {
         let mut monitor = transform_ref.borrow_mut();
-        let monitor = monitor.get_mut(index).unwrap();
+        let monitor = monitor.get_mut(monitor_index).unwrap();
         match model_list.string(dropdown.selected()).unwrap().as_str() {
             "0" => monitor.transform = 0,
             "90" => monitor.transform = 1,
@@ -439,7 +484,13 @@ fn get_monitor_settings_group(
             "180-flipped" => monitor.transform = 6,
             "270-flipped" => monitor.transform = 7,
             _ => println!("Unexpected value for transform"),
-        }
+        };
+        dropdown
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(true)),
+            )
+            .expect("Could not activate reset action");
     });
     settings.add(&transform);
 
@@ -464,27 +515,39 @@ fn get_monitor_settings_group(
     resolution.set_selected(index as u32);
     let resolution_ref = clicked_monitor.clone();
     resolution.connect_selected_item_notify(move |dropdown| {
+        let index = dropdown.selected();
         let selected = dropdown.selected_item();
         let selected = selected.and_downcast_ref::<StringObject>().unwrap();
         let selected = selected.string().to_string();
         let (x, y) = selected.split_once('x').unwrap();
-        let mut monitor = resolution_ref.borrow_mut();
-        let monitor = monitor.get_mut(index).unwrap();
-        let refresh_rates = monitor
-            .available_modes
-            .get(index)
-            .unwrap()
-            .refresh_rates
-            .clone();
-        let highest = refresh_rates.first().unwrap();
-        monitor.refresh_rate = *highest;
-        monitor.size.0 = x.parse().unwrap();
-        monitor.size.1 = y.parse().unwrap();
+        let refresh_rates;
+        {
+            let mut monitor = resolution_ref.borrow_mut();
+            let monitor = monitor.get_mut(monitor_index).unwrap();
+            refresh_rates = monitor
+                .available_modes
+                .get(index as usize)
+                .unwrap()
+                .refresh_rates
+                .clone();
+            let highest = refresh_rates.first().unwrap();
+            monitor.refresh_rate = *highest;
+            monitor.size.0 = x.parse().unwrap();
+            monitor.size.1 = y.parse().unwrap();
+        }
 
         let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.to_string()).collect();
         let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
+        dbg!(&refresh_rates);
         let refresh_rate_model = StringList::new(&refresh_rates);
         refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
+        refresh_rate_combo_ref.set_selected(0);
+        dropdown
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(true)),
+            )
+            .expect("Could not activate reset action");
     });
     settings.add(&resolution);
 
@@ -508,7 +571,7 @@ fn get_monitor_settings_group(
     refresh_rate.connect_selected_item_notify(move |dropdown| {
         refresh_rate_ref
             .borrow_mut()
-            .get_mut(index)
+            .get_mut(monitor_index)
             .unwrap()
             .refresh_rate = dropdown
             .selected_item()
@@ -518,6 +581,12 @@ fn get_monitor_settings_group(
             .to_string()
             .parse()
             .unwrap();
+        dropdown
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(true)),
+            )
+            .expect("Could not activate reset action");
     });
     settings.add(&refresh_rate);
 
@@ -529,6 +598,7 @@ fn drawing_callback(
     border_color: gtk::gdk::RGBA,
     color: gtk::gdk::RGBA,
     draggin_color: gtk::gdk::RGBA,
+    clicked_color: gtk::gdk::RGBA,
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
 ) {
     area.set_draw_func(move |area, context, _, _| {
@@ -600,6 +670,8 @@ fn drawing_callback(
             let rec = gtk::gdk::Rectangle::new(offset_x + 5, offset_y + 5, width - 5, height - 5);
             if monitor.drag_information.drag_active {
                 context.set_source_color(&draggin_color);
+            } else if monitor.drag_information.clicked {
+                context.set_source_color(&clicked_color);
             } else {
                 context.set_source_color(&color);
             }
