@@ -20,7 +20,7 @@ use gtk::{
     prelude::FrameExt,
     GestureClick, StringObject,
 };
-use re_set_lib::utils::{gtk::utils::create_title, plugin::SidebarInfo};
+use re_set_lib::utils::{config::CONFIG, gtk::utils::create_title, plugin::SidebarInfo};
 
 use crate::{
     r#const::{BASE, DBUS_PATH, INTERFACE},
@@ -52,6 +52,14 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     main_box.append(&create_title("Monitors"));
     let main_box_ref = main_box.clone();
 
+    let banner = adw::Banner::new("Info");
+    banner.set_button_label(Some("Acknowledge"));
+    banner.connect_button_clicked(|banner| {
+        banner.set_title("Info");
+        banner.set_revealed(false);
+    });
+    let banner_ref = banner.clone();
+
     let apply_row = gtk::Box::new(Orientation::Horizontal, 5);
 
     let apply = gtk::Button::builder()
@@ -78,11 +86,13 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .build();
     apply_row.append(&reset);
 
+    main_box.append(&banner);
     main_box.append(&apply_row);
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
     let settings_box_ref_apply = settings_box.clone();
+    let settings_box_ref_save = settings_box.clone();
     let settings_box_ref_reset = settings_box.clone();
     // NOTE: intentional use of deprecated logic as there is no currently available alternative
     // Gnome also uses the same functionality to get the same color for drawing the monitors
@@ -114,6 +124,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     );
     let drawing_ref = drawing_area.clone();
     let drawing_ref_apply = drawing_area.clone();
+    let drawing_ref_save = drawing_area.clone();
     let drawing_ref_reset = drawing_area.clone();
     let drawing_ref_end = drawing_area.clone();
 
@@ -121,6 +132,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let start_ref = monitor_data.clone();
     let clicked_ref = monitor_data.clone();
     let update_ref = monitor_data.clone();
+    let save_ref = monitor_data.clone();
 
     let apply_ref = monitor_data.clone();
     apply.connect_clicked(move |button| {
@@ -175,6 +187,40 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             )
             .expect("Could not execute reset action");
     });
+
+    save.connect_clicked(move |button| {
+        let conn = Connection::new_session().unwrap();
+        let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
+        let res: Result<(), Error> =
+            proxy.method_call(INTERFACE, "SaveMonitors", (save_ref.borrow().clone(),));
+        if res.is_err() {
+            println!("error on save");
+        }
+        // TODO: warning, this is scary
+        if CONFIG.get("Monitor").unwrap().get("save_warning").unwrap().as_bool().unwrap() {
+            banner_ref.set_title("When using hyprland, make sure to include the created file in your config to make the changes permanent.");
+            banner_ref.set_revealed(true);
+        }
+        // if let Some(child) = settings_box_ref_save.first_child() {
+        //     settings_box_ref_save.remove(&child);
+        // }
+        // let mut index = 0;
+        // for (i, monitor) in save_ref.borrow_mut().iter_mut().enumerate() {
+        //     if monitor.drag_information.clicked {
+        //         index = i;
+        //     };
+        // }
+        // save_ref.replace(get_monitor_data());
+        // settings_box_ref_save.append(&get_monitor_settings_group(save_ref.clone(), index));
+        drawing_ref_save.queue_draw();
+        // button
+        //     .activate_action(
+        //         "monitor.reset_monitor_buttons",
+        //         Some(&glib::Variant::from(false)),
+        //     )
+        //     .expect("Could not execute reset action");
+    });
+
     {
         monitor_data
             .borrow_mut()

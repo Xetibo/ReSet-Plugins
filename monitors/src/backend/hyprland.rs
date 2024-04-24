@@ -51,10 +51,16 @@ pub fn get_default_path() -> String {
     let path = buf.to_str().unwrap();
     String::from(path)
 }
+
 pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
+    let config = CONFIG;
     let path;
-    if let Some(test) = CONFIG.get("Monitor").unwrap().get("path") {
-        path = test.as_str().unwrap().to_string();
+    if let Some(config) = config.get("Monitor") {
+        if let Some(test) = config.get("path") {
+            path = test.as_str().unwrap().to_string();
+        } else {
+            path = get_default_path();
+        }
     } else {
         path = get_default_path();
     }
@@ -63,17 +69,28 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
         .write(true)
         .read(true)
         .create(true)
+        .truncate(true)
         .open(PathBuf::from(path))
         .expect("Failed to open file");
 
-    let mut layout_string = String::new();
-    let mut variant_string = String::new();
+    let mut monitor_string = String::new();
 
-    let string = format!("pingpang");
+    for monitor in monitors {
+        monitor_string += &format!(
+            "monitor={},{}x{}@{},{}x{},{},transform,{}\n",
+            monitor.name,
+            monitor.size.0,
+            monitor.size.1,
+            monitor.refresh_rate,
+            monitor.offset.0,
+            monitor.offset.1,
+            monitor.scale,
+            monitor.transform,
+        );
+    }
 
-    input_config.set_len(0).expect("Failed to truncate file");
     input_config
-        .write_all(string.as_bytes())
+        .write_all(monitor_string.as_bytes())
         .expect("Failed to write to file");
     input_config.sync_all().expect("Failed to sync file");
 }

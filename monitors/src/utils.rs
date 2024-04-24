@@ -324,6 +324,12 @@ impl Arg for Scale {
     }
 }
 
+impl Display for Scale {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{}.{}", self.0, self.1))
+    }
+}
+
 // TODO: move this to reset-lib
 #[derive(Debug)]
 pub struct PluginInstantiationError(&'static str);
