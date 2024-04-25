@@ -11,8 +11,9 @@ re_set-lib = { git = "https://github.com/Xetibo/ReSet-Lib" }
 gtk = { version = "0.8.1", package = "gtk4", features = ["v4_12"] }
 adw = { version = "0.6.0", package = "libadwaita", features = ["v1_4"] }
 dbus = "0.9.7"
-glib = "0.19.3"
+glib = "0.19.4"
 gdk4 = "0.8.1"
-serde = "1.0"
-serde_yaml = "0.9.34"
-xkb = "0.3.0"
+xkbregistry = "0.1.1"
+dbus-crossroads = "0.5.2"
+directories-next = "2.0.0"
+toml = "0.8.12"
