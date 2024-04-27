@@ -58,7 +58,7 @@ impl<'a> Get<'a> for GnomeMonitors {
 }
 
 impl Arg for GnomeMonitors {
-    const ARG_TYPE: arg::ArgType = ArgType::Struct;
+    const ARG_TYPE: arg::ArgType = ArgType::UInt32;
     fn signature() -> Signature<'static> {
         unsafe {
             Signature::from_slice_unchecked("ua(uxiiiiiuaua{sv})a(uxiausauauau{sv})a(uxuudu)ii\0")
