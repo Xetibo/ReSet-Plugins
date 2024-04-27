@@ -14,8 +14,10 @@ use gtk::prelude::*;
 use crate::frontend::{add_listener, get_keyboard_list_frontend, update_input};
 use crate::keyboard_layout::KeyboardLayout;
 use crate::r#const::{BASE, DBUS_PATH, INTERFACE};
+use crate::utils::get_max_active_keyboards;
 
 pub fn create_keyboard_main_page(nav_view: &NavigationView) {
+    let max_keyboards = get_max_active_keyboards();
     let user_layouts = Rc::new(RefCell::new(get_saved_layouts_frontend()));
     
     let all_keyboard_layouts = get_keyboard_list_frontend();
@@ -40,7 +42,7 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
             {
                 let mut user_layout_borrow= user_layouts.borrow_mut();
                 let layout = user_layout_borrow[from_index as usize].clone();
-
+                
                 user_layout_borrow.remove(from_index as usize);
                 user_layout_borrow.insert(to_index as usize, layout);
             }
@@ -80,7 +82,8 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
 
     for (index, layout) in user_layouts.borrow().iter().enumerate() {
         let layout_row = ActionRow::builder().title(layout.description.clone()).build();
-        if index <= 3 {
+
+        if index < max_keyboards as usize {
             layout_row.add_css_class("activeLanguage");
         }
         add_listener(&keyboard_list, layout_row);

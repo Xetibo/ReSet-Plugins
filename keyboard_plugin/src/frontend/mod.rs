@@ -8,26 +8,22 @@ use dbus::blocking::Connection;
 use dbus::Error;
 use gdk4::ContentProvider;
 use glib::{clone, Variant};
-use gtk::{Align, EventController, Label, ListBox, WidgetPaintable};
+use gtk::{Align, EventController, Label, ListBox, Widget, WidgetPaintable};
 use gtk::{DragSource, prelude::*};
 
-use crate::keyboard_layout::{KeyboardLayout};
+use crate::keyboard_layout::KeyboardLayout;
 use crate::r#const::{BASE, DBUS_PATH, INTERFACE};
+use crate::utils::get_max_active_keyboards;
 
 pub mod main_page;
 pub mod add_layout_page;
 
-pub fn get_keyboard_list_frontend() -> Vec<KeyboardLayout> {
-    let conn = Connection::new_session().unwrap();
-    let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
-    let res: Result<(Vec<KeyboardLayout>, ), Error> = proxy.method_call(INTERFACE, "GetKeyboardLayouts", ());
-    if res.is_err() {
-        return Vec::new();
-    }
-    res.unwrap().0
-}
+// todo find better color for first rows
+// todo add ability to remove layouts
 
 pub fn add_listener(keyboard_list: &PreferencesGroup, layout_row: ActionRow) {
+    let max_keyboards = get_max_active_keyboards();
+
     keyboard_list.add(&layout_row);
     let source = DragSource::builder()
         .actions(gdk::DragAction::MOVE)
@@ -54,7 +50,6 @@ pub fn add_listener(keyboard_list: &PreferencesGroup, layout_row: ActionRow) {
         .formats(&gdk::ContentFormats::for_type(ActionRow::static_type()))
         .build();
 
-
     target.connect_drop(clone!(@weak keyboard_list => @default-return false, move |target, value, _ , _| {
             let selected_row = value.get::<ActionRow>().unwrap();
             let droptarget_row = target.widget();
@@ -68,6 +63,18 @@ pub fn add_listener(keyboard_list: &PreferencesGroup, layout_row: ActionRow) {
                 let from_to = Variant::from((selected_row.index(), index));
                 keyboard_list.remove(&selected_row);
                 listbox.insert(&selected_row, index);
+            
+                let mut current_row = listbox.first_child();
+                while let Some(ref widget) = current_row {
+                    let next_row = widget.downcast_ref::<ActionRow>().unwrap();
+                    if next_row.index() < max_keyboards as i32 {
+                        next_row.add_css_class("activeLanguage");
+                    } else {
+                        next_row.remove_css_class("activeLanguage");
+                    }
+                    current_row = next_row.next_sibling();
+                }
+            
                 keyboard_list.activate_action("keyboard.changeorder", Some(&from_to))
                     .expect("Failed to activate action.");
                 return true;
@@ -82,7 +89,7 @@ pub fn add_listener(keyboard_list: &PreferencesGroup, layout_row: ActionRow) {
 pub fn update_input(user_layouts: &Rc<RefCell<Vec<KeyboardLayout>>>) {
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
-    let res: Result<(), Error> = proxy.method_call(INTERFACE, "SaveLayoutOrder", (user_layouts.borrow().clone(),));
+    let res: Result<(), Error> = proxy.method_call(INTERFACE, "SaveLayoutOrder", (user_layouts.borrow().clone(), ));
     res.expect("Failed to save layout order.");
 }
 
@@ -95,3 +102,41 @@ pub fn create_title() -> Label {
         .margin_bottom(10)
         .build()
 }
+
+pub fn get_keyboard_list_frontend() -> Vec<KeyboardLayout> {
+    let conn = Connection::new_session().unwrap();
+    let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
+    let res: Result<(Vec<KeyboardLayout>, ), Error> = proxy.method_call(INTERFACE, "GetKeyboardLayouts", ());
+    if res.is_err() {
+        return Vec::new();
+    }
+    res.unwrap().0
+}
+
+// possible optimization of coloring active keyboard layouts 
+//
+// if selected_row.index() < max_keyboards as i32 {
+// selected_row.add_css_class("activeLanguage");
+// 
+// let mut test = selected_row.next_sibling();
+// while let Some(ref widget) = test {
+// let next_row = widget.downcast_ref::<ActionRow>().unwrap();
+// 
+// if next_row.index() == max_keyboards as i32 {
+// 
+// next_row.remove_css_class("activeLanguage");
+// break;
+// } else {
+// next_row.add_css_class("activeLanguage");
+// }
+// test = next_row.next_sibling();
+// }
+// } else {
+// selected_row.remove_css_class("activeLanguage");
+// }
+// 
+// if droptarget_row.index() < max_keyboards as i32 {
+// droptarget_row.add_css_class("activeLanguage");
+// } else {
+// droptarget_row.remove_css_class("activeLanguage");
+// }
