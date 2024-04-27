@@ -16,11 +16,29 @@ pub fn g_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
-    let res: Result<(GnomeMonitors,), Error> = proxy.method_call(INTERFACE, "GetResources", ());
+    let res: Result<
+        (
+            u32,
+            Vec<GnomeCRTC>,
+            Vec<GnomeOutput>,
+            Vec<GnomeMode>,
+            i32,
+            i32,
+        ),
+        Error,
+    > = proxy.method_call(INTERFACE, "GetResources", ());
     if res.is_err() {
         println!("error on save");
     }
-    let gnome_monitors = res.unwrap().0;
+    let (serial, crtcs, outputs, modes, max_screen_width, max_screen_height) = res.unwrap();
+    let gnome_monitors = GnomeMonitors {
+        serial,
+        crtcs,
+        outputs,
+        modes,
+        max_screen_width,
+        max_screen_height,
+    };
     dbg!(&gnome_monitors);
     monitors
 }
@@ -58,7 +76,7 @@ impl<'a> Get<'a> for GnomeMonitors {
 }
 
 impl Arg for GnomeMonitors {
-    const ARG_TYPE: arg::ArgType = ArgType::Signature;
+    const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
         unsafe {
             Signature::from_slice_unchecked("ua(uxiiiiiuaua{sv})a(uxiausauauau{sv})a(uxuudu)ii\0")
