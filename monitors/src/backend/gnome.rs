@@ -61,7 +61,7 @@ impl Arg for GnomeMonitors {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
         unsafe {
-            Signature::from_slice_unchecked("(ua(uxiiiiiuaua{sv})a(uxiausauauau{sv})a(uxuudu)ii)\0")
+            Signature::from_slice_unchecked("ua(uxiiiiiuaua{sv})a(uxiausauauau{sv})a(uxuudu)ii\0")
         }
     }
 }
@@ -146,7 +146,7 @@ impl<'a> Get<'a> for GnomeCRTC {
 impl Arg for GnomeCRTC {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("a(uxiiiiiuaua{sv})\0") }
+        unsafe { Signature::from_slice_unchecked("(uxiiiiiuaua{sv})\0") }
     }
 }
 
@@ -197,7 +197,7 @@ impl<'a> Get<'a> for GnomeOutput {
 impl Arg for GnomeOutput {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("a(uxiausauauau{sv})\0") }
+        unsafe { Signature::from_slice_unchecked("(uxiausauauau{sv})\0") }
     }
 }
 
@@ -242,6 +242,6 @@ impl<'a> Get<'a> for GnomeMode {
 impl Arg for GnomeMode {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("a(uxuudu)\0") }
+        unsafe { Signature::from_slice_unchecked("(uxuudu)\0") }
     }
 }
