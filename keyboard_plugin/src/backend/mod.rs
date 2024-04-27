@@ -12,7 +12,7 @@ use xkbregistry::{rxkb_context_new, RXKB_CONTEXT_NO_FLAGS, rxkb_context_parse_de
 
 use crate::keyboard_layout::KeyboardLayout;
 use crate::r#const::INTERFACE;
-use crate::utils::{get_default_path, parse_setting};
+use crate::utils::{get_default_path, get_environment, parse_setting};
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -40,7 +40,7 @@ pub fn setup_dbus_interface<T: Send + Sync>(
                 "GetSavedLayouts",
                 (),
                 ("layouts", ),
-                 move |mut ctx, _, ()| async move {
+                move |mut ctx, _, ()| async move {
                     ctx.reply(Ok((get_saved_layouts(), )))
                 },
             );
@@ -51,6 +51,14 @@ pub fn setup_dbus_interface<T: Send + Sync>(
                 move |mut ctx, _, (layouts, ): (Vec<KeyboardLayout>, )| async move {
                     write_to_config(layouts);
                     ctx.reply(Ok(()))
+                },
+            );
+            c.method_with_cr_async(
+                "GetMaxActiveKeyboards",
+                (),
+                ("max", ),
+                move |mut ctx, _, ()| async move {
+                    ctx.reply(Ok((get_max_active_keyboards(), )))
                 },
             );
         },
@@ -151,4 +159,11 @@ fn write_to_config(layouts: Vec<KeyboardLayout>) {
     input_config.set_len(0).expect("Failed to truncate file");
     input_config.write_all(string.as_bytes()).expect("Failed to write to file");
     input_config.sync_all().expect("Failed to sync file");
+}
+
+fn get_max_active_keyboards() -> u32 {
+    match get_environment().as_str() {
+        "Hyprland" => { 4 }
+        _ => { 4 }
+    }
 }
