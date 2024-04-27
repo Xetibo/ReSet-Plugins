@@ -8,7 +8,7 @@ use dbus::blocking::Connection;
 use dbus::Error;
 use gdk4::ContentProvider;
 use glib::{clone, Variant};
-use gtk::{Align, EventController, Label, ListBox, Widget, WidgetPaintable};
+use gtk::{Align, EventController, Label, ListBox, WidgetPaintable};
 use gtk::{DragSource, prelude::*};
 
 use crate::keyboard_layout::KeyboardLayout;

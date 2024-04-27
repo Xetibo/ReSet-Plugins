@@ -1,5 +1,5 @@
 use dbus::{arg, Signature};
-use dbus::arg::{Append, AppendAll, Arg, ArgType, Get};
+use dbus::arg::{Append, Arg, ArgType, Get};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
