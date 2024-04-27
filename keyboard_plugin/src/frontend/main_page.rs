@@ -4,11 +4,11 @@ use std::time::Duration;
 
 use adw::{ActionRow, NavigationPage, NavigationView, PreferencesGroup};
 use adw::gio::{ActionEntry, SimpleActionGroup};
-use adw::prelude::PreferencesGroupExt;
+use adw::prelude::{ActionRowExt, PreferencesGroupExt};
 use dbus::blocking::Connection;
 use dbus::Error;
 use glib::{clone, Variant, VariantTy};
-use gtk::{Align, Button, Orientation};
+use gtk::{Align, Button, Image, Orientation};
 use gtk::prelude::*;
 
 use crate::frontend::{add_listener, get_keyboard_list_frontend, update_input};
@@ -42,7 +42,7 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
             {
                 let mut user_layout_borrow= user_layouts.borrow_mut();
                 let layout = user_layout_borrow[from_index as usize].clone();
-                
+
                 user_layout_borrow.remove(from_index as usize);
                 user_layout_borrow.insert(to_index as usize, layout);
             }
@@ -55,7 +55,8 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
         .parameter_type(Some(&String::static_variant_type()))
         .activate(clone!(@weak keyboard_list, @strong user_layouts => move |_, _, description| {
             let layout_description = description.unwrap().str().unwrap();
-            let layout_row = ActionRow::builder().title(layout_description).build();
+            
+            let layout_row = create_action_row(layout_description.to_string());
             {
                 let mut user_layout_borrow= user_layouts.borrow_mut();
                 let layout = all_keyboard_layouts.iter()
@@ -81,7 +82,7 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
     add_layout_button.set_action_target_value(Some(&Variant::from("add_keyboard")));
 
     for (index, layout) in user_layouts.borrow().iter().enumerate() {
-        let layout_row = ActionRow::builder().title(layout.description.clone()).build();
+        let layout_row = create_action_row(layout.description.clone());
 
         if index < max_keyboards as usize {
             layout_row.add_css_class("activeLanguage");
@@ -98,4 +99,24 @@ fn get_saved_layouts_frontend() -> Vec<KeyboardLayout> {
         return Vec::new();
     }
     res.unwrap().0
+}
+
+fn create_action_row(title: String) -> ActionRow {
+    let action_row = ActionRow::builder().title(title).build();
+    
+    let drag_icon = Image::from_icon_name("list-drag-handle-symbolic");
+    action_row.add_prefix(&drag_icon);
+
+    let menu = Button::builder()
+        .icon_name("view-more-symbolic")
+        .valign(Align::Center)
+        .has_frame(false)
+        .build();
+    action_row.add_suffix(&menu);
+
+    menu.connect_clicked(move |_| {
+        dbg!("ina best vtuber");
+    });
+    
+    action_row
 }
