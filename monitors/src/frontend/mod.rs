@@ -198,8 +198,10 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         }
         // TODO: warning, this is scary
         if CONFIG.get("Monitor").unwrap().get("save_warning").unwrap().as_bool().unwrap() {
-            banner_ref.set_title("When using hyprland, make sure to include the created file in your config to make the changes permanent.");
-            banner_ref.set_revealed(true);
+            button.activate_action(
+                "win.banner",
+                Some(&glib::Variant::from("When using hyprland, make sure to include the created file in your config to make the changes permanent." )))
+                .expect("Could not show banner");
         }
         // if let Some(child) = settings_box_ref_save.first_child() {
         //     settings_box_ref_save.remove(&child);

@@ -8,8 +8,12 @@ use crate::{
     utils::{get_environment, Monitor, MonitorData},
 };
 
-use self::hyprland::{apply_monitor_configuration, save_monitor_configuration};
+use self::{
+    gnome::g_get_monitor_information,
+    hyprland::{apply_monitor_configuration, save_monitor_configuration},
+};
 
+pub mod gnome;
 pub mod hyprland;
 
 #[no_mangle]
@@ -37,6 +41,13 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
             &[interface],
             MonitorData {
                 monitors: hy_get_monitor_information(),
+            },
+        ),
+        "GNOME" => cross.insert::<MonitorData>(
+            "Monitors",
+            &[interface],
+            MonitorData {
+                monitors: g_get_monitor_information(),
             },
         ),
         _ => println!("Environment not supported!"),
@@ -87,7 +98,8 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    save_monitor_configuration(&monitors); d.monitors = monitors;
+                    save_monitor_configuration(&monitors);
+                    d.monitors = monitors;
                     Ok(())
                 },
             );
