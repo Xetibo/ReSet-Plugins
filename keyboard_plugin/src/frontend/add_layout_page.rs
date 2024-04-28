@@ -1,6 +1,6 @@
 use adw::{NavigationPage, NavigationView};
 use glib::{clone, Variant};
-use gtk::{Align, Button, Label, ListBox, ListBoxRow, Orientation, SearchEntry};
+use gtk::{Align, Button, Label, ListBox, ListBoxRow, Orientation, ScrolledWindow, SearchEntry};
 use gtk::prelude::*;
 
 use crate::frontend::get_keyboard_list_frontend;
@@ -29,7 +29,14 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
     search_box.append(&add_layout_button);
 
     let list = ListBox::new();
-    add_keyboard_page_box.append(&list);
+    let scroll_window = ScrolledWindow::builder()
+        .hexpand(true)
+        .vexpand(true)
+        .min_content_height(500)
+        .build();
+    scroll_window.set_child(Some(&list));
+    
+    add_keyboard_page_box.append(&scroll_window);
     add_keyboard_list_to_view(&list);
 
     list.connect_row_selected(clone!(@weak add_layout_button => move |_, _| {
