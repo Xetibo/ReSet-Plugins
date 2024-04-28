@@ -96,7 +96,7 @@ impl GnomeMonitors {
                 model: "".into(),
                 serial: "".into(),
                 refresh_rate: 0,
-                scale: Scale(0, 0),
+                scale: 1.0, 
                 transform: 0,
                 vrr: false,
                 tearing: false,

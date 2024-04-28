@@ -77,7 +77,7 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
 
     for monitor in monitors {
         monitor_string += &format!(
-            "monitor={},{}x{}@{},{}x{},{},transform,{}\n",
+            "monitor={},{}x{}@{},{}x{},{:.6},transform,{}\n",
             monitor.name,
             monitor.size.0,
             monitor.size.1,
@@ -126,8 +126,6 @@ pub struct HyprMonitor {
 
 impl HyprMonitor {
     fn convert_to_regular_monitor(self) -> Monitor {
-        let scale_int = self.scale as u32;
-        let scale_float = (self.scale - scale_int as f64) as u32 * 1000;
         Monitor::new(
             self.id as u32,
             self.name,
@@ -135,8 +133,7 @@ impl HyprMonitor {
             self.model,
             self.serial,
             self.refreshRate.round() as u32,
-            scale_int,
-            scale_float,
+            self.scale,
             self.transform as u32,
             self.activelyTearing,
             self.vrr,
@@ -153,17 +150,17 @@ fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
     let mut strings = Vec::new();
 
     for monitor in monitors {
+        println!("{:.1}", &monitor.scale);
         strings.push(format!(
-            "keyword monitor {},{}x{}@{},{}x{},{}.{},transform,{};",
+            "keyword monitor {},{}x{}@{},{}x{},{:.6},transform,{};",
             monitor.name,
-            &monitor.size.0.to_string(),
-            &monitor.size.1.to_string(),
-            &monitor.refresh_rate.to_string(),
-            &monitor.offset.0.to_string(),
-            &monitor.offset.1.to_string(),
-            &monitor.scale.0.to_string(),
-            &monitor.scale.1.to_string(),
-            &monitor.transform.to_string()
+            &monitor.size.0,
+            &monitor.size.1,
+            &monitor.refresh_rate,
+            &monitor.offset.0,
+            &monitor.offset.1,
+            &monitor.scale,
+            &monitor.transform
         ));
     }
     strings.concat()

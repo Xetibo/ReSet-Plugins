@@ -54,6 +54,7 @@ pub struct DragInformation {
     pub drag_active: bool,
     pub clicked: bool,
     pub changed: bool,
+    pub prev_scale: f64,
 }
 
 #[repr(C)]
@@ -65,7 +66,7 @@ pub struct Monitor {
     pub model: String,
     pub serial: String,
     pub refresh_rate: u32,
-    pub scale: Scale,
+    pub scale: f64,
     pub transform: u32,
     pub vrr: bool,
     pub tearing: bool,
@@ -85,8 +86,7 @@ impl Monitor {
         model: impl Into<String>,
         serial: impl Into<String>,
         refresh_rate: u32,
-        scale_int: u32,
-        scale_float: u32,
+        scale: f64,
         transform: u32,
         vrr: bool,
         tearing: bool,
@@ -103,7 +103,7 @@ impl Monitor {
             model: model.into(),
             serial: serial.into(),
             refresh_rate,
-            scale: Scale(scale_int, scale_float),
+            scale,
             transform,
             vrr,
             tearing,
@@ -171,7 +171,7 @@ impl<'a> Get<'a> for Monitor {
             u32,
             (String, String, String, String),
             u32,
-            Scale,
+            f64,
             u32,
             bool,
             bool,
@@ -186,7 +186,7 @@ impl<'a> Get<'a> for Monitor {
             model,
             serial,
             refresh_rate,
-            scale: Scale(scale.0, scale.1),
+            scale,
             transform,
             vrr,
             tearing,
@@ -201,7 +201,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(u(ssss)u(uu)ubb(ii)(ii)a((ii)au))\0") }
+        unsafe { Signature::from_slice_unchecked("(u(ssss)udubb(ii)(ii)a((ii)au))\0") }
     }
 }
 

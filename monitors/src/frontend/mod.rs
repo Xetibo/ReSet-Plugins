@@ -5,7 +5,11 @@ use adw::{
     PreferencesGroup,
 };
 use dbus::{blocking::Connection, Error};
-use glib::{clone, object::CastNone};
+use glib::{
+    clone,
+    object::{CastNone, ObjectExt},
+    SignalHandlerId,
+};
 #[allow(deprecated)]
 use gtk::{
     gdk::prelude::SurfaceExt,
@@ -52,14 +56,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     main_box.append(&create_title("Monitors"));
     let main_box_ref = main_box.clone();
 
-    let banner = adw::Banner::new("Info");
-    banner.set_button_label(Some("Acknowledge"));
-    banner.connect_button_clicked(|banner| {
-        banner.set_title("Info");
-        banner.set_revealed(false);
-    });
-    let banner_ref = banner.clone();
-
     let apply_row = gtk::Box::new(Orientation::Horizontal, 5);
 
     let apply = gtk::Button::builder()
@@ -86,7 +82,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .build();
     apply_row.append(&reset);
 
-    main_box.append(&banner);
     main_box.append(&apply_row);
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
@@ -493,6 +488,96 @@ fn get_monitor_settings_group(
             .expect("Could not activate reset action");
     });
     settings.add(&vrr);
+
+    let scaling = adw::SpinRow::new(
+        Some(&gtk::Adjustment::new(
+            monitor.scale,
+            0.1,
+            10.0,
+            0.15,
+            0.0,
+            0.0,
+        )),
+        0.000001,
+        6,
+    );
+    scaling.set_title("Scaling");
+    let scaling_ref = clicked_monitor.clone();
+    scaling.connect_value_notify(move |state| {
+        // copyright Hyprwm vaxry
+        // TODO: implement automatic usage for this
+        let mut monitor = scaling_ref.borrow_mut();
+        let monitor = monitor.get_mut(monitor_index).unwrap();
+        let scale = state.value();
+        // value is the same as before, no need to do antyhing
+        if monitor.scale == scale {
+            println!("found same");
+            return;
+        }
+        // multiply scale to move at smaller increments
+        let mut search_scale = (scale * 120.0).round();
+        let mut found = false;
+        // fractional scaling can only be done when the scale divides the resolution to a whole
+        // number.
+        // Example: 1080 / 1.5 -> 720. E.g. the factor 1.5 will also resolve to a whole number.
+        if monitor.size.0 as f64 % scale != 0.0 && monitor.size.1 as f64 % scale != 0.0 && scale != 1.0 {
+            for x in 1..90 {
+                // increment here does not equal to increment of 1, but 1/120 of an increment
+                let scale_up = (search_scale + x as f64) / 120.0;
+                let scale_down = (search_scale - x as f64) / 120.0;
+
+                let maybe_up_x = monitor.size.0 as f64 / scale_up;
+                let maybe_up_y = monitor.size.1 as f64 / scale_up;
+                let maybe_down_x = monitor.size.0 as f64 / scale_down;
+                let maybe_down_y = monitor.size.1 as f64 / scale_down;
+                if maybe_up_x == maybe_up_x.round() && maybe_up_y == maybe_up_y.round() && scale_up != monitor.scale && scale_up != monitor.drag_information.prev_scale  {
+                    search_scale = scale_up;
+                    found = true;
+                    break;
+                }
+                if maybe_down_x == maybe_down_x.round() && maybe_down_y == maybe_down_y.round() && scale_down != monitor.scale && scale_down != monitor.drag_information.prev_scale {
+                    search_scale = scale_down;
+                    found = true;
+                    break;
+                }
+            }
+                if !found {
+        state
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(false)),
+            )
+            .expect("Could not activate reset action");
+        state
+            .activate_action(
+                "win.banner",
+                Some(&glib::Variant::from(
+                    "Could not find a scale near this value which divides the resolution to a whole number.",
+                )),
+            )
+            .expect("Could not show banner");
+            monitor.drag_information.prev_scale = scale;
+                return;
+            }
+
+            if found {
+                let search_scale = (search_scale * 100000.0).round() / 100000.0;
+                monitor.scale = search_scale;
+                monitor.drag_information.prev_scale = search_scale;
+                state.set_value(search_scale);
+            } else {
+                monitor.scale = scale;
+                monitor.drag_information.prev_scale = scale;
+            }
+                state
+                    .activate_action(
+                        "monitor.reset_monitor_buttons",
+                        Some(&glib::Variant::from(true)),
+                    )
+                    .expect("Could not activate reset action");
+        }
+    });
+    settings.add(&scaling);
 
     let model_list = StringList::new(&[
         "0",
