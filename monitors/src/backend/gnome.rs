@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use dbus::{
-    arg::{self, Append, Arg, ArgType, Get, PropMap},
+    arg::{self, prop_cast, Append, Arg, ArgType, Get, PropMap},
     blocking::Connection,
     Error, Signature,
 };
@@ -300,8 +300,9 @@ impl GnomeMonitorConfig {
         for (monitor, logical_monitor) in self.monitors.iter().zip(self.logical_monitors.iter()) {
             let mut current_mode: Option<&GnomeMode> = None;
             for mode in monitor.modes.iter() {
-                if let Some(flag) = mode.properties.get("is-current") {
-                    if *arg::cast::<bool>(flag).unwrap() {
+                let flag_opt: Option<&bool> = prop_cast(&mode.properties, "is-current");
+                if let Some(flag) = flag_opt {
+                    if *flag {
                         current_mode = Some(mode);
                         break;
                     }
@@ -311,6 +312,14 @@ impl GnomeMonitorConfig {
                 return Vec::new();
             }
             let current_mode = current_mode.unwrap();
+            let mut vrr = false;
+            let refresh_rate_opt: Option<&String> =
+                prop_cast(&current_mode.properties, "refresh-rate-mode");
+            if let Some(refresh_rate_mode) = refresh_rate_opt {
+                if refresh_rate_mode == "variable" {
+                    vrr = true;
+                }
+            }
 
             monitors.push(Monitor {
                 id: self.serial,
@@ -321,8 +330,7 @@ impl GnomeMonitorConfig {
                 refresh_rate: current_mode.refresh_rate.round() as u32,
                 scale: logical_monitor.scale,
                 transform: logical_monitor.transform,
-                // TODO:
-                vrr: false,
+                vrr,
                 // gnome doesn't support this as of now
                 tearing: false,
                 offset: Offset(logical_monitor.x, logical_monitor.y),
