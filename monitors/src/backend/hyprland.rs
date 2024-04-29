@@ -12,6 +12,8 @@ use std::{
     process::Command,
 };
 
+use super::gnome::g_apply_monitor_config;
+
 pub fn hy_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let hypr_monitors: Vec<HyprMonitor> =
@@ -27,6 +29,7 @@ pub fn hy_get_monitor_information() -> Vec<Monitor> {
 pub fn apply_monitor_configuration(monitors: &Vec<Monitor>) {
     match get_environment().as_str() {
         "Hyprland" => hy_apply_monitor_information(monitors),
+        "GNOME" => g_apply_monitor_config(monitors),
         _ => println!("Environment not supported!"),
     };
 }
