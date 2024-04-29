@@ -353,7 +353,7 @@ impl GnomeMonitorConfig {
                 offset: Offset(logical_monitor.x, logical_monitor.y),
                 size: Size(current_mode.width, current_mode.height),
                 drag_information: DragInformation::default(),
-                available_modes: Vec::new(),
+                available_modes: modes, 
             });
         }
         monitors
