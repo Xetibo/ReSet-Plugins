@@ -291,7 +291,7 @@ pub fn g_apply_monitor_config(monitors: &Vec<Monitor>) {
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
     let res: Result<(), Error> = proxy.method_call(
         INTERFACE,
-        "ApplyMonitorConfig",
+        "ApplyMonitorsConfig",
         (GnomeMonitorConfig::from_regular_monitor(monitors),),
     );
     if res.is_err() {
