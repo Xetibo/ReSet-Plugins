@@ -300,20 +300,20 @@ pub struct GnomeMonitor {
     vendor: String,
     product: String,
     serial: String,
-    monitors: Vec<GnomeMode>,
+    modes: Vec<GnomeMode>,
     properties: PropMap,
 }
 
 impl<'a> Get<'a> for GnomeMonitor {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
-        let (connector, vendor, product, serial, monitors, properties) =
+        let (connector, vendor, product, serial, modes, properties) =
             <(String, String, String, String, Vec<GnomeMode>, PropMap)>::get(i)?;
         Some(Self {
             connector,
             vendor,
             product,
             serial,
-            monitors,
+            modes,
             properties,
         })
     }
