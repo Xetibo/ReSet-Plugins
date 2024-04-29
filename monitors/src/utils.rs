@@ -151,6 +151,7 @@ impl Append for Monitor {
             i.append(self.vrr);
             i.append(self.offset);
             i.append(self.size);
+            i.append(self.mode.clone());
             i.append(self.available_modes.clone())
         });
     }
