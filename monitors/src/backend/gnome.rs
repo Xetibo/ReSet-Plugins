@@ -296,23 +296,16 @@ pub struct GnomeMonitorConfig {
 
 #[derive(Debug)]
 pub struct GnomeMonitor {
-    connector: String,
-    vendor: String,
-    product: String,
-    serial: String,
+    name: GnomeName,
     modes: Vec<GnomeMode>,
     properties: PropMap,
 }
 
 impl<'a> Get<'a> for GnomeMonitor {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
-        let (connector, vendor, product, serial, modes, properties) =
-            <(String, String, String, String, Vec<GnomeMode>, PropMap)>::get(i)?;
+        let (name, modes, properties) = <(GnomeName, Vec<GnomeMode>, PropMap)>::get(i)?;
         Some(Self {
-            connector,
-            vendor,
-            product,
-            serial,
+            name,
             modes,
             properties,
         })
@@ -322,7 +315,7 @@ impl<'a> Get<'a> for GnomeMonitor {
 impl Arg for GnomeMonitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(ssssa(siiddada{sv})a{sv})\0") }
+        unsafe { Signature::from_slice_unchecked("((ssss)a(siiddada{sv})a{sv})\0") }
     }
 }
 
@@ -394,7 +387,7 @@ pub struct GnomeLogicalMonitor {
     scale: f64,
     transform: u32,
     primary: bool,
-    monitors: Vec<(String, String, String)>,
+    monitors: Vec<(String, String, String, String)>,
     properties: PropMap,
 }
 
@@ -406,7 +399,7 @@ impl<'a> Get<'a> for GnomeLogicalMonitor {
             f64,
             u32,
             bool,
-            Vec<(String, String, String)>,
+            Vec<(String, String, String, String)>,
             PropMap,
         )>::get(i)?;
         Some(Self {
@@ -424,6 +417,33 @@ impl<'a> Get<'a> for GnomeLogicalMonitor {
 impl Arg for GnomeLogicalMonitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(iiduba(sss)a{sv})\0") }
+        unsafe { Signature::from_slice_unchecked("(iiduba(ssss)a{sv})\0") }
+    }
+}
+
+#[derive(Debug)]
+pub struct GnomeName {
+    connector: String,
+    vendor: String,
+    product: String,
+    serial: String,
+}
+
+impl<'a> Get<'a> for GnomeName {
+    fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
+        let (connector, vendor, product, serial) = <(String, String, String, String)>::get(i)?;
+        Some(Self {
+            connector,
+            vendor,
+            product,
+            serial,
+        })
+    }
+}
+
+impl Arg for GnomeName {
+    const ARG_TYPE: arg::ArgType = ArgType::Struct;
+    fn signature() -> Signature<'static> {
+        unsafe { Signature::from_slice_unchecked("(ssss)\0") }
     }
 }
