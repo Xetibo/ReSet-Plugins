@@ -272,6 +272,7 @@ pub fn g_get_monitor_information() -> Vec<Monitor> {
     let res: Result<(u32, Vec<GnomeMonitor>, Vec<GnomeLogicalMonitor>, PropMap), Error> =
         proxy.method_call(INTERFACE, "GetCurrentState", ());
     if res.is_err() {
+        dbg!(&res);
         println!("error on save");
     }
     let (serial, monitors, logical_monitors, properties) = res.unwrap();
