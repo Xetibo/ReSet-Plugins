@@ -1,4 +1,7 @@
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 
 use dbus::{
     arg::{self, prop_cast, Append, Arg, ArgType, Get, PropMap},
@@ -314,7 +317,7 @@ impl GnomeMonitorConfig {
     fn to_regular_monitor(&self) -> Vec<Monitor> {
         let mut monitors = Vec::new();
         for (monitor, logical_monitor) in self.monitors.iter().zip(self.logical_monitors.iter()) {
-            let mut hash_modes: HashMap<usize, AvailableMode> = HashMap::new();
+            let mut hash_modes: HashMap<Size, (String, HashSet<u32>)> = HashMap::new();
             let mut modes = Vec::new();
             let mut current_mode: Option<&GnomeMode> = None;
             for mode in monitor.modes.iter() {
@@ -324,23 +327,23 @@ impl GnomeMonitorConfig {
                         current_mode = Some(mode);
                     }
                 }
-                if let Some(saved_mode) = hash_modes.get_mut(&hash_modes.len()) {
-                    saved_mode
-                        .refresh_rates
-                        .push(mode.refresh_rate.round() as u32);
+                if let Some(saved_mode) = hash_modes.get_mut(&Size(mode.width, mode.height)) {
+                    saved_mode.1.insert(mode.refresh_rate.round() as u32);
                 } else {
+                    let mut refresh_rates = HashSet::new();
+                    refresh_rates.insert(mode.refresh_rate.round() as u32);
                     hash_modes.insert(
-                        hash_modes.len() + 1,
-                        AvailableMode {
-                            id: mode.id.clone(),
-                            size: Size(mode.width, mode.height),
-                            refresh_rates: vec![mode.refresh_rate.round() as u32],
-                        },
+                        Size(mode.width, mode.height),
+                        (mode.id.clone(), refresh_rates),
                     );
                 }
             }
-            for (_, mode) in hash_modes {
-                modes.push(mode);
+            for (size, (id, refresh_rates)) in hash_modes {
+                modes.push(AvailableMode {
+                    id,
+                    size,
+                    refresh_rates: refresh_rates.into_iter().collect(),
+                });
             }
             if current_mode.is_none() {
                 return Vec::new();
@@ -381,7 +384,7 @@ impl GnomeMonitorConfig {
         monitors: &Vec<Monitor>,
     ) -> (u32, u32, Vec<GnomeLogicalMonitorSend>, PropMap) {
         let mut g_logical_monitors = Vec::new();
-        let id = monitors.first().unwrap().id; 
+        let id = monitors.first().unwrap().id;
         for monitor in monitors {
             g_logical_monitors.push(GnomeLogicalMonitorSend {
                 x: monitor.offset.0,

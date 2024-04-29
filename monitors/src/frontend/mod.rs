@@ -509,6 +509,7 @@ fn get_monitor_settings_group(
         let mut monitor = scaling_ref.borrow_mut();
         let monitor = monitor.get_mut(monitor_index).unwrap();
         let scale = state.value();
+        println!("{:.15}",monitor.scale);
         // value is the same as before, no need to do antyhing
         if monitor.scale == scale {
             println!("found same");
