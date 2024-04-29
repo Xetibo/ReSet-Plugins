@@ -267,7 +267,6 @@ const INTERFACE: &str = "org.gnome.Mutter.DisplayConfig";
 ///
 
 pub fn g_get_monitor_information() -> Vec<Monitor> {
-    let mut parsed_monitors = Vec::new();
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
     let res: Result<(u32, Vec<GnomeMonitor>, Vec<GnomeLogicalMonitor>, PropMap), Error> =
@@ -283,7 +282,7 @@ pub fn g_get_monitor_information() -> Vec<Monitor> {
         properties,
     };
     dbg!(&gnome_monitors);
-    parsed_monitors
+    gnome_monitors.to_regular_monitor()
 }
 
 #[derive(Debug)]
@@ -292,6 +291,48 @@ pub struct GnomeMonitorConfig {
     monitors: Vec<GnomeMonitor>,
     logical_monitors: Vec<GnomeLogicalMonitor>,
     properties: PropMap,
+}
+
+impl GnomeMonitorConfig {
+    // TODO: implement the conversion
+    fn to_regular_monitor(&self) -> Vec<Monitor> {
+        let mut monitors = Vec::new();
+        for (monitor, logical_monitor) in self.monitors.iter().zip(self.logical_monitors.iter()) {
+            let mut current_mode: Option<&GnomeMode> = None;
+            for mode in monitor.modes.iter() {
+                if let Some(flag) = mode.properties.get("is-current") {
+                    if *arg::cast::<bool>(flag).unwrap() {
+                        current_mode = Some(mode);
+                        break;
+                    }
+                }
+            }
+            if current_mode.is_none() {
+                return Vec::new();
+            }
+            let current_mode = current_mode.unwrap();
+
+            monitors.push(Monitor {
+                id: self.serial,
+                name: monitor.name.connector.clone(),
+                make: monitor.name.vendor.clone(),
+                model: monitor.name.product.clone(),
+                serial: monitor.name.serial.clone(),
+                refresh_rate: current_mode.refresh_rate.round() as u32,
+                scale: logical_monitor.scale,
+                transform: logical_monitor.transform,
+                // TODO:
+                vrr: false,
+                // gnome doesn't support this as of now
+                tearing: false,
+                offset: Offset(logical_monitor.x, logical_monitor.y),
+                size: Size(current_mode.width, current_mode.height),
+                drag_information: DragInformation::default(),
+                available_modes: Vec::new(),
+            });
+        }
+        monitors
+    }
 }
 
 #[derive(Debug)]
@@ -317,32 +358,6 @@ impl Arg for GnomeMonitor {
     fn signature() -> Signature<'static> {
         unsafe { Signature::from_slice_unchecked("((ssss)a(siiddada{sv})a{sv})\0") }
     }
-}
-
-impl GnomeMonitor {
-    // TODO: implement the conversion
-    // fn to_regular_monitor(&self) -> Vec<Monitor> {
-    //     let mut monitors = Vec::new();
-    //     for output in self.outputs.iter() {
-    //         monitors.push(Monitor {
-    //             id: output.id,
-    //             name: output.name.clone(),
-    //             make: "".into(),
-    //             model: "".into(),
-    //             serial: "".into(),
-    //             refresh_rate: 0,
-    //             scale: 1.0,
-    //             transform: 0,
-    //             vrr: false,
-    //             tearing: false,
-    //             offset: Offset(0, 0),
-    //             size: Size(0, 0),
-    //             drag_information: DragInformation::default(),
-    //             available_modes: Vec::new(),
-    //         });
-    //     }
-    //     monitors
-    // }
 }
 
 #[allow(non_snake_case)]
