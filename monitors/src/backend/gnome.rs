@@ -285,6 +285,20 @@ pub fn g_get_monitor_information() -> Vec<Monitor> {
     gnome_monitors.to_regular_monitor()
 }
 
+pub fn g_apply_monitor_config(monitors: &Vec<Monitor>) {
+    let conn = Connection::new_session().unwrap();
+    let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
+    let res: Result<(), Error> = proxy.method_call(
+        INTERFACE,
+        "ApplyMonitorConfig",
+        (GnomeMonitorConfig::from_regular_monitor(monitors),),
+    );
+    if res.is_err() {
+        println!("error on save");
+    }
+    println!("ok");
+}
+
 #[derive(Debug)]
 pub struct GnomeMonitorConfig {
     serial: u32,
@@ -316,6 +330,7 @@ impl GnomeMonitorConfig {
                     hash_modes.insert(
                         hash_modes.len() + 1,
                         AvailableMode {
+                            id: mode.id.clone(),
                             size: Size(mode.width, mode.height),
                             refresh_rates: vec![mode.refresh_rate.round() as u32],
                         },
@@ -352,11 +367,32 @@ impl GnomeMonitorConfig {
                 tearing: false,
                 offset: Offset(logical_monitor.x, logical_monitor.y),
                 size: Size(current_mode.width, current_mode.height),
+                mode: current_mode.id.clone(),
                 drag_information: DragInformation::default(),
-                available_modes: modes, 
+                available_modes: modes,
             });
         }
         monitors
+    }
+
+    pub fn from_regular_monitor(
+        monitors: &Vec<Monitor>,
+    ) -> (u32, u32, Vec<GnomeLogicalMonitorSend>, PropMap) {
+        let mut g_logical_monitors = Vec::new();
+        for monitor in monitors {
+            g_logical_monitors.push(GnomeLogicalMonitorSend {
+                x: monitor.offset.0,
+                y: monitor.offset.1,
+                scale: monitor.scale,
+                transform: monitor.transform,
+                // TODO:
+                primary: false,
+                // TODO:
+                monitors: vec![(monitor.name.clone(), monitor.mode.clone(), PropMap::new())],
+            });
+        }
+        // TODO: make method dynamic -> 1 is temporary -> e.g. apply
+        (0, 1, g_logical_monitors, PropMap::new())
     }
 }
 
@@ -393,6 +429,8 @@ pub struct GnomeMode {
     height: i32,
     refresh_rate: f64,
     scale: f64,
+    // technically gnome specifies supported scales
+    // however, as long as the width and height resolve to integers, the scaling should work
     supported_scales: Vec<f64>,
     properties: PropMap,
 }
@@ -458,6 +496,52 @@ impl Arg for GnomeLogicalMonitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
         unsafe { Signature::from_slice_unchecked("(iiduba(ssss)a{sv})\0") }
+    }
+}
+
+#[derive(Debug)]
+pub struct GnomeLogicalMonitorSend {
+    x: i32,
+    y: i32,
+    scale: f64,
+    transform: u32,
+    primary: bool,
+    monitors: Vec<(String, String, PropMap)>,
+}
+
+impl<'a> Get<'a> for GnomeLogicalMonitorSend {
+    fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
+        let (x, y, scale, transform, primary, monitors) =
+            <(i32, i32, f64, u32, bool, Vec<(String, String, PropMap)>)>::get(i)?;
+        Some(Self {
+            x,
+            y,
+            scale,
+            transform,
+            primary,
+            monitors,
+        })
+    }
+}
+
+impl Arg for GnomeLogicalMonitorSend {
+    const ARG_TYPE: arg::ArgType = ArgType::Struct;
+    fn signature() -> Signature<'static> {
+        unsafe { Signature::from_slice_unchecked("(iiduba(ssa{sv}))\0") }
+    }
+}
+
+impl Append for GnomeLogicalMonitorSend {
+    fn append_by_ref(&self, iter: &mut arg::IterAppend) {
+        let monitor = self.monitors.first().unwrap();
+        iter.append_struct(|i| {
+            i.append(self.x);
+            i.append(self.y);
+            i.append(self.scale);
+            i.append(self.transform);
+            i.append(self.primary);
+            i.append(vec![(monitor.0.clone(), monitor.1.clone(), PropMap::new())]);
+        });
     }
 }
 

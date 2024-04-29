@@ -190,6 +190,7 @@ fn string_to_modes(available_modes: Vec<String>) -> Vec<AvailableMode> {
         refresh_rates.sort_unstable();
         refresh_rates.reverse();
         converted_modes.push(AvailableMode {
+            id: "".into(),
             size: Size(resolution_x.parse().unwrap(), resolution_y.parse().unwrap()),
             refresh_rates,
         });

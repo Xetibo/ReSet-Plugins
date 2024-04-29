@@ -73,6 +73,7 @@ pub struct Monitor {
     pub offset: Offset,
     pub size: Size,
     pub drag_information: DragInformation,
+    pub mode: String,
     pub available_modes: Vec<AvailableMode>,
 }
 
@@ -109,6 +110,7 @@ impl Monitor {
             tearing,
             offset: Offset(offset_x, offset_y),
             size: Size(width, height),
+            mode: "".into(),
             drag_information: DragInformation::default(),
             available_modes,
         }
@@ -166,6 +168,7 @@ impl<'a> Get<'a> for Monitor {
             tearing,
             offset,
             size,
+        mode,
             available_modes,
         ) = <(
             u32,
@@ -177,6 +180,7 @@ impl<'a> Get<'a> for Monitor {
             bool,
             Offset,
             Size,
+            String,
             Vec<AvailableMode>,
         )>::get(i)?;
         Some(Self {
@@ -192,6 +196,7 @@ impl<'a> Get<'a> for Monitor {
             tearing,
             offset: Offset(offset.0, offset.1),
             size: Size(size.0, size.1),
+            mode,
             drag_information: DragInformation::default(),
             available_modes,
         })
@@ -201,7 +206,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(u(ssss)udubb(ii)(ii)a((ii)au))\0") }
+        unsafe { Signature::from_slice_unchecked("(u(ssss)udubb(ii)(ii)sa(s(ii)au))\0") }
     }
 }
 
@@ -359,14 +364,16 @@ impl Display for PluginInstantiationError {
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
 pub struct AvailableMode {
+    pub id: String,
     pub size: Size,
     pub refresh_rates: Vec<u32>,
 }
 
 impl<'a> Get<'a> for AvailableMode {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
-        let (size, refresh_rates) = <(Size, Vec<u32>)>::get(i)?;
+        let (id, size, refresh_rates) = <(String, Size, Vec<u32>)>::get(i)?;
         Some(Self {
+            id,
             size,
             refresh_rates,
         })
@@ -390,7 +397,7 @@ impl Append for AvailableMode {
 impl Arg for AvailableMode {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("((ii)au)\0") }
+        unsafe { Signature::from_slice_unchecked("(s(ii)au)\0") }
     }
 }
 
