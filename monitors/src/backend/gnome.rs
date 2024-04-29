@@ -381,6 +381,7 @@ impl GnomeMonitorConfig {
         monitors: &Vec<Monitor>,
     ) -> (u32, u32, Vec<GnomeLogicalMonitorSend>, PropMap) {
         let mut g_logical_monitors = Vec::new();
+        let id = monitors.first().unwrap().id; 
         for monitor in monitors {
             g_logical_monitors.push(GnomeLogicalMonitorSend {
                 x: monitor.offset.0,
@@ -394,7 +395,7 @@ impl GnomeMonitorConfig {
             });
         }
         // TODO: make method dynamic -> 1 is temporary -> e.g. apply
-        (0, 1, g_logical_monitors, PropMap::new())
+        (id, 1, g_logical_monitors, PropMap::new())
     }
 }
 
