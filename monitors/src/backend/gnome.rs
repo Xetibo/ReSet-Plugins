@@ -295,6 +295,7 @@ pub fn g_apply_monitor_config(monitors: &Vec<Monitor>) {
         (GnomeMonitorConfig::from_regular_monitor(monitors),),
     );
     if res.is_err() {
+        dbg!(&res);
         println!("error on save");
     }
     println!("ok");
