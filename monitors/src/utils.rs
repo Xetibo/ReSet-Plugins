@@ -384,6 +384,7 @@ impl<'a> Get<'a> for AvailableMode {
 impl Append for AvailableMode {
     fn append_by_ref(&self, iter: &mut arg::IterAppend) {
         iter.append_struct(|i| {
+            i.append(self.id.clone());
             i.append(self.size);
             let sig = unsafe { Signature::from_slice_unchecked("u\0") };
             i.append_array(&sig, |i| {
