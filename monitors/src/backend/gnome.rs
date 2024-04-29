@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use dbus::{
     arg::{self, prop_cast, Append, Arg, ArgType, Get, PropMap},
@@ -6,7 +6,7 @@ use dbus::{
     Error, Signature,
 };
 
-use crate::utils::{DragInformation, Monitor, Offset, Scale, Size};
+use crate::utils::{AvailableMode, DragInformation, Monitor, Offset, Scale, Size};
 
 const BASE: &str = "org.gnome.Mutter.DisplayConfig";
 const DBUS_PATH: &str = "/org/gnome/Mutter/DisplayConfig";
@@ -298,15 +298,32 @@ impl GnomeMonitorConfig {
     fn to_regular_monitor(&self) -> Vec<Monitor> {
         let mut monitors = Vec::new();
         for (monitor, logical_monitor) in self.monitors.iter().zip(self.logical_monitors.iter()) {
+            let mut hash_modes: HashMap<usize, AvailableMode> = HashMap::new();
+            let mut modes = Vec::new();
             let mut current_mode: Option<&GnomeMode> = None;
             for mode in monitor.modes.iter() {
                 let flag_opt: Option<&bool> = prop_cast(&mode.properties, "is-current");
                 if let Some(flag) = flag_opt {
                     if *flag {
                         current_mode = Some(mode);
-                        break;
                     }
                 }
+                if let Some(saved_mode) = hash_modes.get_mut(&hash_modes.len()) {
+                    saved_mode
+                        .refresh_rates
+                        .push(mode.refresh_rate.round() as u32);
+                } else {
+                    hash_modes.insert(
+                        hash_modes.len() + 1,
+                        AvailableMode {
+                            size: Size(mode.width, mode.height),
+                            refresh_rates: vec![mode.refresh_rate.round() as u32],
+                        },
+                    );
+                }
+            }
+            for (_, mode) in hash_modes {
+                modes.push(mode);
             }
             if current_mode.is_none() {
                 return Vec::new();
