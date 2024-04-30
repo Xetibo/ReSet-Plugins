@@ -58,7 +58,7 @@ pub struct DragInformation {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Copy)]
 pub struct MonitorFeatures {
     pub vrr: bool,
     pub primary: bool,
@@ -191,7 +191,8 @@ impl Append for Monitor {
             i.append(self.offset);
             i.append(self.size);
             i.append(self.mode.clone());
-            i.append(self.available_modes.clone())
+            i.append(self.available_modes.clone());
+            i.append(self.features);
         });
     }
 }
