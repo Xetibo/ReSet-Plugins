@@ -2,7 +2,7 @@
 
 use re_set_lib::utils::config::CONFIG;
 
-use crate::utils::{get_environment, AvailableMode, Monitor, Size};
+use crate::utils::{get_environment, AvailableMode, Monitor, MonitorFeatures, Size};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -13,6 +13,13 @@ use std::{
 };
 
 use super::gnome::g_apply_monitor_config;
+
+const FEATURES: MonitorFeatures = MonitorFeatures {
+    vrr: true,
+    // Hyprland has no primary monitor concept
+    primary: false,
+    fractional_scaling: true,
+};
 
 pub fn hy_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
@@ -29,7 +36,7 @@ pub fn hy_get_monitor_information() -> Vec<Monitor> {
 pub fn apply_monitor_configuration(monitors: &Vec<Monitor>) {
     match get_environment().as_str() {
         "Hyprland" => hy_apply_monitor_information(monitors),
-        "GNOME" => g_apply_monitor_config(monitors),
+        "GNOME" => g_apply_monitor_config(1, monitors),
         _ => println!("Environment not supported!"),
     };
 }
@@ -44,6 +51,7 @@ pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {
 pub fn save_monitor_configuration(monitors: &Vec<Monitor>) {
     match get_environment().as_str() {
         "Hyprland" => hy_save_monitor_configuration(monitors),
+        "GNOME" => g_apply_monitor_config(2, monitors),
         _ => println!("Environment not supported!"),
     };
 }
@@ -145,6 +153,7 @@ impl HyprMonitor {
             self.width as i32,
             self.height as i32,
             string_to_modes(self.availableModes),
+            FEATURES,
         )
     }
 }

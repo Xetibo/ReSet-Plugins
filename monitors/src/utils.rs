@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Display, time::Duration};
+use std::{fmt::Display, time::Duration};
 
 use crate::r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS};
 use dbus::{
@@ -59,6 +59,42 @@ pub struct DragInformation {
 
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
+pub struct MonitorFeatures {
+    pub vrr: bool,
+    pub primary: bool,
+    pub fractional_scaling: bool,
+}
+
+impl<'a> Get<'a> for MonitorFeatures {
+    fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
+        let (vrr, primary, fractional_scaling) = <(bool, bool, bool)>::get(i)?;
+        Some(Self {
+            vrr,
+            primary,
+            fractional_scaling,
+        })
+    }
+}
+
+impl Append for MonitorFeatures {
+    fn append_by_ref(&self, iter: &mut arg::IterAppend) {
+        iter.append_struct(|i| {
+            i.append(self.vrr);
+            i.append(self.primary);
+            i.append(self.fractional_scaling);
+        });
+    }
+}
+
+impl Arg for MonitorFeatures {
+    const ARG_TYPE: arg::ArgType = ArgType::Struct;
+    fn signature() -> Signature<'static> {
+        unsafe { Signature::from_slice_unchecked("(bbb)\0") }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Default)]
 pub struct Monitor {
     pub id: u32,
     pub name: String,
@@ -69,12 +105,13 @@ pub struct Monitor {
     pub scale: f64,
     pub transform: u32,
     pub vrr: bool,
-    pub tearing: bool,
+    pub primary: bool,
     pub offset: Offset,
     pub size: Size,
     pub drag_information: DragInformation,
     pub mode: String,
     pub available_modes: Vec<AvailableMode>,
+    pub features: MonitorFeatures,
 }
 
 impl Monitor {
@@ -90,12 +127,13 @@ impl Monitor {
         scale: f64,
         transform: u32,
         vrr: bool,
-        tearing: bool,
+        primary: bool,
         offset_x: i32,
         offset_y: i32,
         width: i32,
         height: i32,
         available_modes: Vec<AvailableMode>,
+        features: MonitorFeatures,
     ) -> Self {
         Self {
             id,
@@ -107,12 +145,13 @@ impl Monitor {
             scale,
             transform,
             vrr,
-            tearing,
+            primary,
             offset: Offset(offset_x, offset_y),
             size: Size(width, height),
             mode: "".into(),
             drag_information: DragInformation::default(),
             available_modes,
+            features,
         }
     }
 
@@ -147,7 +186,7 @@ impl Append for Monitor {
             i.append(self.refresh_rate);
             i.append(self.scale);
             i.append(self.transform);
-            i.append(self.tearing);
+            i.append(self.primary);
             i.append(self.vrr);
             i.append(self.offset);
             i.append(self.size);
@@ -166,11 +205,12 @@ impl<'a> Get<'a> for Monitor {
             scale,
             transform,
             vrr,
-            tearing,
+            primary,
             offset,
             size,
-        mode,
+            mode,
             available_modes,
+            features,
         ) = <(
             u32,
             (String, String, String, String),
@@ -183,6 +223,7 @@ impl<'a> Get<'a> for Monitor {
             Size,
             String,
             Vec<AvailableMode>,
+            MonitorFeatures,
         )>::get(i)?;
         Some(Self {
             id,
@@ -194,12 +235,13 @@ impl<'a> Get<'a> for Monitor {
             scale,
             transform,
             vrr,
-            tearing,
+            primary,
             offset: Offset(offset.0, offset.1),
             size: Size(size.0, size.1),
             mode,
             drag_information: DragInformation::default(),
             available_modes,
+            features,
         })
     }
 }
@@ -207,7 +249,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(u(ssss)udubb(ii)(ii)sa(s(ii)au))\0") }
+        unsafe { Signature::from_slice_unchecked("(u(ssss)udubb(ii)(ii)sa(s(ii)au)(bbb))\0") }
     }
 }
 
