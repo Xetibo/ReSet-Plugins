@@ -2,7 +2,7 @@
 
 use re_set_lib::utils::config::CONFIG;
 
-use crate::utils::{get_environment, AvailableMode, Monitor, MonitorFeatures, Size};
+use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Size};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -11,8 +11,6 @@ use std::{
     path::PathBuf,
     process::Command,
 };
-
-use super::gnome::g_apply_monitor_config;
 
 const FEATURES: MonitorFeatures = MonitorFeatures {
     vrr: true,
@@ -33,14 +31,6 @@ pub fn hy_get_monitor_information() -> Vec<Monitor> {
     monitors
 }
 
-pub fn apply_monitor_configuration(monitors: &Vec<Monitor>) {
-    match get_environment().as_str() {
-        "Hyprland" => hy_apply_monitor_information(monitors),
-        "GNOME" => g_apply_monitor_config(1, monitors),
-        _ => println!("Environment not supported!"),
-    };
-}
-
 pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {
     Command::new("hyprctl")
         .args(["--batch", &monitor_to_configstring(monitors)])
@@ -48,15 +38,7 @@ pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {
         .expect("Could not enable specified monitor");
 }
 
-pub fn save_monitor_configuration(monitors: &Vec<Monitor>) {
-    match get_environment().as_str() {
-        "Hyprland" => hy_save_monitor_configuration(monitors),
-        "GNOME" => g_apply_monitor_config(2, monitors),
-        _ => println!("Environment not supported!"),
-    };
-}
-
-pub fn get_default_path() -> String {
+fn get_default_path() -> String {
     let dirs = directories_next::ProjectDirs::from("org", "Xetibo", "ReSet").unwrap();
     let buf = dirs.config_dir().join("monitor.conf");
     let path = buf.to_str().unwrap();

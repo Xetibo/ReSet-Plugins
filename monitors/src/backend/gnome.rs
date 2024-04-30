@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     time::Duration,
 };
@@ -101,12 +102,27 @@ impl GnomeMonitorConfig {
                 }
             }
             for (size, (id, refresh_rates)) in hash_modes {
+                let mut refresh_rates: Vec<u32> = refresh_rates.into_iter().collect();
+                refresh_rates.sort_unstable_by(|a, b| {
+                    if a > b {
+                        Ordering::Greater
+                    } else {
+                        Ordering::Less
+                    }
+                });
                 modes.push(AvailableMode {
                     id,
                     size,
-                    refresh_rates: refresh_rates.into_iter().collect(),
+                    refresh_rates,
                 });
             }
+            modes.sort_unstable_by(|a, b| {
+                if a.size > b.size {
+                    Ordering::Greater
+                } else {
+                    Ordering::Less
+                }
+            });
             if current_mode.is_none() {
                 return Vec::new();
             }

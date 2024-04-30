@@ -5,14 +5,16 @@ use re_set_lib::utils::{plugin::PluginTestFunc, plugin_setup::CrossWrapper};
 
 use crate::{
     backend::hyprland::hy_get_monitor_information,
+    r#const::SUPPORTED_ENVIRONMENTS,
     utils::{get_environment, Monitor, MonitorData},
 };
 
 use self::{
+    general::{apply_monitor_configuration, save_monitor_configuration},
     gnome::g_get_monitor_information,
-    hyprland::{apply_monitor_configuration, save_monitor_configuration},
 };
 
+pub mod general;
 pub mod gnome;
 pub mod hyprland;
 
@@ -35,23 +37,22 @@ pub extern "C" fn name() -> String {
 pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
     let mut cross = cross.write().unwrap();
     let interface = setup_dbus_interface(&mut cross);
-    match get_environment().as_str() {
-        "Hyprland" => cross.insert::<MonitorData>(
+    let env = get_environment();
+    if SUPPORTED_ENVIRONMENTS.contains(&env.as_str()) {
+        cross.insert::<MonitorData>(
             "Monitors",
             &[interface],
             MonitorData {
-                monitors: hy_get_monitor_information(),
+                monitors: match env.as_str() {
+                    "Hyprland" => hy_get_monitor_information(),
+                    "GNOME" => g_get_monitor_information(),
+                    _ => unreachable!(),
+                },
             },
-        ),
-        "GNOME" => cross.insert::<MonitorData>(
-            "Monitors",
-            &[interface],
-            MonitorData {
-                monitors: g_get_monitor_information(),
-            },
-        ),
-        _ => println!("Environment not supported!"),
-    };
+        );
+    } else {
+        println!("Environment not supported!");
+    }
 }
 
 #[no_mangle]
