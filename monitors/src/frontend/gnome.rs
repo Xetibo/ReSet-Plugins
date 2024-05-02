@@ -27,7 +27,7 @@ pub fn g_add_scaling_adjustment(
                     if scale == *val {
                         selected_scale = i;
                     }
-                    scales.push(val.to_string());
+                    scales.push((val * 100.0).to_string() + "%");
                 }
                 let mut scales: Vec<&str> = scales.iter().map(|val| val.as_str()).collect();
                 scales.reverse();
