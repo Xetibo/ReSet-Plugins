@@ -438,6 +438,7 @@ impl Append for AvailableMode {
                     i.append(refresh_rate);
                 }
             });
+            let sig = unsafe { Signature::from_slice_unchecked("d\0") };
             i.append_array(&sig, |i| {
                 for scale in self.supported_scales.iter() {
                     i.append(scale);
