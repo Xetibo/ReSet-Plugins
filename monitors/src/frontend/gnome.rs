@@ -16,7 +16,7 @@ pub fn g_add_scaling_adjustment(
     settings: &PreferencesGroup,
 ) {
     let mut selected_scale = 0;
-    let mut model = StringList::new(&[""]);
+    let mut model = StringList::new(&["1.0"]);
     {
         let monitors = scaling_ref.borrow();
         let monitor = monitors.get(monitor_index).unwrap();
