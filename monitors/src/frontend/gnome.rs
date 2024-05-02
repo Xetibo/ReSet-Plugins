@@ -10,22 +10,25 @@ use gtk::{prelude::WidgetExt, StringList};
 use crate::utils::Monitor;
 
 pub fn g_add_scaling_adjustment(
-    _: f64,
+    scale: f64,
     monitor_index: usize,
     scaling_ref: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
 ) {
+    let mut selected_scale = 0;
     let mut model = StringList::new(&[""]);
     {
         let monitors = scaling_ref.borrow();
         let monitor = monitors.get(monitor_index).unwrap();
         for mode in monitor.available_modes.iter() {
             if mode.id == monitor.mode {
-                let scales: Vec<String> = mode
-                    .supported_scales
-                    .iter()
-                    .map(|val| val.to_string())
-                    .collect();
+                let mut scales = Vec::new();
+                for (i, val) in mode.supported_scales.iter().enumerate() {
+                    if scale == *val {
+                        selected_scale = i;
+                    }
+                    scales.push(val.to_string());
+                }
                 let scales: Vec<&str> = scales.iter().map(|val| val.as_str()).collect();
                 model = gtk::StringList::new(&scales);
                 break;
@@ -35,6 +38,7 @@ pub fn g_add_scaling_adjustment(
     let scaling = adw::ComboRow::new();
     scaling.set_model(Some(&model));
     scaling.set_title("Scaling");
+    scaling.set_selected(selected_scale as u32);
     scaling.connect_selected_item_notify(move |dropdown| {
         let index = dropdown.selected();
         let mut monitors = scaling_ref.borrow_mut();
