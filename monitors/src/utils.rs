@@ -250,7 +250,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(u(ssss)udubb(ii)(ii)sa(s(ii)au)(bbb))\0") }
+        unsafe { Signature::from_slice_unchecked("(u(ssss)udubb(ii)(ii)sa(s(ii)auad)(bbb))\0") }
     }
 }
 
@@ -411,15 +411,18 @@ pub struct AvailableMode {
     pub id: String,
     pub size: Size,
     pub refresh_rates: Vec<u32>,
+    pub supported_scales: Vec<f64>,
 }
 
 impl<'a> Get<'a> for AvailableMode {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
-        let (id, size, refresh_rates) = <(String, Size, Vec<u32>)>::get(i)?;
+        let (id, size, refresh_rates, supported_scales) =
+            <(String, Size, Vec<u32>, Vec<f64>)>::get(i)?;
         Some(Self {
             id,
             size,
             refresh_rates,
+            supported_scales,
         })
     }
 }
@@ -435,6 +438,11 @@ impl Append for AvailableMode {
                     i.append(refresh_rate);
                 }
             });
+            i.append_array(&sig, |i| {
+                for scale in self.supported_scales.iter() {
+                    i.append(scale);
+                }
+            });
         });
     }
 }
@@ -442,7 +450,7 @@ impl Append for AvailableMode {
 impl Arg for AvailableMode {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(s(ii)au)\0") }
+        unsafe { Signature::from_slice_unchecked("(s(ii)auad)\0") }
     }
 }
 

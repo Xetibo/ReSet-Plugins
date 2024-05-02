@@ -658,7 +658,7 @@ fn add_scale_adjustment(
     match get_environment().as_str() {
         "Hyprland" => hy_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "GNOME" => g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
-        _ => unreachable!() 
+        _ => unreachable!(),
     };
 }
 

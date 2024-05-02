@@ -187,6 +187,8 @@ fn string_to_modes(available_modes: Vec<String>) -> Vec<AvailableMode> {
             id: "".into(),
             size: Size(resolution_x.parse().unwrap(), resolution_y.parse().unwrap()),
             refresh_rates,
+            // Hyprland allows arbitrary scales and hence no supported scales are provided
+            supported_scales: Vec::new(),
         });
     }
     converted_modes.sort_unstable_by(|a, b| {

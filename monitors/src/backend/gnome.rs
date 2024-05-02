@@ -80,7 +80,7 @@ impl GnomeMonitorConfig {
             .into_iter()
             .zip(self.logical_monitors.into_iter())
         {
-            let mut hash_modes: HashMap<Size, (String, HashSet<u32>)> = HashMap::new();
+            let mut hash_modes: HashMap<Size, (String, HashSet<u32>, Vec<f64>)> = HashMap::new();
             let mut modes = Vec::new();
             let mut current_mode: Option<&GnomeMode> = None;
             for mode in monitor.modes.iter() {
@@ -97,11 +97,15 @@ impl GnomeMonitorConfig {
                     refresh_rates.insert(mode.refresh_rate.round() as u32);
                     hash_modes.insert(
                         Size(mode.width, mode.height),
-                        (mode.id.clone(), refresh_rates),
+                        (
+                            mode.id.clone(),
+                            refresh_rates,
+                            mode.supported_scales.clone(),
+                        ),
                     );
                 }
             }
-            for (size, (id, refresh_rates)) in hash_modes {
+            for (size, (id, refresh_rates, supported_scales)) in hash_modes {
                 let mut refresh_rates: Vec<u32> = refresh_rates.into_iter().collect();
                 refresh_rates.sort_unstable_by(|a, b| {
                     if a > b {
@@ -114,6 +118,7 @@ impl GnomeMonitorConfig {
                     id,
                     size,
                     refresh_rates,
+                    supported_scales,
                 });
             }
             modes.sort_unstable_by(|a, b| {
