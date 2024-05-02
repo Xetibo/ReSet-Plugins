@@ -28,6 +28,7 @@ pub fn g_add_scaling_adjustment(
                         selected_scale = i;
                     }
                     scales.push(val.to_string());
+                    println!("{}", val.to_string());
                 }
                 let scales: Vec<&str> = scales.iter().map(|val| val.as_str()).collect();
                 model = gtk::StringList::new(&scales);
