@@ -2,7 +2,7 @@ use std::{cell::RefCell, f64::consts, rc::Rc, time::Duration};
 
 use adw::{
     prelude::{ActionRowExt, ComboRowExt, PreferencesGroupExt, PreferencesRowExt},
-    PreferencesGroup,
+    PreferencesGroup, SpinRow,
 };
 use dbus::{blocking::Connection, Error};
 use glib::{
@@ -21,6 +21,7 @@ use gtk::{
 };
 use gtk::{
     gio::{ActionEntry, SimpleActionGroup},
+    prelude::AdjustmentExt,
     prelude::FrameExt,
     GestureClick, StringObject,
 };
@@ -28,8 +29,15 @@ use re_set_lib::utils::{config::CONFIG, gtk::utils::create_title, plugin::Sideba
 
 use crate::{
     r#const::{BASE, DBUS_PATH, INTERFACE},
-    utils::{get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical},
+    utils::{
+        get_environment, get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical,
+    },
 };
+
+use self::{gnome::g_add_scaling_adjustment, hyprland::hy_add_scaling_adjustment};
+
+pub mod gnome;
+pub mod hyprland;
 
 #[no_mangle]
 pub extern "C" fn frontend_startup() {
@@ -489,96 +497,8 @@ fn get_monitor_settings_group(
     });
     settings.add(&vrr);
 
-    let scaling = adw::SpinRow::new(
-        Some(&gtk::Adjustment::new(
-            monitor.scale,
-            0.1,
-            10.0,
-            0.15,
-            0.0,
-            0.0,
-        )),
-        0.000001,
-        6,
-    );
-    scaling.set_title("Scaling");
     let scaling_ref = clicked_monitor.clone();
-    scaling.connect_value_notify(move |state| {
-        // copyright Hyprwm vaxry
-        // TODO: implement automatic usage for this
-        let mut monitor = scaling_ref.borrow_mut();
-        let monitor = monitor.get_mut(monitor_index).unwrap();
-        let scale = state.value();
-        println!("{:.15}",monitor.scale);
-        // value is the same as before, no need to do antyhing
-        if monitor.scale == scale {
-            println!("found same");
-            return;
-        }
-        // multiply scale to move at smaller increments
-        let mut search_scale = (scale * 120.0).round();
-        let mut found = false;
-        // fractional scaling can only be done when the scale divides the resolution to a whole
-        // number.
-        // Example: 1080 / 1.5 -> 720. E.g. the factor 1.5 will also resolve to a whole number.
-        if monitor.size.0 as f64 % scale != 0.0 && monitor.size.1 as f64 % scale != 0.0 && scale != 1.0 {
-            for x in 1..90 {
-                // increment here does not equal to increment of 1, but 1/120 of an increment
-                let scale_up = (search_scale + x as f64) / 120.0;
-                let scale_down = (search_scale - x as f64) / 120.0;
-
-                let maybe_up_x = monitor.size.0 as f64 / scale_up;
-                let maybe_up_y = monitor.size.1 as f64 / scale_up;
-                let maybe_down_x = monitor.size.0 as f64 / scale_down;
-                let maybe_down_y = monitor.size.1 as f64 / scale_down;
-                if maybe_up_x == maybe_up_x.round() && maybe_up_y == maybe_up_y.round() && scale_up != monitor.scale && scale_up != monitor.drag_information.prev_scale  {
-                    search_scale = scale_up;
-                    found = true;
-                    break;
-                }
-                if maybe_down_x == maybe_down_x.round() && maybe_down_y == maybe_down_y.round() && scale_down != monitor.scale && scale_down != monitor.drag_information.prev_scale {
-                    search_scale = scale_down;
-                    found = true;
-                    break;
-                }
-            }
-                if !found {
-        state
-            .activate_action(
-                "monitor.reset_monitor_buttons",
-                Some(&glib::Variant::from(false)),
-            )
-            .expect("Could not activate reset action");
-        state
-            .activate_action(
-                "win.banner",
-                Some(&glib::Variant::from(
-                    "Could not find a scale near this value which divides the resolution to a whole number.",
-                )),
-            )
-            .expect("Could not show banner");
-            monitor.drag_information.prev_scale = scale;
-                return;
-            }
-
-            if found {
-                let search_scale = (search_scale * 100000.0).round() / 100000.0;
-                monitor.scale = search_scale;
-                monitor.drag_information.prev_scale = search_scale;
-                state.set_value(search_scale);
-            } else {
-                monitor.scale = scale;
-                monitor.drag_information.prev_scale = scale;
-            }
-                state
-                    .activate_action(
-                        "monitor.reset_monitor_buttons",
-                        Some(&glib::Variant::from(true)),
-                    )
-                    .expect("Could not activate reset action");
-        }
-    });
-    settings.add(&scaling);
+    add_scale_adjustment(monitor.scale, monitor_index, scaling_ref, &settings);
 
     let model_list = StringList::new(&[
         "0",
@@ -725,6 +645,21 @@ fn get_monitor_settings_group(
     settings.add(&refresh_rate);
 
     settings
+}
+
+fn add_scale_adjustment(
+    scale: f64,
+    monitor_index: usize,
+    scaling_ref: Rc<RefCell<Vec<Monitor>>>,
+    settings: &PreferencesGroup,
+) {
+    // Different environments allow differing values
+    // Hyprland allows arbitrary scales, Gnome offers a set of supported scales per monitor mode
+    match get_environment().as_str() {
+        "Hyprland" => hy_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
+        "GNOME" => g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
+        _ => unreachable!() 
+    };
 }
 
 fn drawing_callback(
@@ -886,4 +821,138 @@ fn drawing_callback(
                 .expect("Could not draw text");
         }
     });
+}
+
+fn scaling_update(state: &SpinRow, scaling_ref: Rc<RefCell<Vec<Monitor>>>, monitor_index: usize) {
+    // copyright Hyprwm vaxry
+    // TODO: implement automatic usage for this
+    let mut monitor = scaling_ref.borrow_mut();
+    let monitor = monitor.get_mut(monitor_index).unwrap();
+    let scale = state.value();
+    let direction = scale > monitor.scale;
+    // println!("{} {}", monitor.scale, scale);
+    // println!("{}", monitor.scale == scale);
+    // value is the same as before, no need to do antyhing
+    if (monitor.scale * 100.0).round() / 100.0 == scale {
+        return;
+    }
+    // multiply scale to move at smaller increments
+    let mut search_scale = (scale * 120.0).round();
+    let mut found = false;
+    // fractional scaling can only be done when the scale divides the resolution to a whole
+    // number.
+    // Example: 1080 / 1.5 -> 720. E.g. the factor 1.5 will also resolve to a whole number.
+    if monitor.size.0 as f64 % scale != 0.0 && monitor.size.1 as f64 % scale != 0.0 && scale != 1.0
+    {
+        for x in 1..18 {
+            // increment here does not equal to increment of 1, but 1/120 of an increment
+            let scale_move = if direction {
+                (search_scale - x as f64) / 120.0
+            } else {
+                (search_scale + x as f64) / 120.0
+            };
+
+            let maybe_move_x = monitor.size.0 as f64 / scale_move;
+            let maybe_move_y = monitor.size.1 as f64 / scale_move;
+            if maybe_move_x == maybe_move_x.round()
+                && maybe_move_y == maybe_move_y.round()
+                && scale_move != monitor.scale
+            {
+                search_scale = scale_move;
+                println!("found up {} and scale is", search_scale);
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            for x in 1..100 {
+                // increment here does not equal to increment of 1, but 1/120 of an increment
+                let scale_move = if direction {
+                    (search_scale + x as f64) / 120.0
+                } else {
+                    (search_scale - x as f64) / 120.0
+                };
+
+                let maybe_move_x = monitor.size.0 as f64 / scale_move;
+                let maybe_move_y = monitor.size.1 as f64 / scale_move;
+                if maybe_move_x == maybe_move_x.round()
+                    && maybe_move_y == maybe_move_y.round()
+                    && scale_move != monitor.scale
+                {
+                    search_scale = scale_move;
+                    println!("found up {} and scale is", search_scale);
+                    found = true;
+                    break;
+                }
+            }
+        }
+        // if !found {
+        //     search_scale += 0.15 * 120.0;
+        //     // println!("{}", search_scale);
+        //     // println!("{}", search_scale / 120.0);
+        //     for x in 1..90 {
+        //         // increment here does not equal to increment of 1, but 1/120 of an increment
+        //         let scale_up = (search_scale + x as f64) / 120.0;
+        //         let scale_down = (search_scale - x as f64) / 120.0;
+        //
+        //         let maybe_up_x = monitor.size.0 as f64 / scale_up;
+        //         let maybe_up_y = monitor.size.1 as f64 / scale_up;
+        //         let maybe_down_x = monitor.size.0 as f64 / scale_down;
+        //         let maybe_down_y = monitor.size.1 as f64 / scale_down;
+        //         if maybe_up_x == maybe_up_x.round()
+        //             && maybe_up_y == maybe_up_y.round()
+        //             && scale_up != monitor.scale
+        //         {
+        //             search_scale = scale_up;
+        //             found = true;
+        //             break;
+        //         }
+        //         if maybe_down_x == maybe_down_x.round()
+        //             && maybe_down_y == maybe_down_y.round()
+        //             && scale_down != monitor.scale
+        //         {
+        //             search_scale = scale_down;
+        //             found = true;
+        //             break;
+        //         }
+        //     }
+        // }
+        if !found {
+            state
+                .activate_action(
+                    "monitor.reset_monitor_buttons",
+                    Some(&glib::Variant::from(false)),
+                )
+                .expect("Could not activate reset action");
+            state
+                    .activate_action(
+                        "win.banner",
+                        Some(&glib::Variant::from(
+                            "Could not find a scale near this value which divides the resolution to a whole number.",
+                        )),
+                    )
+                    .expect("Could not show banner");
+            monitor.drag_information.prev_scale = scale;
+            return;
+        }
+
+        if found {
+            let search_scale = (search_scale * 100000.0).round() / 100000.0;
+            monitor.scale = search_scale;
+            monitor.drag_information.prev_scale = search_scale;
+            // *scaling_value.borrow_mut() = search_scale;
+            state.set_value((search_scale * 100.0).round() / 100.0);
+            println!("{}", search_scale);
+            println!("{}", state.value());
+        }
+    } else {
+        monitor.scale = scale;
+        monitor.drag_information.prev_scale = scale;
+    }
+    state
+        .activate_action(
+            "monitor.reset_monitor_buttons",
+            Some(&glib::Variant::from(true)),
+        )
+        .expect("Could not activate reset action");
 }

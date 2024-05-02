@@ -2,7 +2,10 @@
 
 use crate::utils::{get_environment, Monitor};
 
-use super::{gnome::g_apply_monitor_config, hyprland::{hy_apply_monitor_information, hy_save_monitor_configuration}};
+use super::{
+    gnome::g_apply_monitor_config,
+    hyprland::{hy_apply_monitor_information, hy_save_monitor_configuration},
+};
 
 // temporary application of configuration
 pub fn apply_monitor_configuration(monitors: &Vec<Monitor>) {
