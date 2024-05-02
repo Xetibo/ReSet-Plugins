@@ -30,7 +30,7 @@ pub fn g_add_scaling_adjustment(
                     scales.push(val.to_string());
                 }
                 let mut scales: Vec<&str> = scales.iter().map(|val| val.as_str()).collect();
-                scales.sort_unstable();
+                scales.reverse();
                 model = gtk::StringList::new(&scales);
                 break;
             }
