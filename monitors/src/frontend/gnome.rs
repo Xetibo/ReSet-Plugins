@@ -17,8 +17,8 @@ pub fn g_add_scaling_adjustment(
 ) {
     let mut model = StringList::new(&[""]);
     {
-        let mut monitors = scaling_ref.borrow_mut();
-        let monitor = monitors.get_mut(monitor_index).unwrap();
+        let monitors = scaling_ref.borrow();
+        let monitor = monitors.get(monitor_index).unwrap();
         for mode in monitor.available_modes.iter() {
             if mode.id == monitor.mode {
                 let scales: Vec<String> = mode
