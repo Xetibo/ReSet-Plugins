@@ -29,8 +29,7 @@ pub fn g_add_scaling_adjustment(
                     }
                     scales.push((val * 100.0).to_string() + "%");
                 }
-                let mut scales: Vec<&str> = scales.iter().map(|val| val.as_str()).collect();
-                scales.reverse();
+                let scales: Vec<&str> = scales.iter().map(|val| val.as_str()).collect();
                 model = gtk::StringList::new(&scales);
                 break;
             }
