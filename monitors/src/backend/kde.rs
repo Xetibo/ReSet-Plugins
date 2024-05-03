@@ -207,14 +207,14 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
         kscreen.push(
             start.clone()
                 + &format!(
-                    "mode.{}x{}@{} ",
+                    "mode.{}x{}@{}",
                     monitor.size.0, monitor.size.1, monitor.refresh_rate
                 ),
         );
-        kscreen.push(start.clone() + &format!("scale.{} ", monitor.scale));
+        kscreen.push(start.clone() + &format!("scale.{}", monitor.scale));
         kscreen
-            .push(start.clone() + &format!("position.{},{} ", monitor.offset.0, monitor.offset.1));
-        kscreen.push(start + &format!("rotation.{} ", rotation));
+            .push(start.clone() + &format!("position.{},{}", monitor.offset.0, monitor.offset.1));
+        kscreen.push(start + &format!("rotation.{}", rotation));
         // TODO: add enabled and disabled
     }
 
