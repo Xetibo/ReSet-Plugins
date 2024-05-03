@@ -36,9 +36,8 @@ pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {
 
 pub fn kde_save_monitor_config(monitors: &Vec<Monitor>) {
     let args = convert_modes_to_kscreen_string(monitors);
-    println!("{}", &args);
     Command::new("kscreen-doctor")
-        .arg(args)
+        .args(args)
         .spawn()
         .expect("Could not retrieve monitor json");
 }
@@ -193,8 +192,8 @@ fn convert_modes(
     (modes, current_mode.unwrap())
 }
 
-fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> String {
-    let mut kscreen = String::from("");
+fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
+    let mut kscreen = Vec::new();
 
     for monitor in monitors {
         let rotation = match monitor.transform {
@@ -205,15 +204,17 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> String {
             _ => unreachable!(),
         };
         let start = format!("output.{}.", monitor.name);
-        kscreen += &(start.clone()
-            + &format!(
-                "mode.{}x{}@{} ",
-                monitor.size.0, monitor.size.1, monitor.refresh_rate
-            ));
-        kscreen += &(start.clone() + &format!("scale.{} ", monitor.scale));
-        kscreen +=
-            &(start.clone() + &format!("position.{},{} ", monitor.offset.0, monitor.offset.1));
-        kscreen += &(start + &format!("rotation.{} ", rotation));
+        kscreen.push(
+            start.clone()
+                + &format!(
+                    "mode.{}x{}@{} ",
+                    monitor.size.0, monitor.size.1, monitor.refresh_rate
+                ),
+        );
+        kscreen.push(start.clone() + &format!("scale.{} ", monitor.scale));
+        kscreen
+            .push(start.clone() + &format!("position.{},{} ", monitor.offset.0, monitor.offset.1));
+        kscreen.push(start + &format!("rotation.{} ", rotation));
         // TODO: add enabled and disabled
     }
 
