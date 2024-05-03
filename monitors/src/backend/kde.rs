@@ -9,10 +9,10 @@ use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
 pub fn kde_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
-    let kde_monitors: Vec<KDEMonitor> =
+    let kde_monitors: KDEMonitorConfiguration =
         serde_json::from_str(&String::from_utf8(get_json()).expect("Could not parse json"))
             .expect("Could not parse json");
-    for monitor in kde_monitors {
+    for monitor in kde_monitors.outputs {
         let monitor = monitor.convert_to_regular_monitor();
         monitors.push(monitor);
     }
