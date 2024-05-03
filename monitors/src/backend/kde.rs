@@ -5,6 +5,8 @@ use std::{
     rc::Rc,
 };
 
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
+
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
 pub fn kde_get_monitor_information() -> Vec<Monitor> {
@@ -27,17 +29,11 @@ fn get_json() -> Vec<u8> {
         .stdout
 }
 
+// TODO: implement
 pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {}
 
+// TODO: implement
 pub fn kde_save_monitor_config(monitors: &Vec<Monitor>) {}
-
-pub fn kde_add_scaling_adjustment(
-    scale: f64,
-    monitor_index: usize,
-    scaling_ref: Rc<RefCell<Vec<Monitor>>>,
-    settings: &adw::PreferencesGroup,
-) {
-}
 
 #[allow(non_snake_case)]
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -73,7 +69,7 @@ impl KDEMonitor {
             serial: "".into(),
             refresh_rate: modes.1.refreshRate.round() as u32,
             scale: self.scale,
-            transform: self.rotation,
+            transform: convert_to_regular_transform(self.rotation),
             // TODO: how to get this?
             vrr: false,
             primary: self.priority == 1,
@@ -88,6 +84,22 @@ impl KDEMonitor {
                 primary: true,
                 fractional_scaling: true,
             },
+        }
+    }
+}
+
+fn convert_to_regular_transform(rotation: u32) -> u32 {
+    match rotation {
+        1 => 0,
+        2 => 1,
+        3 => 2,
+        4 => 3,
+        _ => {
+            ERROR!(
+                "Passed invalid transform value for KDE.",
+                ErrorLevel::Recoverable
+            );
+            0
         }
     }
 }

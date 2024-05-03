@@ -39,10 +39,10 @@ use crate::{
     },
 };
 
-use self::{gnome::g_add_scaling_adjustment, hyprland::hy_add_scaling_adjustment};
+use self::{general::arbitrary_add_scaling_adjustment, gnome::g_add_scaling_adjustment};
 
+pub mod general;
 pub mod gnome;
-pub mod hyprland;
 
 #[no_mangle]
 pub extern "C" fn frontend_startup() {
@@ -511,9 +511,9 @@ fn add_scale_adjustment(
     // Different environments allow differing values
     // Hyprland allows arbitrary scales, Gnome offers a set of supported scales per monitor mode
     match get_environment().as_str() {
-        "Hyprland" => hy_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
+        "Hyprland" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "GNOME" => g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
-        "KDE" => kde_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
+        "KDE" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         _ => unreachable!(),
     };
 }

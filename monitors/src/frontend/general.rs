@@ -6,7 +6,7 @@ use crate::utils::Monitor;
 
 use super::scaling_update;
 
-pub fn hy_add_scaling_adjustment(
+pub fn arbitrary_add_scaling_adjustment(
     scale: f64,
     monitor_index: usize,
     scaling_ref: Rc<RefCell<Vec<Monitor>>>,
