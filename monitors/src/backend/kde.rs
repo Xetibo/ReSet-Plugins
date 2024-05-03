@@ -36,6 +36,7 @@ pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {
 
 pub fn kde_save_monitor_config(monitors: &Vec<Monitor>) {
     let args = convert_modes_to_kscreen_string(monitors);
+    println!("{}", &args);
     let output = Command::new("kscreen-doctor")
         .args([args])
         .output()
