@@ -62,28 +62,26 @@ pub struct KDEMonitor {
 
 impl KDEMonitor {
     pub fn convert_to_regular_monitor(self) -> Monitor {
-        let mode = self
-            .modes
-            .get(self.currentModeId.parse::<u32>().unwrap() as usize)
-            .unwrap()
-            .clone();
+        let modes = convert_modes(&self.currentModeId, self.modes);
         Monitor {
             id: self.id,
             name: self.name,
-            make: "None".into(),
-            model: "None".into(),
-            serial: "None".into(),
-            refresh_rate: mode.refreshRate.round() as u32,
+            // TODO: check if KDE has some other method to retrieve this
+            // from the regular kscreen-doctor, there is no fetching for this
+            make: "".into(),
+            model: "".into(),
+            serial: "".into(),
+            refresh_rate: modes.1.refreshRate.round() as u32,
             scale: self.scale,
             transform: self.rotation,
             // TODO: how to get this?
             vrr: false,
             primary: self.priority == 1,
             offset: self.pos.convert_to_regular_offset(),
-            size: mode.size.convert_to_regular_size(),
+            size: modes.1.size.convert_to_regular_size(),
             drag_information: Default::default(),
             mode: self.currentModeId,
-            available_modes: convert_modes(self.modes),
+            available_modes: modes.0,
             features: MonitorFeatures {
                 // KDE supports all the features!
                 vrr: true,
@@ -128,11 +126,18 @@ pub struct KDESize {
     height: i32,
 }
 
-fn convert_modes(kde_modes: Vec<KDEMode>) -> Vec<AvailableMode> {
+fn convert_modes(
+    current_mode_id: &String,
+    kde_modes: Vec<KDEMode>,
+) -> (Vec<AvailableMode>, KDEMode) {
     let mut modes = Vec::new();
+    let mut current_mode: Option<KDEMode> = None;
     let mut hash_modes: HashMap<(i32, i32), (HashSet<u32>, String)> = HashMap::new();
 
     for mode in kde_modes {
+        if &mode.id == current_mode_id {
+            current_mode = Some(mode.clone());
+        }
         if let Some(hash_mode) = hash_modes.get_mut(&(mode.size.width, mode.size.height)) {
             hash_mode.0.insert(mode.refreshRate.round() as u32);
         } else {
@@ -146,13 +151,14 @@ fn convert_modes(kde_modes: Vec<KDEMode>) -> Vec<AvailableMode> {
     }
 
     for ((width, height), (refresh_rates, id)) in hash_modes {
-        modes.push(AvailableMode {
+        let mode = AvailableMode {
             id,
             size: Size(width, height),
             refresh_rates: refresh_rates.into_iter().collect(),
             supported_scales: Vec::new(),
-        });
+        };
+        modes.push(mode);
     }
 
-    modes
+    (modes, current_mode.unwrap())
 }
