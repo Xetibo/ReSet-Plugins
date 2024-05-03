@@ -200,10 +200,10 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> String {
 
     for monitor in monitors {
         let rotation = match monitor.transform {
-            0 | 4 => "up",
+            0 | 4 => "none",
             1 | 5 => "right",
             2 | 6 => "down",
-            3 | 7 => "left",
+            3 | 7 => "inverted",
             _ => unreachable!(),
         };
         let start = format!("output.{}.", monitor.name);
