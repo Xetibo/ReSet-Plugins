@@ -1,11 +1,14 @@
-use std::{cell::RefCell, f64::consts, rc::Rc, time::Duration};
+use std::{cell::RefCell, f64::consts, rc::Rc, thread, time::Duration};
 
 use adw::{
     prelude::{ActionRowExt, ComboRowExt, PreferencesGroupExt, PreferencesRowExt},
     PreferencesGroup, SpinRow,
 };
 use dbus::{blocking::Connection, Error};
-use glib::{clone, object::CastNone};
+use glib::{
+    clone,
+    object::{Cast, CastNone, ObjectExt},
+};
 #[allow(deprecated)]
 use gtk::{
     gdk::prelude::SurfaceExt,
@@ -16,7 +19,8 @@ use gtk::{
     DrawingArea, GestureDrag, Orientation, StringList,
 };
 use gtk::{
-    gio::{ActionEntry, SimpleActionGroup},
+    gdk::Popup,
+    gio::{self, ActionEntry, Cancellable, SimpleActionGroup},
     prelude::FrameExt,
     GestureClick, StringObject,
 };
@@ -28,6 +32,7 @@ use re_set_lib::{
 };
 
 use crate::{
+    backend::general::apply_monitor_configuration,
     r#const::{BASE, DBUS_PATH, INTERFACE},
     utils::{
         get_environment, get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical,
@@ -129,7 +134,13 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let drawing_ref_reset = drawing_area.clone();
     let drawing_ref_end = drawing_area.clone();
 
-    let monitor_data = Rc::new(RefCell::new(get_monitor_data()));
+    let data = get_monitor_data();
+    let monitor_data = Rc::new(RefCell::new(data.clone()));
+    // clone the data for a fallback -> wrong or unusable settings applied
+    // return to previous working conditions
+    let fall_back_monitor_data = Rc::new(RefCell::new(data));
+    let fallback_save_ref = fall_back_monitor_data.clone();
+    let fallback_apply_ref = fall_back_monitor_data.clone();
     let start_ref = monitor_data.clone();
     let clicked_ref = monitor_data.clone();
     let update_ref = monitor_data.clone();
@@ -139,9 +150,11 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     apply.connect_clicked(move |button| {
         apply_monitor_clicked(
             apply_ref.clone(),
+            fallback_save_ref.clone(),
             &settings_box_ref_apply,
             &drawing_ref_apply,
             button,
+            true,
         );
     });
 
@@ -156,7 +169,12 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     });
 
     save.connect_clicked(move |button| {
-        save_monitor_clicked(save_ref.clone(), button, &drawing_ref_save);
+        save_monitor_clicked(
+            save_ref.clone(),
+            fallback_apply_ref.clone(),
+            button,
+            &drawing_ref_save,
+        );
     });
 
     {
@@ -231,16 +249,22 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     (info, boxes)
 }
 
+// TODO: put this behind a signal since popup action is too complicated otherwise
 fn apply_monitor_clicked(
     apply_ref: Rc<RefCell<Vec<Monitor>>>,
+    fallback: Rc<RefCell<Vec<Monitor>>>,
     settings_box_ref_apply: &gtk::Box,
     drawing_ref_apply: &DrawingArea,
     button: &gtk::Button,
+    first: bool,
 ) {
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
-    let res: Result<(), Error> =
-        proxy.method_call(INTERFACE, "SetMonitors", (apply_ref.borrow().clone(),));
+    let res: Result<(), Error> = if first {
+        proxy.method_call(INTERFACE, "SetMonitors", (apply_ref.borrow().clone(),))
+    } else {
+        proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
+    };
     if res.is_err() {
         println!("error on save");
     }
@@ -262,6 +286,76 @@ fn apply_monitor_clicked(
             Some(&glib::Variant::from(false)),
         )
         .expect("Could not execute reset action");
+
+    // TODO: show popup -> when available in nixos
+    // let popup = adw::AlertDialog::new(Some("Confirm Configuration"), Some("Is this configuration correct?\n
+    //     Please confirm if this is the case, otherwise the configuration will automatically be reverted."));
+    // popup.add_responses(&[("confirm", "Confirm"), ("revert", "Revert")]);
+    // popup.set_response_appearance("revert", adw::ResponseAppearance::Destructive);
+    // popup.set_default_response(Some("confirm"));
+    // popup.set_close_response("revert");
+    //
+    // popup.connect_closure_id("confirm", None, true, move || {});
+    // popup.connect_closure_id("revert", None, true, move || {
+    //     //apply_monitor_configuration(fallback);
+    // });
+    // gio::spawn_blocking(move || {
+    //     let revert = false;
+    //     // wait for 5 seconds before reverting
+    //     thread::sleep(Duration::from_millis(5000));
+    //     //apply_monitor_configuration(fallback);
+    //     // do nothing if no revert
+    // });
+    //
+    if first {
+        let window = gtk::Window::new();
+        let window_ref = window.clone();
+        settings_box_ref_apply.append(&window);
+        let popup = gtk::AlertDialog::builder()
+            .message("Confirm Configuration")
+            .detail("Is this configuration correct?\nPlease confirm if this is the case, otherwise the configuration will automatically be reverted.")
+            .buttons(["confirm", "revert"])
+            .default_button(0)
+            .cancel_button(1)
+            .build();
+        // popup.connect_cancel_button_notify(move |dialog| {});
+        // popup.connect_default_button_notify(|dialog| {});
+        // let window = settings_box_ref_apply.root().unwrap();
+        // let window = window.downcast_ref::<gtk::Window>().unwrap();
+
+        let settings = settings_box_ref_apply.clone();
+        let drawing_ref = drawing_ref_apply.clone();
+        let button_ref = button.clone();
+        let settings_auto = settings_box_ref_apply.clone();
+        let drawing_ref_auto = drawing_ref_apply.clone();
+        let button_ref_auto = button.clone();
+
+        gio::spawn_blocking(move || {
+            thread::sleep(Duration::from_millis(5000));
+            println!("time out");
+        });
+        popup.choose(Some(&window), Cancellable::NONE, move |result| {
+            let fallback_ref_auto = fallback.clone();
+            let apply_auto = apply_ref.clone();
+            let button = result.unwrap_or(0);
+            if button == 0 {
+                println!("clicked on confirm");
+                return;
+            }
+            println!("clicked on revert");
+            let fallback_ref = fallback.clone();
+            let apply = apply_ref.clone();
+            apply_monitor_clicked(
+                apply,
+                fallback_ref,
+                &settings,
+                &drawing_ref,
+                &button_ref,
+                false,
+            );
+            settings.remove(&window_ref);
+        });
+    }
 }
 
 fn reset_monitor_clicked(
@@ -295,6 +389,7 @@ fn reset_monitor_clicked(
 
 fn save_monitor_clicked(
     save_ref: Rc<RefCell<Vec<Monitor>>>,
+    fallback: Rc<RefCell<Vec<Monitor>>>,
     button: &gtk::Button,
     drawing_ref_save: &DrawingArea,
 ) {
