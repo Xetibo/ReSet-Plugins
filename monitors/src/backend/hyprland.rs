@@ -69,17 +69,21 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
     let mut monitor_string = String::new();
 
     for monitor in monitors {
-        monitor_string += &format!(
-            "monitor={},{}x{}@{},{}x{},{:.6},transform,{}\n",
-            monitor.name,
-            monitor.size.0,
-            monitor.size.1,
-            monitor.refresh_rate,
-            monitor.offset.0,
-            monitor.offset.1,
-            monitor.scale,
-            monitor.transform,
-        );
+        if !monitor.enabled {
+            monitor_string += &format!("keyword monitor {},disabled;", monitor.name);
+        } else {
+            monitor_string += &format!(
+                "monitor={},{}x{}@{},{}x{},{:.6},transform,{}\n",
+                monitor.name,
+                monitor.size.0,
+                monitor.size.1,
+                monitor.refresh_rate,
+                monitor.offset.0,
+                monitor.offset.1,
+                monitor.scale,
+                monitor.transform,
+            );
+        }
     }
 
     input_config
@@ -114,6 +118,7 @@ pub struct HyprMonitor {
     transform: i64,
     vrr: bool,
     activelyTearing: bool,
+    disabled: bool,
     availableModes: Vec<String>,
 }
 
@@ -121,6 +126,7 @@ impl HyprMonitor {
     fn convert_to_regular_monitor(self) -> Monitor {
         Monitor::new(
             self.id as u32,
+            !self.disabled,
             self.name,
             self.make,
             self.model,
@@ -144,19 +150,23 @@ fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
     let mut strings = Vec::new();
 
     for monitor in monitors {
-        println!("{:.1}", &monitor.scale);
-        strings.push(format!(
-            "keyword monitor {},{}x{}@{},{}x{},{:.6},transform,{};",
-            monitor.name,
-            &monitor.size.0,
-            &monitor.size.1,
-            &monitor.refresh_rate,
-            &monitor.offset.0,
-            &monitor.offset.1,
-            &monitor.scale,
-            &monitor.transform
-        ));
+        if !monitor.enabled {
+            strings.push(format!("keyword monitor {},disabled;", monitor.name));
+        } else {
+            strings.push(format!(
+                "keyword monitor {},{}x{}@{},{}x{},{:.6},transform,{};",
+                monitor.name,
+                &monitor.size.0,
+                &monitor.size.1,
+                &monitor.refresh_rate,
+                &monitor.offset.0,
+                &monitor.offset.1,
+                &monitor.scale,
+                &monitor.transform
+            ));
+        }
     }
+
     strings.concat()
 }
 

@@ -79,14 +79,25 @@ impl GnomeMonitorConfig {
             .into_iter()
             .zip(self.logical_monitors.into_iter())
         {
+            let empty_mode = GnomeMode {
+                id: "-1".into(),
+                width: 0,
+                height: 0,
+                refresh_rate: 0.0,
+                scale: 0.0,
+                supported_scales: Vec::new(),
+                properties: PropMap::new(),
+            };
             let mut hash_modes: HashMap<Size, (String, HashSet<u32>, Vec<f64>)> = HashMap::new();
             let mut modes = Vec::new();
             let mut current_mode: Option<&GnomeMode> = None;
+            let mut enabled = false;
             for mode in monitor.modes.iter() {
                 let flag_opt: Option<&bool> = prop_cast(&mode.properties, "is-current");
                 if let Some(flag) = flag_opt {
                     if *flag {
                         current_mode = Some(mode);
+                        enabled = true;
                     }
                 }
                 if let Some(saved_mode) = hash_modes.get_mut(&Size(mode.width, mode.height)) {
@@ -128,7 +139,7 @@ impl GnomeMonitorConfig {
                 }
             });
             if current_mode.is_none() {
-                return Vec::new();
+                current_mode = Some(&empty_mode);
             }
             let current_mode = current_mode.unwrap();
             let mut vrr = false;
@@ -142,6 +153,7 @@ impl GnomeMonitorConfig {
 
             monitors.push(Monitor {
                 id: self.serial,
+                enabled,
                 name: monitor.name.connector,
                 make: monitor.name.vendor,
                 model: monitor.name.product,
@@ -174,6 +186,11 @@ impl GnomeMonitorConfig {
         let mut g_logical_monitors = Vec::new();
         let id = monitors.first().unwrap().id;
         for monitor in monitors {
+            let mode = if monitor.enabled {
+                monitor.mode.clone()
+            } else {
+                "-1".into()
+            };
             g_logical_monitors.push(GnomeLogicalMonitorSend {
                 x: monitor.offset.0,
                 y: monitor.offset.1,
@@ -183,7 +200,7 @@ impl GnomeMonitorConfig {
                 // generic monitor
                 primary: true,
                 // TODO: propmap
-                monitors: vec![(monitor.name.clone(), monitor.mode.clone(), PropMap::new())],
+                monitors: vec![(monitor.name.clone(), mode, PropMap::new())],
             });
         }
         (id, apply_mode, g_logical_monitors, PropMap::new())

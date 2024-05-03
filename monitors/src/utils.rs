@@ -97,6 +97,7 @@ impl Arg for MonitorFeatures {
 #[derive(Debug, Clone, Default)]
 pub struct Monitor {
     pub id: u32,
+    pub enabled: bool,
     pub name: String,
     pub make: String,
     pub model: String,
@@ -119,6 +120,7 @@ impl Monitor {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: u32,
+        enabled: bool,
         name: impl Into<String>,
         make: impl Into<String>,
         model: impl Into<String>,
@@ -137,6 +139,7 @@ impl Monitor {
     ) -> Self {
         Self {
             id,
+            enabled,
             name: name.into(),
             make: make.into(),
             model: model.into(),
@@ -177,6 +180,7 @@ impl Append for Monitor {
     fn append_by_ref(&self, iter: &mut arg::IterAppend) {
         iter.append_struct(|i| {
             i.append(self.id);
+            i.append(self.enabled);
             i.append((
                 self.name.clone(),
                 self.make.clone(),
@@ -201,10 +205,9 @@ impl<'a> Get<'a> for Monitor {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
         let (
             id,
+            enabled,
             (name, make, model, serial),
-            refresh_rate,
-            scale,
-            transform,
+            (refresh_rate, scale, transform),
             vrr,
             primary,
             offset,
@@ -214,10 +217,9 @@ impl<'a> Get<'a> for Monitor {
             features,
         ) = <(
             u32,
+            bool,
             (String, String, String, String),
-            u32,
-            f64,
-            u32,
+            (u32, f64, u32),
             bool,
             bool,
             Offset,
@@ -228,6 +230,7 @@ impl<'a> Get<'a> for Monitor {
         )>::get(i)?;
         Some(Self {
             id,
+            enabled,
             name,
             make,
             model,
@@ -250,7 +253,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(u(ssss)udubb(ii)(ii)sa(s(ii)auad)(bbb))\0") }
+        unsafe { Signature::from_slice_unchecked("(ub(ssss)udubb(ii)(ii)sa(s(ii)auad)(bbb))\0") }
     }
 }
 

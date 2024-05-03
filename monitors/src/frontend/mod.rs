@@ -498,6 +498,25 @@ fn get_monitor_settings_group(
     });
     settings.add(&refresh_rate);
 
+    let enabled = adw::SwitchRow::new();
+    enabled.set_title("Monitor Enabled");
+    enabled.set_active(monitor.enabled);
+    let enabled_ref = clicked_monitor.clone();
+    enabled.connect_active_notify(move |state| {
+        enabled_ref
+            .borrow_mut()
+            .get_mut(monitor_index)
+            .unwrap()
+            .enabled = state.is_active();
+        state
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(true)),
+            )
+            .expect("Could not activate reset action");
+    });
+    settings.add(&enabled);
+
     settings
 }
 

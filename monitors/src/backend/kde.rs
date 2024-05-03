@@ -1,8 +1,6 @@
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet},
     process::Command,
-    rc::Rc,
 };
 
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
@@ -78,6 +76,7 @@ impl KDEMonitor {
         };
         Monitor {
             id: self.id,
+            enabled: self.enabled,
             name: self.name,
             // TODO: check if KDE has some other method to retrieve this
             // from the regular kscreen-doctor, there is no fetching for this
@@ -204,18 +203,22 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
             _ => unreachable!(),
         };
         let start = format!("output.{}.", monitor.name);
-        kscreen.push(
-            start.clone()
-                + &format!(
-                    "mode.{}x{}@{}",
-                    monitor.size.0, monitor.size.1, monitor.refresh_rate
-                ),
-        );
-        kscreen.push(start.clone() + &format!("scale.{}", monitor.scale));
-        kscreen
-            .push(start.clone() + &format!("position.{},{}", monitor.offset.0, monitor.offset.1));
-        kscreen.push(start + &format!("rotation.{}", rotation));
-        // TODO: add enabled and disabled
+        if !monitor.enabled {
+            kscreen.push(start.clone() + &format!("enable.{}", monitor.enabled));
+        } else {
+            kscreen.push(
+                start.clone()
+                    + &format!(
+                        "mode.{}x{}@{}",
+                        monitor.size.0, monitor.size.1, monitor.refresh_rate
+                    ),
+            );
+            kscreen.push(start.clone() + &format!("scale.{}", monitor.scale));
+            kscreen.push(
+                start.clone() + &format!("position.{},{}", monitor.offset.0, monitor.offset.1),
+            );
+            kscreen.push(start + &format!("rotation.{}", rotation));
+        }
     }
 
     kscreen
