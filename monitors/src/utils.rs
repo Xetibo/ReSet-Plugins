@@ -187,9 +187,7 @@ impl Append for Monitor {
                 self.model.clone(),
                 self.serial.clone(),
             ));
-            i.append(self.refresh_rate);
-            i.append(self.scale);
-            i.append(self.transform);
+            i.append((self.refresh_rate, self.scale, self.transform));
             i.append(self.primary);
             i.append(self.vrr);
             i.append(self.offset);
@@ -253,7 +251,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(ub(ssss)udubb(ii)(ii)sa(s(ii)auad)(bbb))\0") }
+        unsafe { Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbb))\0") }
     }
 }
 

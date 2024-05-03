@@ -5,11 +5,7 @@ use adw::{
     PreferencesGroup, SpinRow,
 };
 use dbus::{blocking::Connection, Error};
-use glib::{
-    clone,
-    object::{CastNone, ObjectExt},
-    SignalHandlerId,
-};
+use glib::{clone, object::CastNone};
 #[allow(deprecated)]
 use gtk::{
     gdk::prelude::SurfaceExt,
@@ -21,14 +17,14 @@ use gtk::{
 };
 use gtk::{
     gio::{ActionEntry, SimpleActionGroup},
-    prelude::AdjustmentExt,
     prelude::FrameExt,
     GestureClick, StringObject,
 };
-use re_set_lib::utils::{
-    config::{get_config_value, CONFIG},
-    gtk::utils::create_title,
-    plugin::SidebarInfo,
+use re_set_lib::{
+    utils::{
+        config::get_config_value, gtk::utils::create_title, macros::ErrorLevel, plugin::SidebarInfo,
+    },
+    write_log_to_file, ERROR,
 };
 
 use crate::{
@@ -328,13 +324,44 @@ fn get_monitor_settings_group(
 ) -> PreferencesGroup {
     let settings = PreferencesGroup::new();
 
-    let name = adw::ComboRow::new();
     let monitors = clicked_monitor.borrow();
-    let monitor = monitors.get(monitor_index).unwrap();
-    name.set_title(&monitor.name);
-    name.set_subtitle(&monitor.make);
-    name.set_sensitive(true);
-    settings.add(&name);
+    let monitor = monitors.get(monitor_index);
+    if monitor.is_none() {
+        ERROR!("Could not insert monitor settings", ErrorLevel::Critical);
+        // settings
+        //         .activate_action(
+        //             "win.banner",
+        //             Some(&glib::Variant::from(
+        //                 "Could not find a scale near this value which divides the resolution to a whole number.",
+        //             )),
+        //         )
+        //         .expect("Could not show banner");
+        return settings;
+    }
+    let monitor = monitor.unwrap();
+
+    let enabled = adw::SwitchRow::new();
+    enabled.set_title(&monitor.name);
+    enabled.set_subtitle(&monitor.make);
+    enabled.set_active(monitor.enabled);
+    if monitors.len() < 2 {
+        enabled.set_sensitive(false);
+    }
+    let enabled_ref = clicked_monitor.clone();
+    enabled.connect_active_notify(move |state| {
+        enabled_ref
+            .borrow_mut()
+            .get_mut(monitor_index)
+            .unwrap()
+            .enabled = state.is_active();
+        state
+            .activate_action(
+                "monitor.reset_monitor_buttons",
+                Some(&glib::Variant::from(true)),
+            )
+            .expect("Could not activate reset action");
+    });
+    settings.add(&enabled);
 
     let vrr = adw::SwitchRow::new();
     vrr.set_title("Variable Refresh-Rate");
@@ -497,25 +524,6 @@ fn get_monitor_settings_group(
             .expect("Could not activate reset action");
     });
     settings.add(&refresh_rate);
-
-    let enabled = adw::SwitchRow::new();
-    enabled.set_title("Monitor Enabled");
-    enabled.set_active(monitor.enabled);
-    let enabled_ref = clicked_monitor.clone();
-    enabled.connect_active_notify(move |state| {
-        enabled_ref
-            .borrow_mut()
-            .get_mut(monitor_index)
-            .unwrap()
-            .enabled = state.is_active();
-        state
-            .activate_action(
-                "monitor.reset_monitor_buttons",
-                Some(&glib::Variant::from(true)),
-            )
-            .expect("Could not activate reset action");
-    });
-    settings.add(&enabled);
 
     settings
 }
