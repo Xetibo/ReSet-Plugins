@@ -57,13 +57,13 @@ pub struct KDEMonitor {
     pos: KDEOffset,
     priority: u32,
     currentModeId: String,
-    available_modes: Vec<KDEMode>,
+    modes: Vec<KDEMode>,
 }
 
 impl KDEMonitor {
     pub fn convert_to_regular_monitor(self) -> Monitor {
         let mode = self
-            .available_modes
+            .modes
             .get(self.currentModeId.parse::<u32>().unwrap() as usize)
             .unwrap()
             .clone();
@@ -83,7 +83,7 @@ impl KDEMonitor {
             size: mode.size.convert_to_regular_size(),
             drag_information: Default::default(),
             mode: self.currentModeId,
-            available_modes: convert_modes(self.available_modes),
+            available_modes: convert_modes(self.modes),
             features: MonitorFeatures {
                 // KDE supports all the features!
                 vrr: true,
