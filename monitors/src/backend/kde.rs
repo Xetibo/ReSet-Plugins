@@ -37,12 +37,10 @@ pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {
 pub fn kde_save_monitor_config(monitors: &Vec<Monitor>) {
     let args = convert_modes_to_kscreen_string(monitors);
     println!("{}", &args);
-    let output = Command::new("kscreen-doctor")
-        .args([args])
-        .output()
-        .expect("Could not retrieve monitor json")
-        .stdout;
-    println!("{}", String::from_utf8(output).unwrap_or("didnt work".into()));
+    Command::new("kscreen-doctor")
+        .arg(args)
+        .spawn()
+        .expect("Could not retrieve monitor json");
 }
 
 #[allow(non_snake_case)]
