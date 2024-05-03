@@ -29,11 +29,19 @@ fn get_json() -> Vec<u8> {
         .stdout
 }
 
-// TODO: implement
-pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {}
+pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {
+    // TODO: implement
+    kde_save_monitor_config(monitors);
+}
 
-// TODO: implement
-pub fn kde_save_monitor_config(monitors: &Vec<Monitor>) {}
+pub fn kde_save_monitor_config(monitors: &Vec<Monitor>) {
+    let args = convert_modes_to_kscreen_string(monitors);
+    Command::new("kscreen-doctor")
+        .args([args])
+        .output()
+        .expect("Could not retrieve monitor json")
+        .stdout;
+}
 
 #[allow(non_snake_case)]
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -52,6 +60,7 @@ pub struct KDEMonitor {
     rotation: u32,
     pos: KDEOffset,
     priority: u32,
+    vrrPolicy: Option<u32>,
     currentModeId: String,
     modes: Vec<KDEMode>,
 }
@@ -59,6 +68,15 @@ pub struct KDEMonitor {
 impl KDEMonitor {
     pub fn convert_to_regular_monitor(self) -> Monitor {
         let modes = convert_modes(&self.currentModeId, self.modes);
+        let vrr = if let Some(_vrr) = self.vrrPolicy {
+            // TODO: apparently KDE offers 2 vrr versions -> automatic and always
+            // todo is to handle both states instead of a bool right now
+            true
+        } else {
+            // NOTE: KDE does not even show the VRR option within the json fetching if no the
+            // monitor can't handle VRR either way
+            false
+        };
         Monitor {
             id: self.id,
             name: self.name,
@@ -71,7 +89,7 @@ impl KDEMonitor {
             scale: self.scale,
             transform: convert_to_regular_transform(self.rotation),
             // TODO: how to get this?
-            vrr: false,
+            vrr,
             primary: self.priority == 1,
             offset: self.pos.convert_to_regular_offset(),
             size: modes.1.size.convert_to_regular_size(),
@@ -173,4 +191,31 @@ fn convert_modes(
     }
 
     (modes, current_mode.unwrap())
+}
+
+fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> String {
+    let mut kscreen = String::from("");
+
+    for monitor in monitors {
+        let rotation = match monitor.transform {
+            0 | 4 => "up",
+            1 | 5 => "right",
+            2 | 6 => "down",
+            3 | 7 => "left",
+            _ => unreachable!(),
+        };
+        let start = format!("output.{}.", monitor.name);
+        kscreen += &(start.clone()
+            + &format!(
+                "mode.{}x{}@{} ",
+                monitor.size.0, monitor.size.1, monitor.refresh_rate
+            ));
+        kscreen += &(start.clone() + &format!("scale.{} ", monitor.scale));
+        kscreen +=
+            &(start.clone() + &format!("position.{},{} ", monitor.offset.0, monitor.offset.1));
+        kscreen += &(start + &format!("rotation.{} ", rotation));
+        // TODO: add enabled and disabled
+    }
+
+    kscreen
 }
