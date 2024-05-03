@@ -32,7 +32,6 @@ use re_set_lib::utils::{
 };
 
 use crate::{
-    backend::kde::kde_add_scaling_adjustment,
     r#const::{BASE, DBUS_PATH, INTERFACE},
     utils::{
         get_environment, get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical,
