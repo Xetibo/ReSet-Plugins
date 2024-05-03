@@ -16,7 +16,7 @@ pub fn g_add_scaling_adjustment(
     settings: &PreferencesGroup,
 ) {
     let mut selected_scale = 0;
-    let mut model = StringList::new(&["1.0"]);
+    let mut model = StringList::new(&["100%"]);
     {
         let monitors = scaling_ref.borrow();
         let monitor = monitors.get(monitor_index).unwrap();
@@ -27,6 +27,8 @@ pub fn g_add_scaling_adjustment(
                     if scale == *val {
                         selected_scale = i;
                     }
+                    // NOTE: GTK doesn't allow to display the number 1 as text, workaround by
+                    // showing scaling for Gnome in percentages
                     scales.push((val * 100.0).to_string() + "%");
                 }
                 let scales: Vec<&str> = scales.iter().map(|val| val.as_str()).collect();

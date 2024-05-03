@@ -876,7 +876,7 @@ dependencies = [
 [[package]]
 name = "re_set-lib"
 version = "3.3.0"
-source = "git+https://github.com/Xetibo/ReSet-Lib?branch=dashie#f2b9c13a78da6790ec732e4dd6b61c3fc2466cc8"
+source = "git+https://github.com/Xetibo/ReSet-Lib?branch=dashie#996af659c38138fd1eb3afa599b2f9bb8071b560"
 dependencies = [
  "dbus",
  "dbus-crossroads",

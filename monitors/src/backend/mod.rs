@@ -11,12 +11,13 @@ use crate::{
 
 use self::{
     general::{apply_monitor_configuration, save_monitor_configuration},
-    gnome::g_get_monitor_information,
+    gnome::g_get_monitor_information, kde::kde_get_monitor_information,
 };
 
 pub mod general;
 pub mod gnome;
 pub mod hyprland;
+pub mod kde;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -46,6 +47,7 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
                 monitors: match env.as_str() {
                     "Hyprland" => hy_get_monitor_information(),
                     "GNOME" => g_get_monitor_information(),
+                    "KDE" => kde_get_monitor_information(),
                     _ => unreachable!(),
                 },
             },
