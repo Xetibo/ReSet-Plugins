@@ -54,8 +54,7 @@ pub struct KDEMonitor {
     connected: bool,
     scale: f64,
     rotation: u32,
-    x: i32,
-    y: i32,
+    pos: KDEOffset,
     priority: u32,
     currentModeId: String,
     available_modes: Vec<KDEMode>,
@@ -66,7 +65,8 @@ impl KDEMonitor {
         let mode = self
             .available_modes
             .get(self.currentModeId.parse::<u32>().unwrap() as usize)
-            .unwrap();
+            .unwrap()
+            .clone();
         Monitor {
             id: self.id,
             name: self.name,
@@ -79,8 +79,8 @@ impl KDEMonitor {
             // TODO: how to get this?
             vrr: false,
             primary: self.priority == 1,
-            offset: Offset(self.x, self.y),
-            size: Size(mode.width, mode.height),
+            offset: self.pos.convert_to_regular_offset(),
+            size: mode.size.convert_to_regular_size(),
             drag_information: Default::default(),
             mode: self.currentModeId,
             available_modes: convert_modes(self.available_modes),
@@ -99,8 +99,33 @@ impl KDEMonitor {
 pub struct KDEMode {
     id: String,
     refreshRate: f64,
-    height: i32,
+    size: KDESize,
+}
+
+impl KDESize {
+    pub fn convert_to_regular_size(self) -> Size {
+        Size(self.width, self.height)
+    }
+}
+
+#[allow(non_snake_case)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct KDEOffset {
+    x: i32,
+    y: i32,
+}
+
+impl KDEOffset {
+    pub fn convert_to_regular_offset(self) -> Offset {
+        Offset(self.x, self.y)
+    }
+}
+
+#[allow(non_snake_case)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct KDESize {
     width: i32,
+    height: i32,
 }
 
 fn convert_modes(kde_modes: Vec<KDEMode>) -> Vec<AvailableMode> {
@@ -108,12 +133,15 @@ fn convert_modes(kde_modes: Vec<KDEMode>) -> Vec<AvailableMode> {
     let mut hash_modes: HashMap<(i32, i32), (HashSet<u32>, String)> = HashMap::new();
 
     for mode in kde_modes {
-        if let Some(hash_mode) = hash_modes.get_mut(&(mode.width, mode.height)) {
+        if let Some(hash_mode) = hash_modes.get_mut(&(mode.size.width, mode.size.height)) {
             hash_mode.0.insert(mode.refreshRate.round() as u32);
         } else {
             let mut refresh_rates = HashSet::new();
             refresh_rates.insert(mode.refreshRate.round() as u32);
-            hash_modes.insert((mode.width, mode.height), (refresh_rates, mode.id));
+            hash_modes.insert(
+                (mode.size.width, mode.size.height),
+                (refresh_rates, mode.id),
+            );
         }
     }
 
