@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     process::Command,
 };
@@ -179,14 +180,30 @@ fn convert_modes(
     }
 
     for ((width, height), (refresh_rates, id)) in hash_modes {
+        let mut refresh_rates: Vec<u32> = refresh_rates.into_iter().collect();
+        refresh_rates.sort_unstable_by(|a, b| {
+            if a > b {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            }
+        });
         let mode = AvailableMode {
             id,
             size: Size(width, height),
-            refresh_rates: refresh_rates.into_iter().collect(),
+            refresh_rates,
             supported_scales: Vec::new(),
         };
         modes.push(mode);
     }
+
+    modes.sort_unstable_by(|a, b| {
+        if a.size > b.size {
+            Ordering::Greater
+        } else {
+            Ordering::Less
+        }
+    });
 
     (modes, current_mode.unwrap())
 }

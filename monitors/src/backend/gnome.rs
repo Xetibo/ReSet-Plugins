@@ -196,9 +196,7 @@ impl GnomeMonitorConfig {
                 y: monitor.offset.1,
                 scale: monitor.scale,
                 transform: monitor.transform,
-                // TODO: hyprland does not offer primary, how do we still represent it for the
-                // generic monitor
-                primary: true,
+                primary: monitor.primary,
                 // TODO: propmap
                 monitors: vec![(monitor.name.clone(), mode, PropMap::new())],
             });

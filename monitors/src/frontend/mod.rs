@@ -39,7 +39,10 @@ use crate::{
     },
 };
 
-use self::{general::arbitrary_add_scaling_adjustment, gnome::g_add_scaling_adjustment};
+use self::{
+    general::{add_primary_monitor_option_generic, arbitrary_add_scaling_adjustment},
+    gnome::g_add_scaling_adjustment,
+};
 
 pub mod general;
 pub mod gnome;
@@ -423,14 +426,6 @@ fn get_monitor_settings_group(
     let monitor = monitors.get(monitor_index);
     if monitor.is_none() {
         ERROR!("Could not insert monitor settings", ErrorLevel::Critical);
-        // settings
-        //         .activate_action(
-        //             "win.banner",
-        //             Some(&glib::Variant::from(
-        //                 "Could not find a scale near this value which divides the resolution to a whole number.",
-        //             )),
-        //         )
-        //         .expect("Could not show banner");
         return settings;
     }
     let monitor = monitor.unwrap();
@@ -457,6 +452,9 @@ fn get_monitor_settings_group(
             .expect("Could not activate reset action");
     });
     settings.add(&enabled);
+
+    let primary_ref = clicked_monitor.clone();
+    add_primary_monitor_option(monitor_index, primary_ref, &settings);
 
     let vrr = adw::SwitchRow::new();
     vrr.set_title("Variable Refresh-Rate");
@@ -635,6 +633,19 @@ fn add_scale_adjustment(
         "Hyprland" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "GNOME" => g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "KDE" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
+        _ => unreachable!(),
+    };
+}
+
+fn add_primary_monitor_option(
+    monitor_index: usize,
+    monitors: Rc<RefCell<Vec<Monitor>>>,
+    settings: &PreferencesGroup,
+) {
+    match get_environment().as_str() {
+        "Hyprland" => (),
+        "GNOME" => add_primary_monitor_option_generic(monitor_index, monitors, settings),
+        "KDE" => add_primary_monitor_option_generic(monitor_index, monitors, settings),
         _ => unreachable!(),
     };
 }
