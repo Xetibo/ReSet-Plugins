@@ -109,31 +109,3 @@ pub fn get_keyboard_list_frontend() -> Vec<KeyboardLayout> {
     }
     res.unwrap().0
 }
-
-// possible optimization of coloring active keyboard layouts 
-//
-// if selected_row.index() < max_keyboards as i32 {
-// selected_row.add_css_class("activeLanguage");
-// 
-// let mut test = selected_row.next_sibling();
-// while let Some(ref widget) = test {
-// let next_row = widget.downcast_ref::<ActionRow>().unwrap();
-// 
-// if next_row.index() == max_keyboards as i32 {
-// 
-// next_row.remove_css_class("activeLanguage");
-// break;
-// } else {
-// next_row.add_css_class("activeLanguage");
-// }
-// test = next_row.next_sibling();
-// }
-// } else {
-// selected_row.remove_css_class("activeLanguage");
-// }
-// 
-// if droptarget_row.index() < max_keyboards as i32 {
-// droptarget_row.add_css_class("activeLanguage");
-// } else {
-// droptarget_row.remove_css_class("activeLanguage");
-// }
