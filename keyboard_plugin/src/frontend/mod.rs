@@ -18,9 +18,6 @@ use crate::utils::get_max_active_keyboards;
 pub mod main_page;
 pub mod add_layout_page;
 
-// todo find better color for first rows
-// todo add ability to remove layouts
-
 pub fn add_listener(keyboard_list: &PreferencesGroup, layout_row: ActionRow) {
     let max_keyboards = get_max_active_keyboards();
 
