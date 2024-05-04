@@ -128,24 +128,24 @@ fn add_keyboard_list_to_view(list: &ListBox) {
                 list.prepend(&back_row);
 
                 // remove all but first
-                let mut test = list.last_child();
+                let mut last_row = list.last_child();
                 let mut skip = keyboard_layouts.len();
                 
-                while test != None {
-                    if list.first_child() == test {
-                        let second_row = &test.unwrap().next_sibling().unwrap();
+                while last_row != None {
+                    if list.first_child() == last_row {
+                        let second_row = &last_row.unwrap().next_sibling().unwrap();
                         let second_row = second_row.downcast_ref::<ActionRow>();
                         list.select_row(second_row);
                         break;
                     }
                     if skip > 0 {
-                        test = test.unwrap().prev_sibling();
+                        last_row = last_row.unwrap().prev_sibling();
                         skip -= 1;
                         continue;
                     }
-                    let temp = test.clone().unwrap().prev_sibling();
-                    list.remove(&test.unwrap());
-                    test = temp;
+                    let temp = last_row.clone().unwrap().prev_sibling();
+                    list.remove(&last_row.unwrap());
+                    last_row = temp;
                 }
                 list.unselect_all();
 
