@@ -190,8 +190,8 @@ impl Append for Monitor {
                 self.serial.clone(),
             ));
             i.append((self.refresh_rate, self.scale, self.transform));
-            i.append(self.primary);
             i.append(self.vrr);
+            i.append(self.primary);
             i.append(self.offset);
             i.append(self.size);
             i.append(self.mode.clone());

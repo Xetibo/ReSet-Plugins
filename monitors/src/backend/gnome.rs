@@ -158,12 +158,10 @@ impl GnomeMonitorConfig {
             let refresh_rate_opt: Option<&String> =
                 prop_cast(&current_mode.properties, "refresh-rate-mode");
             if let Some(refresh_rate_mode) = refresh_rate_opt {
-                println!("{}", refresh_rate_mode);
                 if refresh_rate_mode == "variable" && vrr_enabled {
                     vrr = true;
                 }
             }
-            println!("primary is {}", logical_monitor.primary);
 
             monitors.push(Monitor {
                 id: self.serial,
