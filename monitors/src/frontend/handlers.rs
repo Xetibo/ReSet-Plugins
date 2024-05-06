@@ -40,7 +40,7 @@ use crate::{
 
 use super::{
     general::{
-        add_primary_monitor_option, add_vrr_monitor_option, arbitrary_add_scaling_adjustment,
+        add_enabled_monitor_option, add_primary_monitor_option, add_vrr_monitor_option, arbitrary_add_scaling_adjustment
     },
     gnome::g_add_scaling_adjustment,
 };
@@ -249,7 +249,7 @@ pub fn get_monitor_settings_group(
     let monitor = monitor.unwrap();
 
     let enabled_ref = clicked_monitor.clone();
-    add_primary_monitor_option(monitor_index, enabled_ref, &settings);
+    add_enabled_monitor_option(monitor_index, enabled_ref, &settings);
 
     let primary_ref = clicked_monitor.clone();
     add_primary_monitor_option(monitor_index, primary_ref, &settings);
