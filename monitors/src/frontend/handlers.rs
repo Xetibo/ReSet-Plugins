@@ -40,7 +40,8 @@ use crate::{
 
 use super::{
     general::{
-        add_enabled_monitor_option, add_primary_monitor_option, add_vrr_monitor_option, arbitrary_add_scaling_adjustment
+        add_enabled_monitor_option, add_primary_monitor_option, add_vrr_monitor_option,
+        arbitrary_add_scaling_adjustment,
     },
     gnome::g_add_scaling_adjustment,
 };
@@ -51,15 +52,22 @@ pub fn apply_monitor_clicked(
     settings_box_ref_apply: &gtk::Box,
     drawing_ref_apply: &DrawingArea,
     revert: bool,
+    persistent: bool,
 ) {
     let previous_state = Arc::new(AtomicBool::new(false));
     let previous_state_ref = previous_state.clone();
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
     let res: Result<(), Error> = if revert {
+        if persistent {
+            proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
+        } else {
+            proxy.method_call(INTERFACE, "SaveMonitors", (fallback.borrow().clone(),))
+        }
+    } else if persistent {
         proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
     } else {
-        proxy.method_call(INTERFACE, "SetMonitors", (apply_ref.borrow().clone(),))
+        proxy.method_call(INTERFACE, "SaveMonitors", (apply_ref.borrow().clone(),))
     };
     if res.is_err() {
         ERROR!(
@@ -78,6 +86,18 @@ pub fn apply_monitor_clicked(
     }
     apply_ref.replace(get_monitor_data());
     settings_box_ref_apply.append(&get_monitor_settings_group(apply_ref.clone(), index));
+    if persistent {
+        get_config_value("Monitor", "save_warning", |value| {
+            if let Some(warning) = value.as_bool() {
+                if warning {
+                    settings_box_ref_apply.activate_action(
+                        "win.banner",
+                        Some(&glib::Variant::from("When using hyprland, make sure to include the created file in your config to make the changes permanent." ))
+                    ).expect("Could not show banner");
+                }
+            }
+        });
+    }
     drawing_ref_apply.queue_draw();
     drawing_ref_apply
         .activate_action(
@@ -87,6 +107,10 @@ pub fn apply_monitor_clicked(
         .expect("Could not execute reset action");
 
     if !revert {
+        // Gnome has their own popup, hence two popups would appear -> solution, disable ours
+        if persistent && get_environment().as_str() != "GNOME" {
+            return;
+        }
         let popup = adw::AlertDialog::new(Some("Confirm Configuration"), Some("Is this configuration correct?\n
          Please confirm if this is the case, otherwise the configuration will automatically be reverted."));
         popup.add_responses(&[("revert", "Revert"), ("confirm", "Confirm")]);
@@ -157,81 +181,6 @@ pub fn reset_monitor_clicked(
             Some(&glib::Variant::from(false)),
         )
         .expect("Could not execute reset action");
-}
-
-pub fn save_monitor_clicked(
-    save_ref: Rc<RefCell<Vec<Monitor>>>,
-    fallback: Rc<RefCell<Vec<Monitor>>>,
-    settings_box_ref_save: &gtk::Box,
-    drawing_ref_save: &DrawingArea,
-    revert: bool,
-) {
-    let previous_state = Arc::new(AtomicBool::new(false));
-    let previous_state_ref = previous_state.clone();
-    let conn = Connection::new_session().unwrap();
-    let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
-    let res: Result<(), Error> = if revert {
-        proxy.method_call(INTERFACE, "SaveMonitors", (fallback.borrow().clone(),))
-    } else {
-        proxy.method_call(INTERFACE, "SaveMonitors", (save_ref.borrow().clone(),))
-    };
-    if res.is_err() {
-        ERROR!(
-            "Could not save monitor configuration",
-            ErrorLevel::Recoverable
-        );
-    }
-    get_config_value("Monitor", "save_warning", |value| {
-        if let Some(warning) = value.as_bool() {
-            if warning {
-                settings_box_ref_save.activate_action(
-                        "win.banner",
-                        Some(&glib::Variant::from("When using hyprland, make sure to include the created file in your config to make the changes permanent." ))
-                    ).expect("Could not show banner");
-            }
-        }
-    });
-    drawing_ref_save.queue_draw();
-
-    if !revert {
-        let popup = adw::AlertDialog::new(Some("Confirm Configuration"), Some("Is this configuration correct?\n
-         Please confirm if this is the case, otherwise the configuration will automatically be reverted."));
-        popup.add_responses(&[("revert", "Revert"), ("confirm", "Confirm")]);
-        popup.set_response_appearance("revert", adw::ResponseAppearance::Destructive);
-        popup.set_default_response(Some("revert"));
-        popup.set_close_response("revert");
-
-        let settings = settings_box_ref_save.clone();
-        popup.connect_response(Some("confirm"), |_, _| {});
-        popup.connect_response(Some("revert"), move |_, _| {
-            previous_state.store(true, Ordering::SeqCst);
-            settings
-                .activate_action(
-                    "monitor.revert_monitors",
-                    Some(&glib::Variant::from((true, false))),
-                )
-                .expect("Could not activate revert action");
-        });
-
-        let settings = settings_box_ref_save.clone();
-        let thread_settings = Wrapper {
-            popup: popup.clone(),
-        };
-
-        gio::spawn_blocking(move || {
-            thread::sleep(Duration::from_millis(5000));
-            if previous_state_ref.load(Ordering::SeqCst) {
-                return;
-            }
-            glib::spawn_future(async move {
-                glib::idle_add_once(move || {
-                    thread_settings.action();
-                });
-            });
-        });
-
-        popup.present(&settings);
-    }
 }
 
 pub fn get_monitor_settings_group(

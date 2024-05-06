@@ -91,6 +91,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
+                    dbg!(&monitors);
                     apply_monitor_configuration(&monitors);
                     d.monitors = monitors;
                     Ok(())
@@ -101,6 +102,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
+                    dbg!(&monitors);
                     save_monitor_configuration(&monitors);
                     d.monitors = monitors;
                     Ok(())

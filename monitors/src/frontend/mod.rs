@@ -20,7 +20,7 @@ use crate::utils::get_monitor_data;
 
 use self::handlers::{
     apply_monitor_clicked, drawing_callback, get_monitor_settings_group, monitor_drag_end,
-    monitor_drag_start, monitor_drag_update, reset_monitor_clicked, save_monitor_clicked,
+    monitor_drag_start, monitor_drag_update, reset_monitor_clicked,
 };
 
 pub mod general;
@@ -143,6 +143,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             &settings_box_ref_apply,
             &drawing_ref_apply,
             false,
+            false,
         );
     });
 
@@ -157,12 +158,13 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     });
 
     save.connect_clicked(move |_| {
-        save_monitor_clicked(
+        apply_monitor_clicked(
             save_ref.clone(),
             fallback_save_ref.clone(),
             &settings_box_ref_save,
             &drawing_ref_save,
             false,
+            true
         );
     });
 
@@ -232,23 +234,14 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .parameter_type(Some(glib::VariantTy::TUPLE))
         .activate(move |_, _, description| {
             let (reverse, persistent) = description.unwrap().get::<(bool, bool)>().unwrap();
-            if persistent {
-                save_monitor_clicked(
-                    apply_action_ref.clone(),
-                    fallback_action_ref.clone(),
-                    &settings_box_ref_action,
-                    &drawing_ref_action,
-                    reverse,
-                );
-            } else {
-                apply_monitor_clicked(
-                    apply_action_ref.clone(),
-                    fallback_action_ref.clone(),
-                    &settings_box_ref_action,
-                    &drawing_ref_action,
-                    reverse,
-                );
-            }
+            apply_monitor_clicked(
+                apply_action_ref.clone(),
+                fallback_action_ref.clone(),
+                &settings_box_ref_action,
+                &drawing_ref_action,
+                reverse,
+                persistent,
+            );
         })
         .build();
     action_group.add_action_entries([revert_monitors]);
