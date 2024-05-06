@@ -248,11 +248,12 @@ pub fn get_monitor_settings_group(
     }
     let monitor = monitor.unwrap();
 
-    let enabled = adw::SwitchRow::new();
-    enabled.set_title(&monitor.name);
-    enabled.set_subtitle(&monitor.make);
-    enabled.set_active(monitor.enabled);
-    enabled.set_css_classes(&["enabled-title"]);
+    let enabled = adw::SwitchRow::builder()
+        .title(&monitor.name)
+        .subtitle(&monitor.make)
+        .active(monitor.enabled)
+        .css_name("enabled-row")
+        .build();
     if monitors.len() < 2 {
         enabled.set_sensitive(false);
     }
