@@ -3,7 +3,7 @@ use gtk::{Box, Orientation};
 use gtk::prelude::*;
 use re_set_lib::utils::plugin::{PluginCapabilities, PluginImplementation, PluginTestFunc, SidebarInfo};
 
-use crate::frontend::{create_title, get_keyboard_list_frontend};
+use crate::frontend::{create_title};
 use crate::frontend::add_layout_page::create_add_keyboard_page;
 use crate::frontend::main_page::create_keyboard_main_page;
 

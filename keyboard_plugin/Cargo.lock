@@ -151,6 +151,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dconf_rs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7046468a81e6a002061c01e6a7c83139daf91b11c30e66795b13217c2d885c8b"
+
+[[package]]
 name = "directories-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -970,12 +976,14 @@ version = "0.1.0"
 dependencies = [
  "dbus",
  "dbus-crossroads",
+ "dconf_rs",
  "directories-next",
  "gdk4",
  "glib",
  "gtk4",
  "libadwaita",
  "re_set-lib",
+ "regex",
  "toml",
  "xkbregistry",
 ]
