@@ -42,7 +42,9 @@ pub fn add_primary_monitor_option(
     primary.set_active(primary_value);
 
     if monitors.borrow().len() < 2 {
-        return;
+        primary.set_sensitive(false);
+    } else {
+        primary.set_sensitive(true);
     }
     primary.connect_active_notify(move |state| {
         for (i, monitor) in monitors.borrow_mut().iter_mut().enumerate() {
@@ -91,42 +93,4 @@ pub fn add_vrr_monitor_option(
             .expect("Could not activate reset action");
     });
     settings.add(&vrr);
-}
-
-pub fn add_enabled_monitor_option(
-    monitor_index: usize,
-    monitors_ref: Rc<RefCell<Vec<Monitor>>>,
-    settings: &PreferencesGroup,
-) {
-    let monitors = monitors_ref.borrow();
-    let monitor = monitors.get(monitor_index).unwrap();
-
-    if monitors.len() < 2 {
-        let enabled = adw::ActionRow::builder()
-            .title(&monitor.name)
-            .subtitle(&monitor.make)
-            .build();
-        settings.add(&enabled);
-        return;
-    }
-    let enabled = adw::SwitchRow::builder()
-        .title(&monitor.name)
-        .subtitle(&monitor.make)
-        .active(monitor.enabled)
-        .build();
-    let enabled_ref = monitors_ref.clone();
-    enabled.connect_active_notify(move |state| {
-        enabled_ref
-            .borrow_mut()
-            .get_mut(monitor_index)
-            .unwrap()
-            .enabled = state.is_active();
-        state
-            .activate_action(
-                "monitor.reset_monitor_buttons",
-                Some(&glib::Variant::from(true)),
-            )
-            .expect("Could not activate reset action");
-    });
-    settings.add(&enabled);
 }

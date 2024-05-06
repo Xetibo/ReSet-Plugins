@@ -248,33 +248,8 @@ pub fn get_monitor_settings_group(
     }
     let monitor = monitor.unwrap();
 
-    let enabled = adw::SwitchRow::builder()
-        .title(&monitor.name)
-        .subtitle(&monitor.make)
-        .active(monitor.enabled)
-        // .css_name("enabled-row")
-        .build();
-    if monitors.len() < 2 {
-        // TODO: show label as nonsensitive?
-        enabled.set_sensitive(false);
-    } else {
-        enabled.set_sensitive(true);
-    }
     let enabled_ref = clicked_monitor.clone();
-    enabled.connect_active_notify(move |state| {
-        enabled_ref
-            .borrow_mut()
-            .get_mut(monitor_index)
-            .unwrap()
-            .enabled = state.is_active();
-        state
-            .activate_action(
-                "monitor.reset_monitor_buttons",
-                Some(&glib::Variant::from(true)),
-            )
-            .expect("Could not activate reset action");
-    });
-    settings.add(&enabled);
+    add_primary_monitor_option(monitor_index, enabled_ref, &settings);
 
     let primary_ref = clicked_monitor.clone();
     add_primary_monitor_option(monitor_index, primary_ref, &settings);
