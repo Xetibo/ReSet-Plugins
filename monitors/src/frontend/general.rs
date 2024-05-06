@@ -5,7 +5,7 @@ use gtk::prelude::WidgetExt;
 
 use crate::utils::Monitor;
 
-use super::scaling_update;
+use super::handlers::scaling_update;
 
 pub fn arbitrary_add_scaling_adjustment(
     scale: f64,
@@ -13,7 +13,7 @@ pub fn arbitrary_add_scaling_adjustment(
     monitors: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
 ) {
-    let scaling_adjustment = gtk::Adjustment::new(scale, 0.1, 10.0, 0.15, 0.0, 0.0);
+    let scaling_adjustment = gtk::Adjustment::new(scale, 0.1, 10.0, 0.05, 0.0, 0.0);
     let scaling = adw::SpinRow::new(Some(&scaling_adjustment), 0.000001, 2);
     scaling.set_title("Scaling");
     scaling.connect_value_notify(move |state| {

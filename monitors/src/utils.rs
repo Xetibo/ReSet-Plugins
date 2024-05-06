@@ -6,6 +6,8 @@ use dbus::{
     blocking::Connection,
     Error, Signature,
 };
+use gtk::prelude::WidgetExt;
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
 
 pub fn get_environment() -> String {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP");
@@ -169,7 +171,7 @@ impl Monitor {
             6 => (self.size.0, self.size.1),
             7 => (self.size.1, self.size.0),
             _ => {
-                println!("got an unsupported transform");
+                ERROR!("Received unsupported transform", ErrorLevel::Recoverable);
                 (self.size.0, self.size.1)
             }
         }
@@ -472,4 +474,17 @@ pub enum SnapDirectionVertical {
     BottomBottom(i32),
     BottomTop(i32),
     None,
+}
+
+pub struct Wrapper {
+    pub popup: adw::AlertDialog,
+}
+
+unsafe impl Send for Wrapper {}
+unsafe impl Sync for Wrapper {}
+
+impl Wrapper {
+    pub fn action(&self) {
+        self.popup.activate_default();
+    }
 }

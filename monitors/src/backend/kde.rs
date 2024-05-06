@@ -29,7 +29,6 @@ fn get_json() -> Vec<u8> {
 }
 
 pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {
-    // TODO: implement
     kde_save_monitor_config(monitors);
 }
 

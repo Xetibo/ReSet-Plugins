@@ -9,6 +9,8 @@ use dbus::{
     blocking::Connection,
     Error, Signature,
 };
+use gtk::prelude::SettingsExtManual;
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
 
 use crate::utils::{AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size};
 
@@ -17,15 +19,25 @@ const DBUS_PATH: &str = "/org/gnome/Mutter/DisplayConfig";
 const INTERFACE: &str = "org.gnome.Mutter.DisplayConfig";
 
 fn get_fractional_scale_support() -> bool {
-    // TODO: get from gsettings
-    // enabled for testing in vm
-    true
+    let settings = gtk::gio::Settings::new("org.gnome.mutter");
+    let features = settings.strv("experimental-features");
+    for value in features {
+        if value == "scale-monitor-framebuffer" {
+            return true;
+        }
+    }
+    false
 }
 
 fn get_variable_refresh_rate_support() -> bool {
-    // TODO: get from gsettings
-    // enabled for testing in vm
-    true
+    let settings = gtk::gio::Settings::new("org.gnome.mutter");
+    let features = settings.strv("experimental-features");
+    for value in features {
+        if value == "variable-refresh-rate" {
+            return true;
+        }
+    }
+    false
 }
 
 pub fn g_get_monitor_information() -> Vec<Monitor> {
@@ -34,17 +46,15 @@ pub fn g_get_monitor_information() -> Vec<Monitor> {
     let res: Result<(u32, Vec<GnomeMonitor>, Vec<GnomeLogicalMonitor>, PropMap), Error> =
         proxy.method_call(INTERFACE, "GetCurrentState", ());
     if res.is_err() {
-        dbg!(&res);
-        println!("error on save");
+        ERROR!("Could fetch monitor configuration", ErrorLevel::Recoverable);
     }
-    let (serial, monitors, logical_monitors, properties) = res.unwrap();
+    let (serial, monitors, logical_monitors, _properties) = res.unwrap();
     let gnome_monitors = GnomeMonitorConfig {
         serial,
         monitors,
         logical_monitors,
-        properties,
+        _properties,
     };
-    dbg!(&gnome_monitors);
     gnome_monitors.inplace_to_regular_monitor()
 }
 
@@ -57,10 +67,11 @@ pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
         GnomeMonitorConfig::from_regular_monitor(apply_mode, monitors),
     );
     if res.is_err() {
-        dbg!(&res);
-        println!("error on save");
+        ERROR!(
+            "Could not apply monitor configuration",
+            ErrorLevel::Recoverable
+        );
     }
-    println!("ok");
 }
 
 #[derive(Debug)]
@@ -68,7 +79,7 @@ pub struct GnomeMonitorConfig {
     serial: u32,
     monitors: Vec<GnomeMonitor>,
     logical_monitors: Vec<GnomeLogicalMonitor>,
-    properties: PropMap,
+    _properties: PropMap,
 }
 
 impl GnomeMonitorConfig {
@@ -84,7 +95,7 @@ impl GnomeMonitorConfig {
                 width: 0,
                 height: 0,
                 refresh_rate: 0.0,
-                scale: 0.0,
+                _scale: 0.0,
                 supported_scales: Vec::new(),
                 properties: PropMap::new(),
             };
@@ -161,6 +172,7 @@ impl GnomeMonitorConfig {
                 refresh_rate: current_mode.refresh_rate.round() as u32,
                 scale: logical_monitor.scale,
                 transform: logical_monitor.transform,
+                // TODO: bug
                 vrr,
                 primary: logical_monitor.primary,
                 offset: Offset(logical_monitor.x, logical_monitor.y),
@@ -209,7 +221,7 @@ impl GnomeMonitorConfig {
 pub struct GnomeMonitor {
     name: GnomeName,
     modes: Vec<GnomeMode>,
-    properties: PropMap,
+    _properties: PropMap,
 }
 
 impl<'a> Get<'a> for GnomeMonitor {
@@ -218,7 +230,7 @@ impl<'a> Get<'a> for GnomeMonitor {
         Some(Self {
             name,
             modes,
-            properties,
+            _properties: properties,
         })
     }
 }
@@ -237,7 +249,7 @@ pub struct GnomeMode {
     width: i32,
     height: i32,
     refresh_rate: f64,
-    scale: f64,
+    _scale: f64,
     // technically gnome specifies supported scales
     // however, as long as the width and height resolve to integers, the scaling should work
     supported_scales: Vec<f64>,
@@ -253,7 +265,7 @@ impl<'a> Get<'a> for GnomeMode {
             width,
             height,
             refresh_rate,
-            scale,
+            _scale: scale,
             supported_scales,
             properties,
         })
@@ -274,8 +286,8 @@ pub struct GnomeLogicalMonitor {
     scale: f64,
     transform: u32,
     primary: bool,
-    monitors: Vec<(String, String, String, String)>,
-    properties: PropMap,
+    _monitors: Vec<(String, String, String, String)>,
+    _properties: PropMap,
 }
 
 impl<'a> Get<'a> for GnomeLogicalMonitor {
@@ -295,8 +307,8 @@ impl<'a> Get<'a> for GnomeLogicalMonitor {
             scale,
             transform,
             primary,
-            monitors,
-            properties,
+            _monitors: monitors,
+            _properties: properties,
         })
     }
 }

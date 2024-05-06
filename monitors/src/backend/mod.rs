@@ -1,7 +1,10 @@
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
 use dbus_crossroads::IfaceBuilder;
-use re_set_lib::utils::{plugin::PluginTestFunc, plugin_setup::CrossWrapper};
+use re_set_lib::{
+    utils::{macros::ErrorLevel, plugin::PluginTestFunc, plugin_setup::CrossWrapper},
+    write_log_to_file, ERROR,
+};
 
 use crate::{
     backend::hyprland::hy_get_monitor_information,
@@ -11,7 +14,8 @@ use crate::{
 
 use self::{
     general::{apply_monitor_configuration, save_monitor_configuration},
-    gnome::g_get_monitor_information, kde::kde_get_monitor_information,
+    gnome::g_get_monitor_information,
+    kde::kde_get_monitor_information,
 };
 
 pub mod general;
@@ -53,19 +57,15 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
             },
         );
     } else {
-        println!("Environment not supported!");
+        ERROR!("Environment not supported", ErrorLevel::PartialBreakage);
     }
 }
 
 #[no_mangle]
-pub extern "C" fn backend_startup() {
-    println!("startup called");
-}
+pub extern "C" fn backend_startup() {}
 
 #[no_mangle]
-pub extern "C" fn backend_shutdown() {
-    println!("shutdown called");
-}
+pub extern "C" fn backend_shutdown() {}
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]

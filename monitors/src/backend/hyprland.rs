@@ -9,7 +9,7 @@ use std::{
     fs::OpenOptions,
     io::Write,
     path::PathBuf,
-    process::Command,
+    process::{Command, Stdio},
 };
 
 const FEATURES: MonitorFeatures = MonitorFeatures {
@@ -34,6 +34,7 @@ pub fn hy_get_monitor_information() -> Vec<Monitor> {
 pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {
     Command::new("hyprctl")
         .args(["--batch", &monitor_to_configstring(monitors)])
+        .stdout(Stdio::null())
         .spawn()
         .expect("Could not enable specified monitor");
 }

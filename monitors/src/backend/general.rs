@@ -1,5 +1,7 @@
 // This file handles general functions for monitor conversions
 
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
+
 use crate::utils::{get_environment, Monitor};
 
 use super::{
@@ -14,7 +16,7 @@ pub fn apply_monitor_configuration(monitors: &Vec<Monitor>) {
         "Hyprland" => hy_apply_monitor_information(monitors),
         "GNOME" => g_apply_monitor_config(1, monitors),
         "KDE" => kde_apply_monitor_config(monitors),
-        _ => println!("Environment not supported!"),
+        _ => ERROR!("Unsupported Environment", ErrorLevel::PartialBreakage),
     };
 }
 
@@ -24,6 +26,6 @@ pub fn save_monitor_configuration(monitors: &Vec<Monitor>) {
         "Hyprland" => hy_save_monitor_configuration(monitors),
         "GNOME" => g_apply_monitor_config(2, monitors),
         "KDE" => kde_save_monitor_config(monitors),
-        _ => println!("Environment not supported!"),
+        _ => ERROR!("Unsupported Environment", ErrorLevel::PartialBreakage),
     };
 }
