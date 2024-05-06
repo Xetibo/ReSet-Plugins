@@ -252,6 +252,7 @@ pub fn get_monitor_settings_group(
     enabled.set_title(&monitor.name);
     enabled.set_subtitle(&monitor.make);
     enabled.set_active(monitor.enabled);
+    enabled.set_css_classes(&["enabled-title"]);
     if monitors.len() < 2 {
         enabled.set_sensitive(false);
     }
