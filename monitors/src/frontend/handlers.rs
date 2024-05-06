@@ -252,10 +252,10 @@ pub fn get_monitor_settings_group(
         .title(&monitor.name)
         .subtitle(&monitor.make)
         .active(monitor.enabled)
-        .css_name("enabled-row")
+        // .css_name("enabled-row")
         .build();
     if monitors.len() < 2 {
-        enabled.set_sensitive(false);
+        enabled.last_child().unwrap().set_sensitive(false);
     }
     let enabled_ref = clicked_monitor.clone();
     enabled.connect_active_notify(move |state| {
