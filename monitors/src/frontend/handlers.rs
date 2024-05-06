@@ -108,7 +108,7 @@ pub fn apply_monitor_clicked(
 
     if !revert {
         // Gnome has their own popup, hence two popups would appear -> solution, disable ours
-        if persistent && get_environment().as_str() != "GNOME" {
+        if persistent && get_environment().as_str() == "GNOME" {
             return;
         }
         let popup = adw::AlertDialog::new(Some("Confirm Configuration"), Some("Is this configuration correct?\n
@@ -287,13 +287,10 @@ pub fn get_monitor_settings_group(
         {
             let mut monitor = resolution_ref.borrow_mut();
             let monitor = monitor.get_mut(monitor_index).unwrap();
-            refresh_rates = monitor
-                .available_modes
-                .get(index as usize)
-                .unwrap()
-                .refresh_rates
-                .clone();
+            let mode = monitor.available_modes.get(index as usize).unwrap();
+            refresh_rates = mode.refresh_rates.clone();
             let highest = refresh_rates.first().unwrap();
+            monitor.mode = String::from(&mode.id);
             monitor.refresh_rate = *highest;
             monitor.size.0 = x.parse().unwrap();
             monitor.size.1 = y.parse().unwrap();
