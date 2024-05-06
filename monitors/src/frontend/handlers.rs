@@ -39,7 +39,9 @@ use crate::{
 };
 
 use super::{
-    general::{add_primary_monitor_option_generic, arbitrary_add_scaling_adjustment},
+    general::{
+        add_primary_monitor_option, add_vrr_monitor_option, arbitrary_add_scaling_adjustment,
+    },
     gnome::g_add_scaling_adjustment,
 };
 
@@ -272,20 +274,8 @@ pub fn get_monitor_settings_group(
     let primary_ref = clicked_monitor.clone();
     add_primary_monitor_option(monitor_index, primary_ref, &settings);
 
-    let vrr = adw::SwitchRow::new();
-    vrr.set_title("Variable Refresh-Rate");
-    vrr.set_active(monitor.vrr);
     let vrr_ref = clicked_monitor.clone();
-    vrr.connect_active_notify(move |state| {
-        vrr_ref.borrow_mut().get_mut(monitor_index).unwrap().vrr = state.is_active();
-        state
-            .activate_action(
-                "monitor.reset_monitor_buttons",
-                Some(&glib::Variant::from(true)),
-            )
-            .expect("Could not activate reset action");
-    });
-    settings.add(&vrr);
+    add_vrr_monitor_option(monitor_index, vrr_ref, &settings);
 
     let scaling_ref = clicked_monitor.clone();
     add_scale_adjustment(monitor.scale, monitor_index, scaling_ref, &settings);
@@ -449,19 +439,6 @@ pub fn add_scale_adjustment(
         "Hyprland" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "GNOME" => g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "KDE" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
-        _ => unreachable!(),
-    };
-}
-
-fn add_primary_monitor_option(
-    monitor_index: usize,
-    monitors: Rc<RefCell<Vec<Monitor>>>,
-    settings: &PreferencesGroup,
-) {
-    match get_environment().as_str() {
-        "Hyprland" => (),
-        "GNOME" => add_primary_monitor_option_generic(monitor_index, monitors, settings),
-        "KDE" => add_primary_monitor_option_generic(monitor_index, monitors, settings),
         _ => unreachable!(),
     };
 }
