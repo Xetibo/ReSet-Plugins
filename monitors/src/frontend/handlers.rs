@@ -257,12 +257,12 @@ pub fn get_monitor_settings_group(
     if monitors.len() < 2 {
         enabled.last_child().unwrap().set_sensitive(false);
         enabled.first_child().unwrap().set_sensitive(true);
-        enabled
-            .first_child()
-            .unwrap()
-            .next_sibling()
-            .unwrap()
-            .set_sensitive(true)
+        // enabled
+        //     .first_child()
+        //     .unwrap()
+        //     .next_sibling()
+        //     .unwrap()
+        //     .set_sensitive(true)
     } else {
         enabled.set_sensitive(true);
     }
