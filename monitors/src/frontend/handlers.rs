@@ -47,10 +47,10 @@ use super::{
 };
 
 pub fn apply_monitor_clicked(
-    apply_ref: Rc<RefCell<Vec<Monitor>>>,
+    monitor_ref: Rc<RefCell<Vec<Monitor>>>,
     fallback: Rc<RefCell<Vec<Monitor>>>,
-    settings_box_ref_apply: &gtk::Box,
-    drawing_ref_apply: &DrawingArea,
+    settings_ref: &gtk::Box,
+    drawing_ref: &DrawingArea,
     revert: bool,
     persistent: bool,
 ) {
@@ -65,9 +65,9 @@ pub fn apply_monitor_clicked(
             proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
         }
     } else if persistent {
-        proxy.method_call(INTERFACE, "SaveMonitors", (apply_ref.borrow().clone(),))
+        proxy.method_call(INTERFACE, "SaveMonitors", (monitor_ref.borrow().clone(),))
     } else {
-        proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
+        proxy.method_call(INTERFACE, "SetMonitors", (monitor_ref.borrow().clone(),))
     };
     if res.is_err() {
         ERROR!(
@@ -75,22 +75,22 @@ pub fn apply_monitor_clicked(
             ErrorLevel::Recoverable
         );
     }
-    if let Some(child) = settings_box_ref_apply.first_child() {
-        settings_box_ref_apply.remove(&child);
+    if let Some(child) = settings_ref.first_child() {
+        settings_ref.remove(&child);
     }
     let mut index = 0;
-    for (i, monitor) in apply_ref.borrow_mut().iter_mut().enumerate() {
+    for (i, monitor) in monitor_ref.borrow_mut().iter_mut().enumerate() {
         if monitor.drag_information.clicked {
             index = i;
         };
     }
-    apply_ref.replace(get_monitor_data());
-    settings_box_ref_apply.append(&get_monitor_settings_group(apply_ref.clone(), index));
+    monitor_ref.replace(get_monitor_data());
+    settings_ref.append(&get_monitor_settings_group(monitor_ref.clone(), index));
     if persistent {
         get_config_value("Monitor", "save_warning", |value| {
             if let Some(warning) = value.as_bool() {
                 if warning {
-                    settings_box_ref_apply.activate_action(
+                    settings_ref.activate_action(
                         "win.banner",
                         Some(&glib::Variant::from("When using hyprland, make sure to include the created file in your config to make the changes permanent." ))
                     ).expect("Could not show banner");
@@ -98,8 +98,8 @@ pub fn apply_monitor_clicked(
             }
         });
     }
-    drawing_ref_apply.queue_draw();
-    drawing_ref_apply
+    drawing_ref.queue_draw();
+    drawing_ref
         .activate_action(
             "monitor.reset_monitor_buttons",
             Some(&glib::Variant::from(false)),
@@ -118,7 +118,7 @@ pub fn apply_monitor_clicked(
         popup.set_default_response(Some("revert"));
         popup.set_close_response("revert");
 
-        let settings = settings_box_ref_apply.clone();
+        let settings = settings_ref.clone();
         popup.connect_response(Some("confirm"), |dialog, _| {
             dialog.close();
         });
@@ -133,7 +133,7 @@ pub fn apply_monitor_clicked(
             dialog.close();
         });
 
-        let settings = settings_box_ref_apply.clone();
+        let settings = settings_ref.clone();
         let thread_settings = Wrapper {
             popup: popup.clone(),
         };
