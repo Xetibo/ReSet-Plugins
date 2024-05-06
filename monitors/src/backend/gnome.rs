@@ -85,6 +85,8 @@ pub struct GnomeMonitorConfig {
 impl GnomeMonitorConfig {
     fn inplace_to_regular_monitor(self) -> Vec<Monitor> {
         let mut monitors = Vec::new();
+        dbg!(&self.monitors);
+        dbg!(&self.logical_monitors);
         for (monitor, logical_monitor) in self
             .monitors
             .into_iter()
