@@ -255,7 +255,8 @@ pub fn get_monitor_settings_group(
         // .css_name("enabled-row")
         .build();
     if monitors.len() < 2 {
-        enabled.first_child().unwrap().last_child().unwrap().set_sensitive(false);
+        enabled.set_sensitive(false);
+        enabled.first_child().unwrap().first_child().unwrap().set_sensitive(true);
     } else {
         enabled.set_sensitive(true);
     }
