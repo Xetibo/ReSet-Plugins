@@ -12,8 +12,8 @@ use std::{
 
 use adw::{
     prelude::{
-        ActionRowExt, AdwDialogExt, AlertDialogExt, AlertDialogExtManual, ComboRowExt,
-        PreferencesGroupExt, PreferencesRowExt,
+        AdwDialogExt, AlertDialogExt, AlertDialogExtManual, ComboRowExt, PreferencesGroupExt,
+        PreferencesRowExt,
     },
     PreferencesGroup, SpinRow,
 };
@@ -255,8 +255,8 @@ pub fn get_monitor_settings_group(
         // .css_name("enabled-row")
         .build();
     if monitors.len() < 2 {
+        // TODO: show label as nonsensitive?
         enabled.set_sensitive(false);
-        enabled.first_child().unwrap().first_child().unwrap().next_sibling().unwrap().next_sibling().unwrap().set_sensitive(true);
     } else {
         enabled.set_sensitive(true);
     }

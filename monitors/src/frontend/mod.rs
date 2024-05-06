@@ -121,6 +121,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let drawing_ref_action = drawing_area.clone();
 
     let data = get_monitor_data();
+    dbg!(&data);
     let monitor_data = Rc::new(RefCell::new(data.clone()));
     // clone the data for a fallback -> wrong or unusable settings applied
     // return to previous working conditions
