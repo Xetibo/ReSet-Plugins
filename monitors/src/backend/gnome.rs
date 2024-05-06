@@ -153,11 +153,13 @@ impl GnomeMonitorConfig {
                 current_mode = Some(&empty_mode);
             }
             let current_mode = current_mode.unwrap();
+            let vrr_enabled = get_variable_refresh_rate_support();
             let mut vrr = false;
             let refresh_rate_opt: Option<&String> =
                 prop_cast(&current_mode.properties, "refresh-rate-mode");
             if let Some(refresh_rate_mode) = refresh_rate_opt {
-                if refresh_rate_mode == "variable" {
+                println!("{}", refresh_rate_mode);
+                if refresh_rate_mode == "variable" && vrr_enabled {
                     vrr = true;
                 }
             }
@@ -181,7 +183,7 @@ impl GnomeMonitorConfig {
                 drag_information: DragInformation::default(),
                 available_modes: modes,
                 features: MonitorFeatures {
-                    vrr: get_variable_refresh_rate_support(),
+                    vrr: vrr_enabled,
                     // Gnome requires a primary monitor to be set
                     primary: true,
                     fractional_scaling: get_fractional_scale_support(),
