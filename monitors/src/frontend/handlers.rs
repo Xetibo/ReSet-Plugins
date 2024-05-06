@@ -60,14 +60,14 @@ pub fn apply_monitor_clicked(
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
     let res: Result<(), Error> = if revert {
         if persistent {
-            proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
-        } else {
             proxy.method_call(INTERFACE, "SaveMonitors", (fallback.borrow().clone(),))
+        } else {
+            proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
         }
     } else if persistent {
-        proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
-    } else {
         proxy.method_call(INTERFACE, "SaveMonitors", (apply_ref.borrow().clone(),))
+    } else {
+        proxy.method_call(INTERFACE, "SetMonitors", (fallback.borrow().clone(),))
     };
     if res.is_err() {
         ERROR!(
