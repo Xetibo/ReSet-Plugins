@@ -17,6 +17,7 @@ const FEATURES: MonitorFeatures = MonitorFeatures {
     // Hyprland has no primary monitor concept
     primary: false,
     fractional_scaling: true,
+    full_transform: true,
 };
 
 pub fn hy_get_monitor_information() -> Vec<Monitor> {

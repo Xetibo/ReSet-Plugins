@@ -209,16 +209,20 @@ pub fn get_monitor_settings_group(
     let scaling_ref = clicked_monitor.clone();
     add_scale_adjustment(monitor.scale, monitor_index, scaling_ref, &settings);
 
-    let model_list = StringList::new(&[
-        "0",
-        "90",
-        "180",
-        "270",
-        "0-flipped",
-        "90-flipped",
-        "180-flipped",
-        "270-flipped",
-    ]);
+    let model_list = if monitor.features.full_transform {
+        StringList::new(&[
+            "0",
+            "90",
+            "180",
+            "270",
+            "0-flipped",
+            "90-flipped",
+            "180-flipped",
+            "270-flipped",
+        ])
+    } else {
+        StringList::new(&["0", "90", "180", "270"])
+    };
     let transform = adw::ComboRow::new();
     transform.set_title("Transform");
     transform.set_model(Some(&model_list));

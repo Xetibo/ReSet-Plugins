@@ -65,15 +65,18 @@ pub struct MonitorFeatures {
     pub vrr: bool,
     pub primary: bool,
     pub fractional_scaling: bool,
+    pub full_transform: bool,
 }
 
 impl<'a> Get<'a> for MonitorFeatures {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
-        let (vrr, primary, fractional_scaling) = <(bool, bool, bool)>::get(i)?;
+        let (vrr, primary, fractional_scaling, full_transform) =
+            <(bool, bool, bool, bool)>::get(i)?;
         Some(Self {
             vrr,
             primary,
             fractional_scaling,
+            full_transform,
         })
     }
 }
@@ -84,6 +87,7 @@ impl Append for MonitorFeatures {
             i.append(self.vrr);
             i.append(self.primary);
             i.append(self.fractional_scaling);
+            i.append(self.full_transform);
         });
     }
 }
@@ -91,7 +95,7 @@ impl Append for MonitorFeatures {
 impl Arg for MonitorFeatures {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(bbb)\0") }
+        unsafe { Signature::from_slice_unchecked("(bbbb)\0") }
     }
 }
 
@@ -253,7 +257,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbb))\0") }
+        unsafe { Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbbb))\0") }
     }
 }
 

@@ -95,10 +95,11 @@ impl KDEMonitor {
             mode: self.currentModeId,
             available_modes: modes.0,
             features: MonitorFeatures {
-                // KDE supports all the features!
+                // KDE supports all the features! (other than full_transform)
                 vrr: true,
                 primary: true,
                 fractional_scaling: true,
+                full_transform: false,
             },
         }
     }
