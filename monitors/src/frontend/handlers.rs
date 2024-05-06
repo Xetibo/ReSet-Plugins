@@ -298,7 +298,6 @@ pub fn get_monitor_settings_group(
 
         let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.to_string()).collect();
         let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
-        dbg!(&refresh_rates);
         let refresh_rate_model = StringList::new(&refresh_rates);
         refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
         refresh_rate_combo_ref.set_selected(0);
