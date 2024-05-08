@@ -2,6 +2,11 @@
 
 with pkgs;
 mkShell {
+{ pkgs ? import <nixpkgs> { } }:
+
+with pkgs;
+mkShell
+{
   nativeBuildInputs = [
     pkg-config
   ];
