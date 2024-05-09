@@ -389,32 +389,6 @@ impl Display for Scale {
     }
 }
 
-// TODO: move this to reset-lib
-#[derive(Debug)]
-pub struct PluginInstantiationError(&'static str);
-
-impl PluginInstantiationError {
-    pub fn message(&self) -> &'static str {
-        self.0
-    }
-
-    pub fn new(message: &'static str) -> Self {
-        Self(message)
-    }
-}
-
-impl Default for PluginInstantiationError {
-    fn default() -> Self {
-        Self("Environment not supported")
-    }
-}
-
-impl Display for PluginInstantiationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.0)
-    }
-}
-
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
 pub struct AvailableMode {
@@ -483,14 +457,14 @@ pub enum SnapDirectionVertical {
     None,
 }
 
-pub struct Wrapper {
+pub struct AlertWrapper {
     pub popup: adw::AlertDialog,
 }
 
-unsafe impl Send for Wrapper {}
-unsafe impl Sync for Wrapper {}
+unsafe impl Send for AlertWrapper {}
+unsafe impl Sync for AlertWrapper {}
 
-impl Wrapper {
+impl AlertWrapper {
     pub fn action(&self) {
         self.popup.activate_default();
     }

@@ -213,7 +213,6 @@ impl GnomeMonitorConfig {
                 scale: monitor.scale,
                 transform: monitor.transform,
                 primary: monitor.primary,
-                // TODO: propmap
                 monitors: vec![(monitor.name.clone(), mode, PropMap::new())],
             });
         }

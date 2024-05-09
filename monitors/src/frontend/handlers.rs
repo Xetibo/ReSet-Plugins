@@ -34,7 +34,7 @@ use crate::{
     r#const::{BASE, DBUS_PATH, INTERFACE},
     utils::{
         get_environment, get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical,
-        Wrapper,
+        AlertWrapper,
     },
 };
 
@@ -138,7 +138,7 @@ pub fn apply_monitor_clicked(
         });
 
         let settings = settings_ref.clone();
-        let thread_settings = Wrapper {
+        let thread_settings = AlertWrapper {
             popup: popup.clone(),
         };
 
