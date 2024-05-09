@@ -11,6 +11,7 @@ mkShell
     gtk4
     libadwaita
     pulseaudio
+    xorg.setxkbmap
   ];
 
 }
