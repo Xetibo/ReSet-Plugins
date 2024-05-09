@@ -582,6 +582,7 @@ pub fn monitor_drag_end(
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
     drawing_ref_end: &DrawingArea,
     main_box_ref: &gtk::Box,
+    is_gnome: bool,
 ) {
     let mut changed = false;
     let mut endpoint_left: i32 = 0;
@@ -690,7 +691,11 @@ pub fn monitor_drag_end(
             SnapDirectionHorizontal::LeftRight(snap) | SnapDirectionHorizontal::LeftLeft(snap) => {
                 monitor.offset.0 = snap;
             }
-            SnapDirectionHorizontal::None => monitor.offset.0 += monitor.drag_information.drag_x,
+            SnapDirectionHorizontal::None => {
+                if !is_gnome {
+                    monitor.offset.0 += monitor.drag_information.drag_x;
+                }
+            }
         }
         match snap_vertical {
             SnapDirectionVertical::TopTop(snap) | SnapDirectionVertical::TopBottom(snap) => {
@@ -699,7 +704,11 @@ pub fn monitor_drag_end(
             SnapDirectionVertical::BottomTop(snap) | SnapDirectionVertical::BottomBottom(snap) => {
                 monitor.offset.1 = snap;
             }
-            SnapDirectionVertical::None => monitor.offset.1 += monitor.drag_information.drag_y,
+            SnapDirectionVertical::None => {
+                if !is_gnome {
+                    monitor.offset.1 += monitor.drag_information.drag_y
+                }
+            }
         }
     }
     monitor.drag_information.drag_x = 0;
@@ -746,7 +755,14 @@ pub fn scaling_update(
         search_nearest_scale(6, &mut search_scale, monitor, direction, &mut found, true);
         // search additional distance if no match has been found
         if !found {
-            search_nearest_scale(100, &mut search_scale, monitor, direction, &mut found, false);
+            search_nearest_scale(
+                100,
+                &mut search_scale,
+                monitor,
+                direction,
+                &mut found,
+                false,
+            );
         }
 
         // user has entered a scale without a possible scale nearby, show error banner

@@ -16,7 +16,7 @@ use gtk::{
 };
 use re_set_lib::utils::{gtk::utils::create_title, plugin::SidebarInfo};
 
-use crate::utils::get_monitor_data;
+use crate::utils::{get_environment, get_monitor_data};
 
 use self::handlers::{
     apply_monitor_clicked, drawing_callback, get_monitor_settings_group, monitor_drag_end,
@@ -200,8 +200,8 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         }
     });
 
+    let gnome = get_environment().as_str() == "GNOME";
     let gesture = GestureDrag::builder().build();
-
     gesture.connect_drag_begin(move |_drag, x, y| {
         monitor_drag_start(x, y, start_ref.clone(), &settings_box_ref);
     });
@@ -209,7 +209,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         monitor_drag_update(x, y, update_ref.clone(), &drawing_ref);
     });
     gesture.connect_drag_end(move |_drag, _x, _y| {
-        monitor_drag_end(monitor_data.clone(), &drawing_ref_end, &main_box_ref);
+        monitor_drag_end(monitor_data.clone(), &drawing_ref_end, &main_box_ref, gnome);
     });
 
     drawing_area.add_controller(gesture);
