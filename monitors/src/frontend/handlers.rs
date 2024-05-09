@@ -797,7 +797,7 @@ fn search_nearest_scale(
 ) {
     // reverse x for the second run
     let reverse_scale = if reverse { -1.0 } else { 1.0 };
-    for x in 1..amount {
+    for x in 1..=amount {
         // increment here does not equal to increment of 1, but 1/120 of an increment
         // specified at: https://wayland.app/protocols/fractional-scale-v1
         let scale_move = if direction {
