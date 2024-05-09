@@ -164,7 +164,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             &settings_box_ref_save,
             &drawing_ref_save,
             false,
-            true
+            true,
         );
     });
 
@@ -176,7 +176,11 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         }
     }
 
-    settings_box.append(&get_monitor_settings_group(monitor_data.clone(), 0));
+    settings_box.append(&get_monitor_settings_group(
+        monitor_data.clone(),
+        0,
+        &drawing_area,
+    ));
 
     drawing_callback(
         &drawing_area,
@@ -200,16 +204,28 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         }
     });
 
-    let gnome = get_environment().as_str() == "GNOME";
+    let is_gnome = get_environment().as_str() == "GNOME";
     let gesture = GestureDrag::builder().build();
+    let drawing_ref_drag_start = drawing_area.clone();
     gesture.connect_drag_begin(move |_drag, x, y| {
-        monitor_drag_start(x, y, start_ref.clone(), &settings_box_ref);
+        monitor_drag_start(
+            x,
+            y,
+            start_ref.clone(),
+            &settings_box_ref,
+            &drawing_ref_drag_start,
+        );
     });
     gesture.connect_drag_update(move |_drag, x, y| {
         monitor_drag_update(x, y, update_ref.clone(), &drawing_ref);
     });
     gesture.connect_drag_end(move |_drag, _x, _y| {
-        monitor_drag_end(monitor_data.clone(), &drawing_ref_end, &main_box_ref, gnome);
+        monitor_drag_end(
+            monitor_data.clone(),
+            &drawing_ref_end,
+            &main_box_ref,
+            is_gnome,
+        );
     });
 
     drawing_area.add_controller(gesture);

@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    cell::{RefCell, RefMut},
     f64::consts,
     rc::Rc,
     sync::{
@@ -85,7 +85,11 @@ pub fn apply_monitor_clicked(
         };
     }
     monitor_ref.replace(get_monitor_data());
-    settings_ref.append(&get_monitor_settings_group(monitor_ref.clone(), index));
+    settings_ref.append(&get_monitor_settings_group(
+        monitor_ref.clone(),
+        index,
+        &drawing_ref,
+    ));
     if persistent {
         get_config_value("Monitor", "save_warning", |value| {
             if let Some(warning) = value.as_bool() {
@@ -173,7 +177,11 @@ pub fn reset_monitor_clicked(
         };
     }
     reset_ref.replace(get_monitor_data());
-    settings_box_ref_reset.append(&get_monitor_settings_group(reset_ref.clone(), index));
+    settings_box_ref_reset.append(&get_monitor_settings_group(
+        reset_ref.clone(),
+        index,
+        &drawing_ref_reset,
+    ));
     drawing_ref_reset.queue_draw();
     button
         .activate_action(
@@ -186,6 +194,7 @@ pub fn reset_monitor_clicked(
 pub fn get_monitor_settings_group(
     clicked_monitor: Rc<RefCell<Vec<Monitor>>>,
     monitor_index: usize,
+    drawing_area: &DrawingArea,
 ) -> PreferencesGroup {
     let settings = PreferencesGroup::new();
 
@@ -238,9 +247,10 @@ pub fn get_monitor_settings_group(
         _ => ERROR!("Received unexpected transform", ErrorLevel::Recoverable),
     }
     let transform_ref = clicked_monitor.clone();
+    let transform_drawing_ref = drawing_area.clone();
     transform.connect_selected_item_notify(move |dropdown| {
-        let mut monitor = transform_ref.borrow_mut();
-        let monitor = monitor.get_mut(monitor_index).unwrap();
+        let mut monitors = transform_ref.borrow_mut();
+        let monitor = monitors.get_mut(monitor_index).unwrap();
         match model_list.string(dropdown.selected()).unwrap().as_str() {
             "0" => monitor.transform = 0,
             "90" => monitor.transform = 1,
@@ -252,12 +262,14 @@ pub fn get_monitor_settings_group(
             "270-flipped" => monitor.transform = 7,
             _ => ERROR!("Received unexpected transform", ErrorLevel::Recoverable),
         };
+        rearrange_monitors(monitor.clone(), monitors);
         dropdown
             .activate_action(
                 "monitor.reset_monitor_buttons",
                 Some(&glib::Variant::from(true)),
             )
             .expect("Could not activate reset action");
+        transform_drawing_ref.queue_draw();
     });
     settings.add(&transform);
 
@@ -281,6 +293,7 @@ pub fn get_monitor_settings_group(
     resolution.set_model(Some(&model_list));
     resolution.set_selected(index as u32);
     let resolution_ref = clicked_monitor.clone();
+    let resolution_drawing_ref = drawing_area.clone();
     resolution.connect_selected_item_notify(move |dropdown| {
         let index = dropdown.selected();
         let selected = dropdown.selected_item();
@@ -289,15 +302,19 @@ pub fn get_monitor_settings_group(
         let (x, y) = selected.split_once('x').unwrap();
         let refresh_rates;
         {
-            let mut monitor = resolution_ref.borrow_mut();
-            let monitor = monitor.get_mut(monitor_index).unwrap();
+            let mut monitors = resolution_ref.borrow_mut();
+            let monitor = monitors.get_mut(monitor_index).unwrap();
             let mode = monitor.available_modes.get(index as usize).unwrap();
             refresh_rates = mode.refresh_rates.clone();
             let highest = refresh_rates.first().unwrap();
             monitor.mode = String::from(&mode.id);
             monitor.refresh_rate = *highest;
-            monitor.size.0 = x.parse().unwrap();
-            monitor.size.1 = y.parse().unwrap();
+            let new_size_x: i32 = x.parse().unwrap();
+            let new_size_y: i32 = y.parse().unwrap();
+            let original_monitor = monitor.clone();
+            monitor.size.0 = new_size_x;
+            monitor.size.1 = new_size_y;
+            rearrange_monitors(original_monitor.clone(), monitors);
         }
 
         let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.to_string()).collect();
@@ -311,6 +328,7 @@ pub fn get_monitor_settings_group(
                 Some(&glib::Variant::from(true)),
             )
             .expect("Could not activate reset action");
+        resolution_drawing_ref.queue_draw();
     });
     settings.add(&resolution);
 
@@ -356,6 +374,20 @@ pub fn get_monitor_settings_group(
     settings
 }
 
+pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Vec<Monitor>>) {
+    let mut furthest = 0;
+    // resets the monitors to a single line, this requires the user to rearrange the monitors, but
+    // allows ReSet to ignore an extremely complicated and time consuming calculation with many
+    // possible edge cases that could cause overlap between monitors.
+    // This also assures that the newly generated configuration is GNOME compatible :)
+    for monitor in monitors.iter_mut() {
+        let (width, _) = monitor.handle_transform();
+        monitor.offset.0 = furthest;
+        monitor.offset.1 = original_monitor.offset.1;
+        furthest = monitor.offset.0 + width;
+    }
+}
+
 pub fn add_scale_adjustment(
     scale: f64,
     monitor_index: usize,
@@ -395,7 +427,7 @@ pub fn drawing_callback(
         let mut max_monitor_height = 0;
         let mut min_monitor_width = 0;
         let mut min_monitor_height = 0;
-        for monitor in monitor_data.borrow().iter() {
+        for monitor in monitor_data.borrow_mut().iter_mut() {
             let (width, height) = monitor.handle_transform();
             let current_min_height = monitor.offset.1;
             let current_min_width = monitor.offset.0;
@@ -534,6 +566,7 @@ pub fn monitor_drag_start(
     y: f64,
     start_ref: Rc<RefCell<Vec<Monitor>>>,
     settings_box_ref: &gtk::Box,
+    drawing_area: &DrawingArea,
 ) {
     let mut iter = -1;
     for (index, monitor) in start_ref.borrow_mut().iter_mut().enumerate() {
@@ -557,6 +590,7 @@ pub fn monitor_drag_start(
     settings_box_ref.append(&get_monitor_settings_group(
         start_ref.clone(),
         iter as usize,
+        drawing_area,
     ));
 }
 
@@ -692,7 +726,8 @@ pub fn monitor_drag_end(
                 monitor.offset.0 = snap;
             }
             SnapDirectionHorizontal::None => {
-                if !is_gnome {
+                // GNOME doesn't allow spacing between monitors.... why...
+                if !is_gnome || snap_vertical != SnapDirectionVertical::None {
                     monitor.offset.0 += monitor.drag_information.drag_x;
                 }
             }
@@ -705,7 +740,7 @@ pub fn monitor_drag_end(
                 monitor.offset.1 = snap;
             }
             SnapDirectionVertical::None => {
-                if !is_gnome {
+                if !is_gnome || snap_horizontal != SnapDirectionHorizontal::None {
                     monitor.offset.1 += monitor.drag_information.drag_y
                 }
             }
