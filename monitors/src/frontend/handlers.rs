@@ -817,5 +817,4 @@ fn search_nearest_scale(
             break;
         }
     }
-    println!("reverse: {} direction: {} found: {}", reverse, direction, found);
 }
