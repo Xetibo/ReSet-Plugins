@@ -25,10 +25,10 @@ use gtk::{
     prelude::{BoxExt, DrawingAreaExtManual, GdkCairoContextExt, NativeExt, WidgetExt},
     DrawingArea, StringList, StringObject,
 };
-use re_set_lib::{
-    utils::{config::get_config_value, macros::ErrorLevel},
-    write_log_to_file, ERROR,
-};
+use re_set_lib::{utils::config::get_config_value, ERROR};
+
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::{
     r#const::{BASE, DBUS_PATH, INTERFACE},
@@ -88,7 +88,7 @@ pub fn apply_monitor_clicked(
     settings_ref.append(&get_monitor_settings_group(
         monitor_ref.clone(),
         index,
-        &drawing_ref,
+        drawing_ref,
     ));
     if persistent {
         get_config_value("Monitor", "save_warning", |value| {
@@ -180,7 +180,7 @@ pub fn reset_monitor_clicked(
     settings_box_ref_reset.append(&get_monitor_settings_group(
         reset_ref.clone(),
         index,
-        &drawing_ref_reset,
+        drawing_ref_reset,
     ));
     drawing_ref_reset.queue_draw();
     button
@@ -670,6 +670,7 @@ pub fn monitor_drag_end(
             snap_horizontal = SnapDirectionHorizontal::LeftLeft(endpoint_other_left);
         }
 
+        println!("{}", endpoint_top.abs_diff(endpoint_other_bottom));
         if endpoint_top.abs_diff(endpoint_other_top) < 100 {
             snap_vertical = SnapDirectionVertical::TopTop(endpoint_other_top);
         } else if endpoint_bottom.abs_diff(endpoint_other_bottom) < 100 {
@@ -750,7 +751,6 @@ pub fn monitor_drag_end(
     monitor.drag_information.drag_y = 0;
 
     drawing_ref_end.queue_draw();
-    // refs
     if changed {
         main_box_ref
             .activate_action(

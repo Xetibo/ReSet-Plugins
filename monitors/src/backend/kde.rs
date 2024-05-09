@@ -4,7 +4,9 @@ use std::{
     process::Command,
 };
 
-use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 

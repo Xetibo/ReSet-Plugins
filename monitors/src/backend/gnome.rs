@@ -10,7 +10,10 @@ use dbus::{
     Error, Signature,
 };
 use gtk::prelude::SettingsExtManual;
-use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
+
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::utils::{AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size};
 
@@ -175,7 +178,6 @@ impl GnomeMonitorConfig {
                 refresh_rate: current_mode.refresh_rate.round() as u32,
                 scale: logical_monitor.scale,
                 transform: logical_monitor.transform,
-                // TODO: bug
                 vrr,
                 primary: logical_monitor.primary,
                 offset: Offset(logical_monitor.x, logical_monitor.y),
@@ -188,7 +190,7 @@ impl GnomeMonitorConfig {
                     // Gnome requires a primary monitor to be set
                     primary: true,
                     fractional_scaling: get_fractional_scale_support(),
-                    full_transform: true
+                    full_transform: true,
                 },
             });
         }

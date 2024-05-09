@@ -1,9 +1,11 @@
 use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
 use dbus_crossroads::IfaceBuilder;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 use re_set_lib::{
-    utils::{macros::ErrorLevel, plugin::PluginTestFunc, plugin_setup::CrossWrapper},
-    write_log_to_file, ERROR,
+    utils::{plugin::PluginTestFunc, plugin_setup::CrossWrapper},
+    ERROR,
 };
 
 use crate::{

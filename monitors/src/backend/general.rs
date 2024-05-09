@@ -1,6 +1,8 @@
 // This file handles general functions for monitor conversions
 
-use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::utils::{get_environment, Monitor};
 
