@@ -28,7 +28,6 @@ pub mod kde;
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn frontend_tests() -> Vec<PluginTestFunc> {
-    println!("frontend tests called");
     vec![]
 }
 
@@ -72,7 +71,6 @@ pub extern "C" fn backend_shutdown() {}
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn backend_tests() -> Vec<PluginTestFunc> {
-    println!("tests called");
     Vec::new()
 }
 

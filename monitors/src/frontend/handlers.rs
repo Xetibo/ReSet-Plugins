@@ -670,7 +670,6 @@ pub fn monitor_drag_end(
             snap_horizontal = SnapDirectionHorizontal::LeftLeft(endpoint_other_left);
         }
 
-        println!("{}", endpoint_top.abs_diff(endpoint_other_bottom));
         if endpoint_top.abs_diff(endpoint_other_top) < 100 {
             snap_vertical = SnapDirectionVertical::TopTop(endpoint_other_top);
         } else if endpoint_bottom.abs_diff(endpoint_other_bottom) < 100 {

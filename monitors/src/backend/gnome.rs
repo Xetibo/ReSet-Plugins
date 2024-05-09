@@ -63,14 +63,12 @@ pub fn g_get_monitor_information() -> Vec<Monitor> {
 
 pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
     let conn = Connection::new_session().unwrap();
-    dbg!(&monitors);
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
     let res: Result<(), Error> = proxy.method_call(
         INTERFACE,
         "ApplyMonitorsConfig",
         GnomeMonitorConfig::from_regular_monitor(apply_mode, monitors),
     );
-    dbg!(&res);
     if res.is_err() {
         ERROR!(
             "Could not apply monitor configuration",
