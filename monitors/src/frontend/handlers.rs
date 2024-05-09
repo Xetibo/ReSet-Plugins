@@ -743,10 +743,10 @@ pub fn scaling_update(
     if monitor.size.0 as f64 % scale != 0.0 && monitor.size.1 as f64 % scale != 0.0 && scale != 1.0
     {
         // search the traveled distance for a possible match
-        search_nearest_scale(6, &mut search_scale, monitor, direction, &mut found, false);
+        search_nearest_scale(6, &mut search_scale, monitor, direction, &mut found, true);
         // search additional distance if no match has been found
         if !found {
-            search_nearest_scale(100, &mut search_scale, monitor, direction, &mut found, true);
+            search_nearest_scale(100, &mut search_scale, monitor, direction, &mut found, false);
         }
 
         // user has entered a scale without a possible scale nearby, show error banner
