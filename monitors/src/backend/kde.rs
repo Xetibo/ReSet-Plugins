@@ -97,11 +97,11 @@ impl KDEMonitor {
             mode: self.currentModeId,
             available_modes: modes.0,
             features: MonitorFeatures {
-                // KDE supports all the features! (other than full_transform)
+                // KDE supports all the features!
                 vrr: true,
                 primary: true,
                 fractional_scaling: true,
-                full_transform: false,
+                hdr: true,
             },
         }
     }
@@ -215,10 +215,14 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
 
     for monitor in monitors {
         let rotation = match monitor.transform {
-            0 | 4 => "none",
-            1 | 5 => "right",
-            2 | 6 => "down",
-            3 | 7 => "inverted",
+            0 => "none",
+            1 => "right",
+            2 => "inverted",
+            3 => "left",
+            4 => "flipped",
+            5 => "flipped90",
+            6 => "flipped180",
+            7 => "flipped270",
             _ => unreachable!(),
         };
         let start = format!("output.{}.", monitor.name);

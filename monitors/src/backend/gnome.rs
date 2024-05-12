@@ -188,7 +188,7 @@ impl GnomeMonitorConfig {
                     // Gnome requires a primary monitor to be set
                     primary: true,
                     fractional_scaling: get_fractional_scale_support(),
-                    full_transform: true,
+                    hdr: false,
                 },
             });
         }
