@@ -5,3 +5,4 @@ pub const INTERFACE: &str = "org.Xetibo.ReSet.Keyboard";
 
 pub const HYPRLAND: &str = "Hyprland";
 pub const GNOME: &str = "GNOME";
+pub const KDE: &str = "KDE";
