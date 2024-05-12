@@ -68,9 +68,8 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
         }
 
         list.set_filter_func(move |row| {
-            let label = row.child().unwrap();
-            let label = label.downcast_ref::<Label>().unwrap();
-            label.label().to_lowercase().contains(search_text.to_lowercase().as_str())
+            let action_row = row.downcast_ref::<ActionRow>().unwrap();
+            action_row.title().to_lowercase().contains(search_text.to_lowercase().as_str())
         });
     }));
 
