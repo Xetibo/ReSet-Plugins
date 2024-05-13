@@ -92,7 +92,8 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     #[allow(deprecated)]
     let context = settings_box.style_context();
     #[allow(deprecated)]
-    let color = context.lookup_color("headerbar_border_color").unwrap();
+    // let color = context.lookup_color("headerbar_border_color").unwrap();
+    let color = context.lookup_color("dark_2").unwrap();
     #[allow(deprecated)]
     let border_color = context.lookup_color("accent_color").unwrap();
     #[allow(deprecated)]
