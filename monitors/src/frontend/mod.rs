@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use glib::clone;
 use gtk::{
+    gdk::RGBA,
     gio::{ActionEntry, SimpleActionGroup},
     prelude::FrameExt,
     GestureClick,
@@ -92,14 +93,15 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     #[allow(deprecated)]
     let context = settings_box.style_context();
     #[allow(deprecated)]
-    // let color = context.lookup_color("headerbar_border_color").unwrap();
     let color = context.lookup_color("card_bg_color").unwrap();
     #[allow(deprecated)]
-    let border_color = context.lookup_color("accent_color").unwrap();
+    let border_color = context.lookup_color("window_fg_color").unwrap();
     #[allow(deprecated)]
-    let dragging_color = context.lookup_color("blue_5").unwrap();
+    let dragging_color = context.lookup_color("blue_4").unwrap();
     #[allow(deprecated)]
-    let clicked_color = context.lookup_color("blue_4").unwrap();
+    let clicked_color = RGBA::new(0.093, 0.34, 0.67, 1.0);
+    #[allow(deprecated)]
+    let selected_text_color = context.lookup_color("light_1").unwrap();
 
     let drawing_frame = gtk::Frame::builder()
         .margin_top(10)
@@ -189,6 +191,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         color,
         dragging_color,
         clicked_color,
+        selected_text_color,
         monitor_data.clone(),
     );
     let clicked = GestureClick::builder().build();

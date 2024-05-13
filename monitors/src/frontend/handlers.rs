@@ -406,6 +406,7 @@ pub fn drawing_callback(
     color: gtk::gdk::RGBA,
     draggin_color: gtk::gdk::RGBA,
     clicked_color: gtk::gdk::RGBA,
+    selected_text_color: gtk::gdk::RGBA,
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
 ) {
     area.set_draw_func(move |area, context, _, _| {
@@ -543,7 +544,9 @@ pub fn drawing_callback(
             context.stroke().expect("Could not fill context");
 
             // text
-            // TODO: change to different color
+            if monitor.drag_information.drag_active || monitor.drag_information.clicked {
+                context.set_source_color(&selected_text_color);
+            }
             context.set_font_size((140 / factor) as f64);
             context.move_to((offset_x + 10) as f64, (offset_y + 30) as f64);
             context
