@@ -301,7 +301,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
     let manager: KdeOutputManagementV2 = globals.bind(&handle, 1..=2, ()).unwrap();
-    let configuration: KdeOutputConfigurationV2 = globals.bind(&handle, 1..=2, ()).unwrap();
+    // let configuration: KdeOutputConfigurationV2 = globals.bind(&handle, 1..=2, ()).unwrap();
 
     let mut data = AppData {
         heads: HashMap::new(),
