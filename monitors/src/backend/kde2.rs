@@ -13,8 +13,8 @@ use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::E
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::KdeOutputDeviceV2;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::Event as OutputConfigurationEvent;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::KdeOutputConfigurationV2;
-use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::KdeOutputManagementV2;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::Event as OutputManagementEvent;
+use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::KdeOutputManagementV2;
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
@@ -281,9 +281,11 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
-    globals
+    let kde = globals
         .bind::<KdeOutputManagementV2, _, _>(&handle, RangeInclusive::new(0, 1), ())
         .unwrap();
+    let handle = queue.handle();
+    kde.create_configuration(&handle, ());
 
     let mut data = AppData {
         heads: HashMap::new(),
