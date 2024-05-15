@@ -310,7 +310,10 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
 
     // queue.roundtrip(&mut data).unwrap();
     for i in 0..5 {
-        queue.blocking_dispatch(&mut data).unwrap();
+        let what = queue.blocking_dispatch(&mut data);
+        if what.is_ok() {
+            what.unwrap();
+        }
     }
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
