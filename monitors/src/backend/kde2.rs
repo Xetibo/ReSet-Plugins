@@ -192,7 +192,6 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             Event::Done => {
                 conn.flush();
             }
-            Event::CurrentMode { mode } => {}
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
             // Event::Capabilities { flags } => todo!(),
