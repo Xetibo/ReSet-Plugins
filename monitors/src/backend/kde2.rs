@@ -237,7 +237,6 @@ impl Dispatch<KdeOutputManagementV2, ()> for AppData {
         _: &Connection,
         _: &QueueHandle<AppData>,
     ) {
-
     }
 }
 impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
@@ -301,6 +300,14 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
+    let handle = queue.handle();
+    for global in globals.contents().clone_list() {
+        if let "kde_output_device_v2" = &global.interface[..] {
+            globals
+                .bind::<KdeOutputDeviceV2, _, _>(&handle, RangeInclusive::new(0, 1), ())
+                .unwrap();
+        }
+    }
 
     let mut data = AppData {
         heads: HashMap::new(),
