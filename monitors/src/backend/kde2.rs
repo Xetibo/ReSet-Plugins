@@ -317,9 +317,9 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
                 &handle,
                 (),
             );
-            queue.blocking_dispatch(&mut data).unwrap();
         }
     }
+            queue.blocking_dispatch(&mut data).unwrap();
     // queue.roundtrip(&mut data).unwrap();
     // for i in 0..5 {
     //     if what.is_ok() {
