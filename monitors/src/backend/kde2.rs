@@ -310,12 +310,14 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
 
     let handle = queue.handle();
     for global in globals.contents().clone_list() {
-        globals.registry().bind::<KdeOutputDeviceV2, _, _>(
-            global.name,
-            global.version,
-            &handle,
-            (),
-        );
+        if &global.interface[..] == "kde_output_device_mode_v2" {
+            globals.registry().bind::<KdeOutputDeviceV2, _, _>(
+                global.name,
+                global.version,
+                &handle,
+                (),
+            );
+        }
     }
     queue.blocking_dispatch(&mut data).unwrap();
     // queue.roundtrip(&mut data).unwrap();
