@@ -285,7 +285,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
         } = event
         {
             if let "kde_output_device_v2" = &interface[..] {
-                println!("{}", interface);
+                println!("{} {}", interface, name);
                 let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
             }
         }
