@@ -212,9 +212,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
         }
     }
 
-    // fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-    //     _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
-    // }
+    fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
+        _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
+    }
 }
 
 impl Dispatch<KdeOutputConfigurationV2, ()> for AppData {
@@ -269,28 +269,28 @@ impl Dispatch<wl_callback::WlCallback, ()> for AppData {
     }
 }
 
-impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
-    fn event(
-        _state: &mut Self,
-        registry: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        _: &(),
-        conn: &Connection,
-        qh: &QueueHandle<AppData>,
-    ) {
-        if let wl_registry::Event::Global {
-            name,
-            interface,
-            version,
-        } = event
-        {
-            if let "kde_output_device_v2" = &interface[..] {
-                println!("{} {}", interface, name);
-                let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
-            }
-        }
-    }
-}
+// impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
+//     fn event(
+//         _state: &mut Self,
+//         registry: &wl_registry::WlRegistry,
+//         event: wl_registry::Event,
+//         _: &(),
+//         conn: &Connection,
+//         qh: &QueueHandle<AppData>,
+//     ) {
+//         if let wl_registry::Event::Global {
+//             name,
+//             interface,
+//             version,
+//         } = event
+//         {
+//             if let "kde_output_device_v2" = &interface[..] {
+//                 println!("{} {}", interface, name);
+//                 let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
+//             }
+//         }
+//     }
+// }
 pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let conn = Connection::connect_to_env().unwrap();
