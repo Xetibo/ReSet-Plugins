@@ -137,83 +137,84 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
         _: &Connection,
         _: &QueueHandle<AppData>,
     ) {
-        match event {
-            Event::Name { name } => {
-                let monitor = WlrMonitor {
-                    name,
-                    make: String::from(""),
-                    model: String::from(""),
-                    serial_number: String::from(""),
-                    description: String::from(""),
-                    offset_x: 0,
-                    offset_y: 0,
-                    scale: 0.0,
-                    modes: HashMap::new(),
-                    current_mode: 0,
-                    vrr: false,
-                    transform: 0,
-                    enabled: true,
-                    width: 0,
-                    height: 0,
-                    refresh_rate: 0,
-                };
-                let len = _state.heads.len() as u32;
-                _state.current_monitor = len;
-                _state.heads.insert(len, monitor);
-            }
-            // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
-            // Event::CurrentMode { mode } => todo!(),
-            // Event::Mode { mode } => todo!(),
-            // Event::Done => todo!(),
-            // Event::Edid { raw } => todo!(),
-            // Event::Uuid { uuid } => todo!(),
-            // Event::EisaId { eisaId } => todo!(),
-            // Event::Capabilities { flags } => todo!(),
-            // Event::Overscan { overscan } => todo!(),
-            // Event::VrrPolicy { vrr_policy } => todo!(),
-            // Event::RgbRange { rgb_range } => todo!(),
-            Event::Geometry {
-                x,
-                y,
-                physical_width,
-                physical_height,
-                subpixel,
-                make,
-                model,
-                transform,
-            } => {
-                let monitor = _state.heads.get_mut(&_state.current_monitor).unwrap();
-                monitor.offset_x = x;
-                monitor.offset_y = y;
-                monitor.make = make;
-                monitor.model = model;
-                monitor.transform = transform as u32;
-            }
-            Event::Enabled { enabled } => {
-                _state
-                    .heads
-                    .get_mut(&_state.current_monitor)
-                    .unwrap()
-                    .enabled = enabled != 0;
-            }
-            Event::Scale { factor } => {
-                _state.heads.get_mut(&_state.current_monitor).unwrap().scale = factor;
-            }
-            Event::VrrPolicy { vrr_policy } => {
-                // 0 is disabled, 1 enabled
-                let value: u32 = vrr_policy.into();
-                // TODO: make this a proper field -> automatic and always
-                _state.heads.get_mut(&_state.current_monitor).unwrap().vrr = value >= 1;
-            }
-            Event::SerialNumber { serialNumber } => {
-                _state
-                    .heads
-                    .get_mut(&_state.current_monitor)
-                    .unwrap()
-                    .serial_number = serialNumber;
-            }
-            _ => (),
-        }
+        dbg!(event);
+        // match event {
+        //     Event::Name { name } => {
+        //         let monitor = WlrMonitor {
+        //             name,
+        //             make: String::from(""),
+        //             model: String::from(""),
+        //             serial_number: String::from(""),
+        //             description: String::from(""),
+        //             offset_x: 0,
+        //             offset_y: 0,
+        //             scale: 0.0,
+        //             modes: HashMap::new(),
+        //             current_mode: 0,
+        //             vrr: false,
+        //             transform: 0,
+        //             enabled: true,
+        //             width: 0,
+        //             height: 0,
+        //             refresh_rate: 0,
+        //         };
+        //         let len = _state.heads.len() as u32;
+        //         _state.current_monitor = len;
+        //         _state.heads.insert(len, monitor);
+        //     }
+        //     // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
+        //     // Event::CurrentMode { mode } => todo!(),
+        //     // Event::Mode { mode } => todo!(),
+        //     // Event::Done => todo!(),
+        //     // Event::Edid { raw } => todo!(),
+        //     // Event::Uuid { uuid } => todo!(),
+        //     // Event::EisaId { eisaId } => todo!(),
+        //     // Event::Capabilities { flags } => todo!(),
+        //     // Event::Overscan { overscan } => todo!(),
+        //     // Event::VrrPolicy { vrr_policy } => todo!(),
+        //     // Event::RgbRange { rgb_range } => todo!(),
+        //     Event::Geometry {
+        //         x,
+        //         y,
+        //         physical_width,
+        //         physical_height,
+        //         subpixel,
+        //         make,
+        //         model,
+        //         transform,
+        //     } => {
+        //         let monitor = _state.heads.get_mut(&_state.current_monitor).unwrap();
+        //         monitor.offset_x = x;
+        //         monitor.offset_y = y;
+        //         monitor.make = make;
+        //         monitor.model = model;
+        //         monitor.transform = transform as u32;
+        //     }
+        //     Event::Enabled { enabled } => {
+        //         _state
+        //             .heads
+        //             .get_mut(&_state.current_monitor)
+        //             .unwrap()
+        //             .enabled = enabled != 0;
+        //     }
+        //     Event::Scale { factor } => {
+        //         _state.heads.get_mut(&_state.current_monitor).unwrap().scale = factor;
+        //     }
+        //     Event::VrrPolicy { vrr_policy } => {
+        //         // 0 is disabled, 1 enabled
+        //         let value: u32 = vrr_policy.into();
+        //         // TODO: make this a proper field -> automatic and always
+        //         _state.heads.get_mut(&_state.current_monitor).unwrap().vrr = value >= 1;
+        //     }
+        //     Event::SerialNumber { serialNumber } => {
+        //         _state
+        //             .heads
+        //             .get_mut(&_state.current_monitor)
+        //             .unwrap()
+        //             .serial_number = serialNumber;
+        //     }
+        //     _ => (),
+        // }
     }
 
     fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
