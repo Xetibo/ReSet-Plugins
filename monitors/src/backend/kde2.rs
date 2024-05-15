@@ -248,6 +248,7 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
         _: &Connection,
         qh: &QueueHandle<AppData>,
     ) {
+        println!("called");
         for global in globals.clone_list() {
             println!("{}", &global.interface);
             if let "kde_output_device_v2" = &global.interface[..] {
