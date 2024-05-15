@@ -150,7 +150,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             } => {
                 let monitor = WlrMonitor {
                     name: String::from(""),
-                    make, 
+                    make,
                     model,
                     serial_number: String::from(""),
                     description: String::from(""),
@@ -276,9 +276,15 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
-    globals
-        .bind::<KdeOutputDeviceV2, _, _>(&handle, RangeInclusive::new(1, 2), ())
-        .unwrap();
+    loop {
+        let monitor =
+            globals.bind::<KdeOutputDeviceV2, _, _>(&handle, RangeInclusive::new(1, 2), ());
+        if monitor.is_ok() {
+            monitor.unwrap();
+        } else {
+            break;
+        }
+    }
 
     let mut data = AppData {
         heads: HashMap::new(),
