@@ -10,9 +10,11 @@ use wayland_client::protocol::wl_registry;
 use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::Event as OutputModeEvent;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::KdeOutputDeviceModeV2;
-use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::KdeOutputDeviceV2;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::{
     Event, EVT_MODE_OPCODE,
+};
+use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::{
+    KdeOutputDeviceV2, EVT_CURRENT_MODE_OPCODE,
 };
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::Event as OutputConfigurationEvent;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::KdeOutputConfigurationV2;
@@ -63,12 +65,12 @@ struct WlrMode {
     refresh_rate: HashSet<u32>,
 }
 
-impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
+impl Dispatch<KdeOutputDeviceModeV2, bool> for AppData {
     fn event(
         data: &mut Self,
         _: &KdeOutputDeviceModeV2,
         event: OutputModeEvent,
-        _: &(),
+        current: &bool,
         _: &Connection,
         _: &QueueHandle<AppData>,
     ) {
@@ -119,15 +121,23 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
                     data.current_mode_refresh_rate = refresh_rate;
                 }
             }
-            OutputModeEvent::Preferred => {
-                let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
-                let len = monitor.modes.len() as u32 - 1;
-                monitor.current_mode = len;
-                monitor.width = data.current_mode_key.0;
-                monitor.height = data.current_mode_key.1;
-                monitor.refresh_rate = data.current_mode_refresh_rate;
-            }
+            // OutputModeEvent::Preferred => {
+            //     let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+            //     let len = monitor.modes.len() as u32 - 1;
+            //     monitor.current_mode = len;
+            //     monitor.width = data.current_mode_key.0;
+            //     monitor.height = data.current_mode_key.1;
+            //     monitor.refresh_rate = data.current_mode_refresh_rate;
+            // }
             _ => (),
+        }
+        if *current {
+            let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+            let len = monitor.modes.len() as u32 - 1;
+            monitor.current_mode = len;
+            monitor.width = data.current_mode_key.0;
+            monitor.height = data.current_mode_key.1;
+            monitor.refresh_rate = data.current_mode_refresh_rate;
         }
     }
 }
@@ -182,7 +192,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             Event::Done => {
                 conn.flush();
             }
-            // Event::Edid { raw } => todo!(),
+            Event::CurrentMode { mode } => {}
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
             // Event::Capabilities { flags } => todo!(),
@@ -217,7 +227,11 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     }
 
     fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
+        if code == EVT_CURRENT_MODE_OPCODE {
+            _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(true)
+        } else {
+            _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(false)
+        }
     }
 }
 
