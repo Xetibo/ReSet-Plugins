@@ -10,8 +10,10 @@ use wayland_client::protocol::wl_registry;
 use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::Event as OutputModeEvent;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::KdeOutputDeviceModeV2;
-use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::Event;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::KdeOutputDeviceV2;
+use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::{
+    Event, EVT_MODE_OPCODE,
+};
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::Event as OutputConfigurationEvent;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::KdeOutputConfigurationV2;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::Event as OutputManagementEvent;
@@ -177,7 +179,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             // Event::CurrentMode { mode } => todo!(),
             // Event::Mode { mode } => todo!(),
-            // Event::Done => todo!(),
+            // Event::Done => {
+            //    event.opcode
+            // },
             // Event::Edid { raw } => todo!(),
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
@@ -212,8 +216,12 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
         }
     }
 
-    fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
+    fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
+        if code == EVT_MODE_OPCODE {
+            _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
+        } else {
+           unreachable!() 
+        }
     }
 }
 
@@ -312,11 +320,12 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
 
     for global in globals.contents().clone_list() {
         let mut first = true;
-        if &global.interface[..] == "kde_output_device_v2"  && first{
+        if &global.interface[..] == "kde_output_device_v2" && first {
             println!("start {}", global.name);
-            let lel: KdeOutputDeviceV2 = globals
-                .registry()
-                .bind(global.name, global.version, &handle, ());
+            let lel: KdeOutputDeviceV2 =
+                globals
+                    .registry()
+                    .bind(global.name, global.version, &handle, ());
             println!("binded {}", global.name);
             queue.blocking_dispatch(&mut data).unwrap();
             queue.flush();
