@@ -312,11 +312,12 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     for global in globals.contents().clone_list() {
         if &global.interface[..] == "kde_output_device_v2" {
             println!("start {}", global.name);
-            globals
+            let lel = globals
                 .bind::<KdeOutputDeviceV2, _, _>(&handle, 0..=2, ())
                 .unwrap();
             println!("binded {}", global.name);
             queue.blocking_dispatch(&mut data).unwrap();
+            queue.flush();
         }
     }
     // queue.roundtrip(&mut data).unwrap();
