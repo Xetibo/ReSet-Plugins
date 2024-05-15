@@ -227,7 +227,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     }
 
     fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
+        println!("{} {}", EVT_CURRENT_MODE_OPCODE, code);
         if code == EVT_CURRENT_MODE_OPCODE {
+            println!("what");
             _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(true)
         } else {
             _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(false)
