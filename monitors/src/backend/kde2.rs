@@ -134,11 +134,11 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
 impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     fn event(
         _state: &mut Self,
-        _: &KdeOutputDeviceV2,
+        obj: &KdeOutputDeviceV2,
         event: Event,
         _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppData>,
+        conn: &Connection,
+        handle: &QueueHandle<AppData>,
     ) {
         match event {
             Event::Geometry {
@@ -179,9 +179,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             // Event::CurrentMode { mode } => todo!(),
             // Event::Mode { mode } => todo!(),
-            // Event::Done => {
-            //    event.opcode
-            // },
+            Event::Done => {
+                conn.flush();
+            }
             // Event::Edid { raw } => todo!(),
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
@@ -217,11 +217,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     }
 
     fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        if code == EVT_MODE_OPCODE {
-            _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
-        } else {
-           unreachable!() 
-        }
+        _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
     }
 }
 
@@ -319,17 +315,16 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     };
 
     for global in globals.contents().clone_list() {
-        let mut first = true;
-        if &global.interface[..] == "kde_output_device_v2" && first {
+        if &global.interface[..] == "kde_output_device_v2" {
             println!("start {}", global.name);
-            let lel: KdeOutputDeviceV2 =
-                globals
-                    .registry()
-                    .bind(global.name, global.version, &handle, ());
+            // let lel: KdeOutputDeviceV2 =
+            //     globals
+            //         .registry()
+            //         .bind(global.name, global.version, &handle, ());
+            let lel: KdeOutputDeviceV2 = globals.bind(&handle, 0..=2, ()).unwrap();
             println!("binded {}", global.name);
             queue.blocking_dispatch(&mut data).unwrap();
             queue.flush();
-            first = false;
         }
     }
     // queue.roundtrip(&mut data).unwrap();
