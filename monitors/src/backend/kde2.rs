@@ -322,7 +322,8 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
             //     globals
             //         .registry()
             //         .bind(global.name, global.version, &handle, ());
-            binds.push(globals.bind(&handle, 0..=2, ()).unwrap());
+            // binds.push(globals.bind(&handle, 0..=2, ()).unwrap());
+            binds.push(globals.registry().bind(global.name, global.version, &handle, ()));
             println!("binded {}", global.name);
         }
     }
