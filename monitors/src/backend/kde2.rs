@@ -239,24 +239,24 @@ impl Dispatch<KdeOutputManagementV2, ()> for AppData {
     ) {
     }
 }
-// impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
-//     fn event(
-//         _: &mut AppData,
-//         registry: &wl_registry::WlRegistry,
-//         event: wl_registry::Event,
-//         globals: &GlobalListContents,
-//         _: &Connection,
-//         qh: &QueueHandle<AppData>,
-//     ) {
-//         println!("called");
-//         for global in globals.clone_list() {
-//             println!("{}", &global.interface);
-//             if let "kde_output_device_v2" = &global.interface[..] {
-//                 registry.bind::<KdeOutputDeviceV2, _, _>(global.name, global.version, qh, ());
-//             }
-//         }
-//     }
-// }
+impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
+    fn event(
+        _: &mut AppData,
+        registry: &wl_registry::WlRegistry,
+        event: wl_registry::Event,
+        globals: &GlobalListContents,
+        _: &Connection,
+        qh: &QueueHandle<AppData>,
+    ) {
+        //         println!("called");
+        //         for global in globals.clone_list() {
+        //             println!("{}", &global.interface);
+        //             if let "kde_output_device_v2" = &global.interface[..] {
+        //                 registry.bind::<KdeOutputDeviceV2, _, _>(global.name, global.version, qh, ());
+        //             }
+        //         }
+    }
+}
 impl Dispatch<wl_callback::WlCallback, ()> for AppData {
     fn event(
         _: &mut AppData,
@@ -294,11 +294,11 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
 pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let conn = Connection::connect_to_env().unwrap();
-    let display = conn.display();
-    let mut queue = conn.new_event_queue();
-    let handle = queue.handle(); 
-    let _ = display.get_registry(&handle, ());
-    // let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
+    // let display = conn.display();
+    // let mut queue = conn.new_event_queue();
+    // let handle = queue.handle();
+    // let _ = display.get_registry(&handle, ());
+    let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     // dbg!(globals);
 
     let mut data = AppData {
@@ -308,13 +308,22 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_mode_refresh_rate: 0,
     };
 
-    queue.roundtrip(&mut data).unwrap();
-    for i in 0..5 {
-        let what = queue.blocking_dispatch(&mut data);
-        if what.is_ok() {
-            what.unwrap();
-        }
+    let handle = queue.handle();
+    for global in globals.contents().clone_list() {
+        globals.registry().bind::<KdeOutputDeviceV2, _, _>(
+            global.name,
+            global.version,
+            &handle,
+            (),
+        );
     }
+    queue.blocking_dispatch(&mut data).unwrap();
+    // queue.roundtrip(&mut data).unwrap();
+    // for i in 0..5 {
+    //     if what.is_ok() {
+    //         what.unwrap();
+    //     }
+    // }
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
         for ((width, height), mode) in wlr_monitor.modes.into_iter() {
