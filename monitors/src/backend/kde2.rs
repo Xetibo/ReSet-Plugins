@@ -314,6 +314,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_mode_refresh_rate: 0,
     };
 
+    let mut binds: Vec<KdeOutputDeviceV2> = Vec::new();
     for global in globals.contents().clone_list() {
         if &global.interface[..] == "kde_output_device_v2" {
             println!("start {}", global.name);
@@ -321,12 +322,11 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
             //     globals
             //         .registry()
             //         .bind(global.name, global.version, &handle, ());
-            let lel: KdeOutputDeviceV2 = globals.bind(&handle, 0..=2, ()).unwrap();
+            binds.push(globals.bind(&handle, 0..=2, ()).unwrap());
             println!("binded {}", global.name);
-            queue.blocking_dispatch(&mut data).unwrap();
-            queue.flush();
         }
     }
+    queue.blocking_dispatch(&mut data).unwrap();
     // queue.roundtrip(&mut data).unwrap();
     // for i in 0..5 {
     //     if what.is_ok() {
