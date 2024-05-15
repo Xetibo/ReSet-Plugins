@@ -187,7 +187,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
-            // Event::CurrentMode { mode } => todo!(),
+            Event::CurrentMode { mode } => {
+                handle.make_data::<KdeOutputDeviceModeV2, bool>(true);
+            }
             // Event::Mode { mode } => todo!(),
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
@@ -223,13 +225,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     }
 
     fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        println!("{} {}", EVT_CURRENT_MODE_OPCODE, code);
-        if code == EVT_CURRENT_MODE_OPCODE {
-            println!("what");
-            _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(true)
-        } else {
-            _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(false)
-        }
+        _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(false)
     }
 }
 
