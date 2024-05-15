@@ -237,17 +237,29 @@ impl Dispatch<KdeOutputManagementV2, ()> for AppData {
         _: &Connection,
         _: &QueueHandle<AppData>,
     ) {
+
     }
 }
 impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
     fn event(
         _: &mut AppData,
-        _: &wl_registry::WlRegistry,
-        _: wl_registry::Event,
-        _: &GlobalListContents,
+        registry: &wl_registry::WlRegistry,
+        event: wl_registry::Event,
+        global: &GlobalListContents,
         _: &Connection,
-        _: &QueueHandle<AppData>,
+        qh: &QueueHandle<AppData>,
     ) {
+        if let wl_registry::Event::Global {
+            name,
+            interface,
+            version,
+        } = event
+        {
+            if let "kde_output_device_v2" = &interface[..] {
+                println!("{}", interface);
+                let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
+            }
+        }
     }
 }
 impl Dispatch<wl_callback::WlCallback, ()> for AppData {
@@ -288,12 +300,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
 pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let conn = Connection::connect_to_env().unwrap();
-    let display = conn.display();
-    let mut event_queue = conn.new_event_queue();
-    let qh = event_queue.handle();
-    let _registry = display.get_registry(&qh, ());
-    let qh = event_queue.handle();
-    display.sync(&qh, ());
+    let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
 
     let mut data = AppData {
         heads: HashMap::new(),
@@ -301,8 +308,8 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_mode_key: (0, 0),
         current_mode_refresh_rate: 0,
     };
-    // event_queue.roundtrip(&mut data).unwrap();
-    event_queue.blocking_dispatch(&mut data).unwrap();
+
+    queue.blocking_dispatch(&mut data).unwrap();
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
         for ((width, height), mode) in wlr_monitor.modes.into_iter() {
