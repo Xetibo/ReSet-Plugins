@@ -15,15 +15,15 @@ use crate::{
 };
 
 use self::{
-    general::{apply_monitor_configuration, save_monitor_configuration},
-    gnome::g_get_monitor_information,
-    kde::kde_get_monitor_information,
+    general::{apply_monitor_configuration, save_monitor_configuration}, gnome::g_get_monitor_information, kde::kde_get_monitor_information, kde2::kde2_get_monitor_information, wlr::wlr_get_monitor_information
 };
 
 pub mod general;
 pub mod gnome;
 pub mod hyprland;
+pub mod wlr;
 pub mod kde;
+pub mod kde2;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -50,9 +50,11 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
             &[interface],
             MonitorData {
                 monitors: match env.as_str() {
-                    "Hyprland" => hy_get_monitor_information(),
+                    // "Hyprland" => hy_get_monitor_information(),
+                    "Hyprland" => wlr_get_monitor_information(),
                     "GNOME" => g_get_monitor_information(),
-                    "KDE" => kde_get_monitor_information(),
+                    // "KDE" => kde_get_monitor_information(),
+                    "KDE" => kde2_get_monitor_information(),
                     _ => unreachable!(),
                 },
             },
