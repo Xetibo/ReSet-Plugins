@@ -268,7 +268,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
         registry: &wl_registry::WlRegistry,
         event: wl_registry::Event,
         _: &(),
-        _: &Connection,
+        conn: &Connection,
         qh: &QueueHandle<AppData>,
     ) {
         if let wl_registry::Event::Global {
@@ -280,6 +280,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
             if let "kde_output_device_v2" = &interface[..] {
                 println!("{}", interface);
                 let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
+                qh.make_data::<KdeOutputDeviceV2, _>(());
             }
         }
     }
