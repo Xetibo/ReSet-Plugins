@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use wayland_client::backend::ObjectData;
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
+use wayland_client::protocol::wl_callback::{self, WlCallback};
 use wayland_client::protocol::wl_registry;
 use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::Event as OutputModeEvent;
@@ -249,6 +250,17 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
     ) {
     }
 }
+impl Dispatch<wl_callback::WlCallback, ()> for AppData {
+    fn event(
+        _: &mut AppData,
+        _: &wl_callback::WlCallback,
+        _: wl_callback::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<AppData>,
+    ) {
+    }
+}
 
 impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
     fn event(
@@ -267,7 +279,7 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
         {
             if let "kde_output_device_v2" = &interface[..] {
                 println!("{}", interface);
-                registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
+                let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
             }
         }
     }
@@ -279,6 +291,8 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
     let _registry = display.get_registry(&qh, ());
+    let qh = event_queue.handle();
+    display.sync(&qh, ());
 
     let mut data = AppData {
         heads: HashMap::new(),
