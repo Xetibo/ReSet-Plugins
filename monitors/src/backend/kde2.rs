@@ -276,23 +276,23 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
-    loop {
-        let monitor =
-            globals.bind::<KdeOutputDeviceV2, _, _>(&handle, RangeInclusive::new(1, 2), ());
-        if monitor.is_ok() {
-            monitor.unwrap();
-        } else {
-            break;
-        }
-    }
-
     let mut data = AppData {
         heads: HashMap::new(),
         current_monitor: 0,
         current_mode_key: (0, 0),
         current_mode_refresh_rate: 0,
     };
-    queue.blocking_dispatch(&mut data).unwrap();
+    loop {
+        let monitor =
+            globals.bind::<KdeOutputDeviceV2, _, _>(&handle, RangeInclusive::new(1, 2), ());
+        if monitor.is_ok() {
+            monitor.unwrap();
+            queue.blocking_dispatch(&mut data).unwrap();
+        } else {
+            break;
+        }
+    }
+
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
         for ((width, height), mode) in wlr_monitor.modes.into_iter() {
