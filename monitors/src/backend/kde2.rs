@@ -212,7 +212,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     }
 
     fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        _qhandle.make_data::<KdeOutputDeviceV2, _>(())
+        _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
     }
 }
 
@@ -276,11 +276,9 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
-    let kde = globals
+    globals
         .bind::<KdeOutputDeviceV2, _, _>(&handle, RangeInclusive::new(1, 2), ())
         .unwrap();
-    let handle = queue.handle();
-    // kde.create_configuration(&handle, ());
 
     let mut data = AppData {
         heads: HashMap::new(),
