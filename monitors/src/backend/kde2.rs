@@ -189,9 +189,6 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             // Event::CurrentMode { mode } => todo!(),
             // Event::Mode { mode } => todo!(),
-            Event::Done => {
-                conn.flush();
-            }
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
             // Event::Capabilities { flags } => todo!(),
