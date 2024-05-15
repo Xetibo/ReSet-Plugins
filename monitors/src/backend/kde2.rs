@@ -311,7 +311,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let handle = queue.handle();
     for global in globals.contents().clone_list() {
         if &global.interface[..] == "kde_output_device_v2" {
-            globals.registry().bind::<KdeOutputDeviceV2, _, _>(
+            let wat: KdeOutputDeviceV2 = globals.registry().bind(
                 global.name,
                 global.version,
                 &handle,
