@@ -116,8 +116,8 @@ impl Dispatch<ZwlrOutputModeV1, ()> for AppData {
                 }
             }
             OutputModeEvent::Preferred => {
-                let len = data.heads.len() as u32 - 1;
                 let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+                let len = monitor.modes.len() as u32 - 1;
                 monitor.current_mode = len;
                 monitor.width = data.current_mode_key.0;
                 monitor.height = data.current_mode_key.1;

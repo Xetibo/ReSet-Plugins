@@ -120,8 +120,8 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
                 }
             }
             OutputModeEvent::Preferred => {
-                let len = data.heads.len() as u32 - 1;
                 let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+                let len = monitor.modes.len() as u32 - 1;
                 monitor.current_mode = len;
                 monitor.width = data.current_mode_key.0;
                 monitor.height = data.current_mode_key.1;
@@ -305,7 +305,6 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
     let manager: KdeOutputManagementV2 = globals.bind(&handle, 1..=2, ()).unwrap();
-    // let configuration: KdeOutputConfigurationV2 = globals.bind(&handle, 1..=2, ()).unwrap();
 
     let mut data = AppData {
         heads: HashMap::new(),
@@ -314,26 +313,16 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_mode_refresh_rate: 0,
     };
 
-    let mut binds: Vec<KdeOutputDeviceV2> = Vec::new();
     for global in globals.contents().clone_list() {
         if &global.interface[..] == "kde_output_device_v2" {
-            println!("start {}", global.name);
-            // let lel: KdeOutputDeviceV2 =
-            //     globals
-            //         .registry()
-            //         .bind(global.name, global.version, &handle, ());
-            // binds.push(globals.bind(&handle, 0..=2, ()).unwrap());
-            binds.push(globals.registry().bind(global.name, 2, &handle, ()));
-            println!("binded {}", global.name);
+            globals
+                .registry()
+                .bind::<KdeOutputDeviceV2, _, _>(global.name, 2, &handle, ());
         }
     }
-    // queue.blocking_dispatch(&mut data).unwrap();
+
     queue.roundtrip(&mut data).unwrap();
-    // for i in 0..5 {
-    //     if what.is_ok() {
-    //         what.unwrap();
-    //     }
-    // }
+
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
         for ((width, height), mode) in wlr_monitor.modes.into_iter() {
