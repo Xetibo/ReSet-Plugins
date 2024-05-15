@@ -278,17 +278,17 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
         conn: &Connection,
         qh: &QueueHandle<AppData>,
     ) {
-        // if let wl_registry::Event::Global {
-        //     name,
-        //     interface,
-        //     version,
-        // } = event
-        // {
-        //     if let "kde_output_device_v2" = &interface[..] {
-        //         println!("{} {}", interface, name);
-        //         let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
-        //     }
-        // }
+        if let wl_registry::Event::Global {
+            name,
+            interface,
+            version,
+        } = event
+        {
+            if let "kde_output_device_v2" = &interface[..] {
+                println!("{} {}", interface, name);
+                let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
+            }
+        }
     }
 }
 pub fn kde2_get_monitor_information() -> Vec<Monitor> {
@@ -311,12 +311,16 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let handle = queue.handle();
     for global in globals.contents().clone_list() {
         if &global.interface[..] == "kde_output_device_v2" {
-            let wat  = globals.bind::<KdeOutputDeviceV2, _, _>(
+            println!("start {}", global.name);
+            let wat: KdeOutputDeviceV2 = globals.registry().bind(
+                global.name,
+                global.version,
                 &handle,
-                0..=2,
                 (),
             );
+            println!("binded {}", global.name);
             queue.blocking_dispatch(&mut data).unwrap();
+            println!("end {}", global.name);
         }
     }
     // queue.roundtrip(&mut data).unwrap();
