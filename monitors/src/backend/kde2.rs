@@ -13,6 +13,8 @@ use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::E
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::KdeOutputDeviceV2;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::Event as OutputConfigurationEvent;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::KdeOutputConfigurationV2;
+use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::KdeOutputManagementV2;
+use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::Event as OutputManagementEvent;
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
@@ -230,6 +232,17 @@ impl Dispatch<KdeOutputConfigurationV2, ()> for AppData {
     ) {
     }
 }
+impl Dispatch<KdeOutputManagementV2, ()> for AppData {
+    fn event(
+        _state: &mut Self,
+        _: &KdeOutputManagementV2,
+        _: OutputManagementEvent,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<AppData>,
+    ) {
+    }
+}
 impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
     fn event(
         _: &mut AppData,
@@ -269,7 +282,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
     globals
-        .bind::<KdeOutputConfigurationV2, _, _>(&handle, RangeInclusive::new(0, 1), ())
+        .bind::<KdeOutputManagementV2, _, _>(&handle, RangeInclusive::new(0, 1), ())
         .unwrap();
 
     let mut data = AppData {
