@@ -249,6 +249,7 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
         qh: &QueueHandle<AppData>,
     ) {
         for global in globals.clone_list() {
+            println!("{}", &global.interface);
             if let "kde_output_device_v2" = &global.interface[..] {
                 registry.bind::<KdeOutputDeviceV2, _, _>(global.name, global.version, qh, ());
             }
