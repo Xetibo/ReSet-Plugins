@@ -212,9 +212,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
         }
     }
 
-    fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
-    }
+    // fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
+    //     _qhandle.make_data::<KdeOutputDeviceModeV2, _>(())
+    // }
 }
 
 impl Dispatch<KdeOutputConfigurationV2, ()> for AppData {
