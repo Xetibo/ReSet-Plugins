@@ -266,9 +266,9 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
         } = event
         {
             if let "kde_output_device_v2" = &interface[..] {
+                println!("{}", interface);
                 registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
             }
-            println!("{}", interface);
         }
     }
 }
@@ -287,6 +287,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_mode_refresh_rate: 0,
     };
     event_queue.roundtrip(&mut data).unwrap();
+    event_queue.blocking_dispatch(&mut data).unwrap();
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
         for ((width, height), mode) in wlr_monitor.modes.into_iter() {
