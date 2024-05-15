@@ -282,10 +282,10 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
     let kde = globals
-        .bind::<KdeOutputManagementV2, _, _>(&handle, RangeInclusive::new(0, 1), ())
+        .bind::<KdeOutputDeviceV2, _, _>(&handle, RangeInclusive::new(0, 1), ())
         .unwrap();
     let handle = queue.handle();
-    kde.create_configuration(&handle, ());
+    // kde.create_configuration(&handle, ());
 
     let mut data = AppData {
         heads: HashMap::new(),
