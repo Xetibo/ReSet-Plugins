@@ -308,7 +308,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_mode_refresh_rate: 0,
     };
 
-    // queue.roundtrip(&mut data).unwrap();
+    queue.roundtrip(&mut data).unwrap();
     for i in 0..5 {
         let what = queue.blocking_dispatch(&mut data);
         if what.is_ok() {
