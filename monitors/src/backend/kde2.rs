@@ -188,7 +188,8 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             Event::CurrentMode { mode } => {
-                handle.make_data::<KdeOutputDeviceModeV2, bool>(true);
+                println!("current mode");
+                dbg!(mode);
             }
             // Event::Mode { mode } => todo!(),
             // Event::Uuid { uuid } => todo!(),
