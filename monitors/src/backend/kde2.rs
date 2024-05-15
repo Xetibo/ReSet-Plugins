@@ -299,7 +299,9 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     // let handle = queue.handle();
     // let _ = display.get_registry(&handle, ());
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
-    // dbg!(globals);
+    let handle = queue.handle();
+    let manager: KdeOutputManagementV2 = globals.bind(&handle, 1..=2, ()).unwrap();
+    let configuration: KdeOutputConfigurationV2 = globals.bind(&handle, 1..=2, ()).unwrap();
 
     let mut data = AppData {
         heads: HashMap::new(),
@@ -308,16 +310,17 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_mode_refresh_rate: 0,
     };
 
-    let handle = queue.handle();
     for global in globals.contents().clone_list() {
-        if &global.interface[..] == "kde_output_device_v2" {
+        let mut first = true;
+        if &global.interface[..] == "kde_output_device_v2"  && first{
             println!("start {}", global.name);
-            let lel = globals
-                .bind::<KdeOutputDeviceV2, _, _>(&handle, 0..=2, ())
-                .unwrap();
+            let lel: KdeOutputDeviceV2 = globals
+                .registry()
+                .bind(global.name, global.version, &handle, ());
             println!("binded {}", global.name);
             queue.blocking_dispatch(&mut data).unwrap();
             queue.flush();
+            first = false;
         }
     }
     // queue.roundtrip(&mut data).unwrap();
