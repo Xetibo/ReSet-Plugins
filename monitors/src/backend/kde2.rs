@@ -286,7 +286,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_mode_key: (0, 0),
         current_mode_refresh_rate: 0,
     };
-    event_queue.roundtrip(&mut data).unwrap();
+    // event_queue.roundtrip(&mut data).unwrap();
     event_queue.blocking_dispatch(&mut data).unwrap();
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
