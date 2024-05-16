@@ -7,7 +7,7 @@ use wayland_client::backend::{ObjectData, ObjectId};
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
 use wayland_client::protocol::wl_callback::{self, WlCallback};
 use wayland_client::protocol::wl_registry;
-use wayland_client::{Proxy,Connection, Dispatch, QueueHandle};
+use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::Event as OutputModeEvent;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::KdeOutputDeviceModeV2;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::{
@@ -57,7 +57,7 @@ struct WlrMonitor {
     enabled: bool,
     transform: u32,
     current_mode: u32,
-    current_mode_change: ObjectId,
+    current_mode_change: bool,
 }
 
 #[derive(Debug)]
@@ -69,7 +69,7 @@ struct WlrMode {
 impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
     fn event(
         data: &mut Self,
-        mode: &KdeOutputDeviceModeV2,
+        obj: &KdeOutputDeviceModeV2,
         event: OutputModeEvent,
         current: &(),
         _: &Connection,
@@ -133,13 +133,14 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             _ => (),
         }
         let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
-        if mode.id() == monitor.current_mode_change {
+        if monitor.current_mode_change {
             let len = monitor.modes.len() as u32 - 1;
             monitor.current_mode = len;
             println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
             monitor.width = data.current_mode_key.0;
             monitor.height = data.current_mode_key.1;
             monitor.refresh_rate = data.current_mode_refresh_rate;
+            monitor.current_mode_change = false;
         }
     }
 }
@@ -157,44 +158,23 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             Event::Geometry {
                 x,
                 y,
-                physical_width,
-                physical_height,
-                subpixel,
                 make,
                 model,
                 transform,
+                ..
             } => {
-                let monitor = WlrMonitor {
-                    name: String::from(""),
-                    make,
-                    model,
-                    serial_number: String::from(""),
-                    description: String::from(""),
-                    offset_x: x,
-                    offset_y: y,
-                    scale: 0.0,
-                    modes: HashMap::new(),
-                    current_mode: 0,
-                    vrr: false,
-                    transform: transform as u32,
-                    enabled: true,
-                    width: 0,
-                    height: 0,
-                    refresh_rate: 0,
-                    current_mode_change: obj.id(),
-                };
-                let len = _state.heads.len() as u32;
-                _state.current_monitor = len;
-                _state.heads.insert(len, monitor);
+                let monitor = _state.heads.get_mut(&_state.current_monitor).unwrap();
+                monitor.make = make;
+                monitor.model = model;
+                monitor.offset_x = x;
+                monitor.offset_y = y;
+                monitor.transform = transform as u32;
             }
             Event::Name { name } => {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             // Event::Mode { mode } => todo!(),
-            Event::CurrentMode { mode } =>  {
-                _state.heads.get_mut(&_state.current_monitor).unwrap().current_mode_change = mode.id();
-            }
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
             // Event::Capabilities { flags } => todo!(),
@@ -328,6 +308,28 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     for global in globals.contents().clone_list() {
         println!("{}", &global.interface);
         if &global.interface[..] == "kde_output_device_v2" {
+            let monitor = WlrMonitor {
+                name: String::from(""),
+                make: String::from(""),
+                model: String::from(""),
+                serial_number: String::from(""),
+                description: String::from(""),
+                offset_x: 0,
+                offset_y: 0,
+                scale: 0.0,
+                modes: HashMap::new(),
+                current_mode: 0,
+                vrr: false,
+                transform: 0,
+                enabled: true,
+                width: 0,
+                height: 0,
+                refresh_rate: 0,
+                current_mode_change: true,
+            };
+            let len = data.heads.len() as u32;
+            data.current_monitor = len;
+            data.heads.insert(len, monitor);
             globals
                 .registry()
                 .bind::<KdeOutputDeviceV2, _, _>(global.name, 2, &handle, ());
