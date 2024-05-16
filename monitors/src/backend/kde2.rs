@@ -37,7 +37,6 @@ struct AppData {
     current_monitor: u32,
     current_mode_key: (i32, i32),
     current_mode_refresh_rate: u32,
-    current_mode: bool,
 }
 
 #[derive(Debug)]
@@ -58,6 +57,7 @@ struct WlrMonitor {
     enabled: bool,
     transform: u32,
     current_mode: u32,
+    current_mode_change: bool,
 }
 
 #[derive(Debug)]
@@ -132,8 +132,8 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             // }
             _ => (),
         }
-        if data.current_mode {
-            let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+        let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+        if monitor.current_mode_change {
             let len = monitor.modes.len() as u32 - 1;
             monitor.current_mode = len;
             println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
@@ -181,6 +181,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                     width: 0,
                     height: 0,
                     refresh_rate: 0,
+                    current_mode_change: true,
                 };
                 let len = _state.heads.len() as u32;
                 _state.current_monitor = len;
@@ -190,10 +191,14 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
-            Event::CurrentMode { mode } => {
+            Event::CurrentMode { .. } => {
                 // This is stupid, but necessary since the protocol doesn't actually show the
                 // current mode?
-                _state.current_mode = false;
+                _state
+                    .heads
+                    .get_mut(&_state.current_monitor)
+                    .unwrap()
+                    .current_mode_change = false;
             }
             // Event::Mode { mode } => todo!(),
             // Event::Uuid { uuid } => todo!(),
@@ -324,7 +329,6 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_monitor: 0,
         current_mode_key: (0, 0),
         current_mode_refresh_rate: 0,
-        current_mode: true,
     };
 
     for global in globals.contents().clone_list() {
