@@ -356,13 +356,13 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
                 supported_scales: Vec::new(),
             });
         }
-        modes.sort_unstable_by(|a, b| {
-            if a.size > b.size {
-                Ordering::Greater
-            } else {
-                Ordering::Less
-            }
-        });
+        // modes.sort_unstable_by(|a, b| {
+        //     if a.size > b.size {
+        //         Ordering::Greater
+        //     } else {
+        //         Ordering::Less
+        //     }
+        // });
         let monitor = Monitor {
             id: index,
             enabled: wlr_monitor.enabled,
