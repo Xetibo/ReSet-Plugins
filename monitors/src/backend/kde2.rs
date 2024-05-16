@@ -139,6 +139,7 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             monitor.width = data.current_mode_key.0;
             monitor.height = data.current_mode_key.1;
             monitor.refresh_rate = data.current_mode_refresh_rate;
+            data.current_mode = false;
         }
     }
 }
