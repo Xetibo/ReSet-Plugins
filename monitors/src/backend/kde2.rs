@@ -136,6 +136,7 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
             let len = monitor.modes.len() as u32 - 1;
             monitor.current_mode = len;
+            println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
             monitor.width = data.current_mode_key.0;
             monitor.height = data.current_mode_key.1;
             monitor.refresh_rate = data.current_mode_refresh_rate;
