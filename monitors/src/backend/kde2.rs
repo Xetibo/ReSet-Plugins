@@ -7,7 +7,7 @@ use wayland_client::backend::ObjectData;
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
 use wayland_client::protocol::wl_callback::{self, WlCallback};
 use wayland_client::protocol::wl_registry;
-use wayland_client::{Connection, Dispatch, QueueHandle};
+use wayland_client::{event_created_child, Connection, Dispatch, QueueHandle};
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::Event as OutputModeEvent;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::KdeOutputDeviceModeV2;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::{
@@ -187,10 +187,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
-            Event::CurrentMode { mode } => {
-                println!("current mode");
-                dbg!(mode);
-            }
+            Event::CurrentMode { mode } => {}
             // Event::Mode { mode } => todo!(),
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
@@ -225,9 +222,14 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
         }
     }
 
-    fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(false)
-    }
+    // fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
+    //     _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(false)
+    // }
+
+    event_created_child!(AppData, KdeOutputDeviceV2, [
+        EVT_CURRENT_MODE_OPCODE => (KdeOutputDeviceModeV2, true),
+        _ => (KdeOutputDeviceModeV2, false),
+    ]);
 }
 
 impl Dispatch<KdeOutputConfigurationV2, ()> for AppData {
