@@ -173,7 +173,12 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
             }
             Event::CurrentMode { mode } => {
-                _state.heads.get_mut(&_state.current_monitor).unwrap().current_mode_change = mode.id();
+                let data= mode.object_data().unwrap();
+                let data = data.data_as_any();
+                let event = data.downcast_ref::<OutputModeEvent>().unwrap();
+                dbg!(event);
+                // TODO: 
+                // WTF KDE?????!!????!!!?
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             // Event::Mode { mode } => todo!(),
