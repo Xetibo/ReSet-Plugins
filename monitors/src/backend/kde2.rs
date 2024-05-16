@@ -140,7 +140,6 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             monitor.width = data.current_mode_key.0;
             monitor.height = data.current_mode_key.1;
             monitor.refresh_rate = data.current_mode_refresh_rate;
-            data.current_mode = false;
         }
     }
 }
@@ -194,7 +193,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             Event::CurrentMode { mode } => {
                 // This is stupid, but necessary since the protocol doesn't actually show the
                 // current mode?
-                _state.current_mode = true;
+                _state.current_mode = false;
             }
             // Event::Mode { mode } => todo!(),
             // Event::Uuid { uuid } => todo!(),
@@ -325,7 +324,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_monitor: 0,
         current_mode_key: (0, 0),
         current_mode_refresh_rate: 0,
-        current_mode: false,
+        current_mode: true,
     };
 
     for global in globals.contents().clone_list() {
