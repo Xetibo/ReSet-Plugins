@@ -37,6 +37,7 @@ struct AppData {
     current_monitor: u32,
     current_mode_key: (i32, i32),
     current_mode_refresh_rate: u32,
+    current_mode: bool,
 }
 
 #[derive(Debug)]
@@ -65,12 +66,12 @@ struct WlrMode {
     refresh_rate: HashSet<u32>,
 }
 
-impl Dispatch<KdeOutputDeviceModeV2, bool> for AppData {
+impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
     fn event(
         data: &mut Self,
         _: &KdeOutputDeviceModeV2,
         event: OutputModeEvent,
-        current: &bool,
+        current: &(),
         _: &Connection,
         _: &QueueHandle<AppData>,
     ) {
@@ -131,7 +132,7 @@ impl Dispatch<KdeOutputDeviceModeV2, bool> for AppData {
             // }
             _ => (),
         }
-        if *current {
+        if data.current_mode {
             let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
             let len = monitor.modes.len() as u32 - 1;
             monitor.current_mode = len;
@@ -189,7 +190,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             Event::CurrentMode { mode } => {
-                println!("{}", opcode);
+                // This is stupid, but necessary since the protocol doesn't actually show the
+                // current mode?
+                _state.current_mode = true;
             }
             // Event::Mode { mode } => todo!(),
             // Event::Uuid { uuid } => todo!(),
@@ -226,7 +229,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     }
 
     fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        _qhandle.make_data::<KdeOutputDeviceModeV2, bool>(false)
+        _qhandle.make_data::<KdeOutputDeviceModeV2, ()>(())
     }
 }
 
@@ -320,6 +323,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
         current_monitor: 0,
         current_mode_key: (0, 0),
         current_mode_refresh_rate: 0,
+        current_mode: false,
     };
 
     for global in globals.contents().clone_list() {
