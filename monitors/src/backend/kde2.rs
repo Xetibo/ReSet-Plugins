@@ -57,7 +57,7 @@ struct WlrMonitor {
     enabled: bool,
     transform: u32,
     current_mode: u32,
-    current_mode_change: bool,
+    current_mode_change: ObjectId,
 }
 
 #[derive(Debug)]
@@ -132,15 +132,15 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             // }
             _ => (),
         }
-        // let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
-        // if monitor.current_mode_change {
-        //     let len = monitor.modes.len() as u32 - 1;
-        //     monitor.current_mode = len;
-        //     println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
-        //     monitor.width = data.current_mode_key.0;
-        //     monitor.height = data.current_mode_key.1;
-        //     monitor.refresh_rate = data.current_mode_refresh_rate;
-        // }
+         let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+         if monitor.current_mode_change == obj.id() {
+             let len = monitor.modes.len() as u32 - 1;
+             monitor.current_mode = len;
+             println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
+             monitor.width = data.current_mode_key.0;
+             monitor.height = data.current_mode_key.1;
+             monitor.refresh_rate = data.current_mode_refresh_rate;
+         }
     }
 }
 impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
@@ -173,10 +173,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
             }
             Event::CurrentMode { mode } => {
-                let data = mode.object_data().unwrap();
-                dbg!(data);
-                // data.data_as_any().
-                
+                _state.heads.get_mut(&_state.current_monitor).unwrap().current_mode_change = mode.id();
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             // Event::Mode { mode } => todo!(),
@@ -330,7 +327,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
                 width: 0,
                 height: 0,
                 refresh_rate: 0,
-                current_mode_change: true,
+                current_mode_change: manager.id(),
             };
             let len = data.heads.len() as u32;
             data.current_monitor = len;
