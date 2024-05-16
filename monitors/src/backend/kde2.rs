@@ -3,11 +3,11 @@ use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
-use wayland_client::backend::ObjectData;
+use wayland_client::backend::{ObjectData, ObjectId};
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
 use wayland_client::protocol::wl_callback::{self, WlCallback};
 use wayland_client::protocol::wl_registry;
-use wayland_client::{Connection, Dispatch, QueueHandle};
+use wayland_client::{Proxy,Connection, Dispatch, QueueHandle};
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::Event as OutputModeEvent;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::KdeOutputDeviceModeV2;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::{
@@ -57,7 +57,7 @@ struct WlrMonitor {
     enabled: bool,
     transform: u32,
     current_mode: u32,
-    current_mode_change: bool,
+    current_mode_change: ObjectId,
 }
 
 #[derive(Debug)]
@@ -69,7 +69,7 @@ struct WlrMode {
 impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
     fn event(
         data: &mut Self,
-        _: &KdeOutputDeviceModeV2,
+        mode: &KdeOutputDeviceModeV2,
         event: OutputModeEvent,
         current: &(),
         _: &Connection,
@@ -133,14 +133,13 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             _ => (),
         }
         let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
-        if monitor.current_mode_change {
+        if mode.id() == monitor.current_mode_change {
             let len = monitor.modes.len() as u32 - 1;
             monitor.current_mode = len;
             println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
             monitor.width = data.current_mode_key.0;
             monitor.height = data.current_mode_key.1;
             monitor.refresh_rate = data.current_mode_refresh_rate;
-            monitor.current_mode_change = false;
         }
     }
 }
@@ -182,7 +181,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                     width: 0,
                     height: 0,
                     refresh_rate: 0,
-                    current_mode_change: true,
+                    current_mode_change: obj.id(),
                 };
                 let len = _state.heads.len() as u32;
                 _state.current_monitor = len;
@@ -193,6 +192,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             // Event::Mode { mode } => todo!(),
+            Event::CurrentMode { mode } =>  {
+                _state.heads.get_mut(&_state.current_monitor).unwrap().current_mode_change = mode.id();
+            }
             // Event::Uuid { uuid } => todo!(),
             // Event::EisaId { eisaId } => todo!(),
             // Event::Capabilities { flags } => todo!(),
