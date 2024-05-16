@@ -324,6 +324,7 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     };
 
     for global in globals.contents().clone_list() {
+        println!("{}", &global.interface);
         if &global.interface[..] == "kde_output_device_v2" {
             globals
                 .registry()
