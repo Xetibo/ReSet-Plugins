@@ -333,10 +333,12 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
             globals
                 .registry()
                 .bind::<KdeOutputDeviceV2, _, _>(global.name, 2, &handle, ());
+
+            queue.blocking_dispatch(&mut data).unwrap();
         }
     }
 
-    queue.roundtrip(&mut data).unwrap();
+    // queue.roundtrip(&mut data).unwrap();
 
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
@@ -356,13 +358,13 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
                 supported_scales: Vec::new(),
             });
         }
-        // modes.sort_unstable_by(|a, b| {
-        //     if a.size > b.size {
-        //         Ordering::Greater
-        //     } else {
-        //         Ordering::Less
-        //     }
-        // });
+        modes.sort_unstable_by(|a, b| {
+            if a.size > b.size {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            }
+        });
         let monitor = Monitor {
             id: index,
             enabled: wlr_monitor.enabled,
