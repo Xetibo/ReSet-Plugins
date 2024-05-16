@@ -140,7 +140,6 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             monitor.width = data.current_mode_key.0;
             monitor.height = data.current_mode_key.1;
             monitor.refresh_rate = data.current_mode_refresh_rate;
-            monitor.current_mode_change = false;
         }
     }
 }
@@ -172,6 +171,9 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             }
             Event::Name { name } => {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
+            }
+            Event::CurrentMode { .. } => {
+                _state.heads.get_mut(&_state.current_monitor).unwrap().current_mode_change = false;
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
             // Event::Mode { mode } => todo!(),
