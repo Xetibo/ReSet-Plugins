@@ -175,8 +175,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             Event::CurrentMode { mode } => {
                 let data= mode.object_data().unwrap();
                 let data = data.data_as_any();
-                let event = data.downcast_ref::<OutputModeEvent>().unwrap();
-                dbg!(event);
+                dbg!(data);
                 // TODO: 
                 // WTF KDE?????!!????!!!?
             }
