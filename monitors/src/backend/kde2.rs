@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
@@ -30,6 +31,15 @@ const FEATURES: MonitorFeatures = MonitorFeatures {
     fractional_scaling: true,
     hdr: false,
 };
+
+struct CurrentMode {
+    pub refresh_rate: Cell<u32>,
+    pub width: Cell<i32>,
+    pub height: Cell<i32>,
+}
+
+unsafe impl Send for CurrentMode {}
+unsafe impl Sync for CurrentMode {}
 
 #[derive(Debug)]
 struct AppData {
@@ -66,12 +76,12 @@ struct WlrMode {
     refresh_rate: HashSet<u32>,
 }
 
-impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
+impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
     fn event(
         data: &mut Self,
         obj: &KdeOutputDeviceModeV2,
         event: OutputModeEvent,
-        current: &(),
+        current: &CurrentMode,
         _: &Connection,
         _: &QueueHandle<AppData>,
     ) {
@@ -85,6 +95,8 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
                     id: len,
                     refresh_rate: HashSet::new(),
                 };
+                current.width.replace(width);
+                current.height.replace(height);
                 data.current_mode_key = (width, height);
                 if !data
                     .heads
@@ -110,6 +122,7 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
                     _ => unreachable!(),
                 };
                 let refresh_rate = refresh_rate as u32;
+                current.refresh_rate.replace(refresh_rate);
                 data.heads
                     .get_mut(&data.current_monitor)
                     .unwrap()
@@ -132,15 +145,15 @@ impl Dispatch<KdeOutputDeviceModeV2, ()> for AppData {
             // }
             _ => (),
         }
-         let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
-         if monitor.current_mode_change == obj.id() {
-             let len = monitor.modes.len() as u32 - 1;
-             monitor.current_mode = len;
-             println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
-             monitor.width = data.current_mode_key.0;
-             monitor.height = data.current_mode_key.1;
-             monitor.refresh_rate = data.current_mode_refresh_rate;
-         }
+        let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+        if monitor.current_mode_change == obj.id() {
+            let len = monitor.modes.len() as u32 - 1;
+            monitor.current_mode = len;
+            println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
+            monitor.width = data.current_mode_key.0;
+            monitor.height = data.current_mode_key.1;
+            monitor.refresh_rate = data.current_mode_refresh_rate;
+        }
     }
 }
 impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
@@ -173,11 +186,12 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
             }
             Event::CurrentMode { mode } => {
-                let data= mode.object_data().unwrap();
-                let data = data.as_any();
-                let event = data.downcast_ref::<OutputModeEvent>().unwrap();
-                dbg!(event);
-                // TODO: 
+                let data: &CurrentMode = mode.data().unwrap();
+                let monitor = _state.heads.get_mut(&_state.current_monitor).unwrap();
+                monitor.width = data.width.take();
+                monitor.height = data.height.take();
+                monitor.refresh_rate = data.refresh_rate.take();
+                // TODO:
                 // WTF KDE?????!!????!!!?
             }
             // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
@@ -216,7 +230,12 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     }
 
     fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
-        _qhandle.make_data::<KdeOutputDeviceModeV2, ()>(())
+        _qhandle.make_data::<KdeOutputDeviceModeV2, CurrentMode>(CurrentMode {
+            refresh_rate: Cell::new(0),
+            width: Cell::new(0),
+            height: Cell::new(0),
+        })
+        // TODO:
     }
 }
 
