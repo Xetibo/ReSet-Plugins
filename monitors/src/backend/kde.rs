@@ -7,10 +7,6 @@ use std::{
 use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
-use wayland_client::{protocol::wl_registry, Connection, Dispatch, QueueHandle};
-use wayland_protocols_plasma::{
-    output_device::v2, output_management::v2::client::kde_output_management_v2::*,
-};
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
@@ -27,11 +23,15 @@ pub fn kde_get_monitor_information() -> Vec<Monitor> {
 }
 
 fn get_json() -> Vec<u8> {
-    Command::new("kscreen-doctor")
-        .args(["-j"])
-        .output()
-        .expect("Could not retrieve monitor json")
-        .stdout
+    let command = Command::new("kscreen-doctor").args(["-j"]).output();
+    if let Ok(command) = command {
+        return command.stdout;
+    }
+    ERROR!(
+        "Kscreen is not installed, please install kscreen for kde.",
+        ErrorLevel::PartialBreakage
+    );
+    Vec::new()
 }
 
 pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {

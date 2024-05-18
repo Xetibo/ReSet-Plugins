@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock, RwLockWriteGuard},
-};
+use std::sync::{Arc, RwLock, RwLockWriteGuard};
 
 use dbus_crossroads::IfaceBuilder;
 #[cfg(debug_assertions)]
@@ -12,7 +9,6 @@ use re_set_lib::{
 };
 
 use crate::{
-    backend::hyprland::hy_get_monitor_information,
     r#const::SUPPORTED_ENVIRONMENTS,
     utils::{get_environment, Monitor, MonitorData},
 };
@@ -21,7 +17,6 @@ use self::{
     general::{apply_monitor_configuration, save_monitor_configuration},
     gnome::g_get_monitor_information,
     kde::kde_get_monitor_information,
-    kwin::kwin_get_monitor_information,
     wlr::wlr_get_monitor_information,
 };
 
@@ -30,6 +25,7 @@ pub mod gnome;
 pub mod hyprland;
 pub mod kde;
 pub mod kwin;
+pub mod utils;
 pub mod wlr;
 
 #[no_mangle]
@@ -57,7 +53,6 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
                 // "Hyprland" => hy_get_monitor_information(),
                 "Hyprland" => wlr_get_monitor_information(),
                 "GNOME" => g_get_monitor_information(),
-                // "KDE" => kde_get_monitor_information(),
                 "KDE" => kde_get_monitor_information(),
                 _ => unreachable!(),
             },

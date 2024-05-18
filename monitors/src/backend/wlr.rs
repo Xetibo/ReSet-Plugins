@@ -12,10 +12,8 @@ use wayland_protocols_wlr::output_management::v1::client::zwlr_output_configurat
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_configuration_head_v1::ZwlrOutputConfigurationHeadV1;
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_configuration_v1::Event as OutputConfigurationEvent;
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_configuration_v1::ZwlrOutputConfigurationV1;
+use wayland_protocols_wlr::output_management::v1::client::zwlr_output_head_v1::Event;
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_head_v1::ZwlrOutputHeadV1;
-use wayland_protocols_wlr::output_management::v1::client::zwlr_output_head_v1::{
-    AdaptiveSyncState, Event,
-};
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_manager_v1::Event as OutputManagerEvent;
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_manager_v1::ZwlrOutputManagerV1;
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_mode_v1::Event as OutputModeEvent;
@@ -43,9 +41,9 @@ impl TransformWrapper {
     }
 }
 
-impl Into<TransformWrapper> for u32 {
-    fn into(self) -> TransformWrapper {
-        TransformWrapper(match self {
+impl From<u32> for TransformWrapper {
+    fn from(val: u32) -> Self {
+        TransformWrapper(match val {
             0 => Transform::Normal,
             1 => Transform::_90,
             2 => Transform::_180,
@@ -351,28 +349,6 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
     }
 }
 
-impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
-    fn event(
-        _state: &mut Self,
-        registry: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        _: &(),
-        _: &Connection,
-        qh: &QueueHandle<AppData>,
-    ) {
-        if let wl_registry::Event::Global {
-            name,
-            interface,
-            version,
-        } = event
-        {
-            if let "zwlr_output_manager_v1" = &interface[..] {
-                registry.bind::<ZwlrOutputManagerV1, _, _>(name, version, qh, ());
-            }
-        }
-    }
-}
-
 pub fn wlr_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let conn = Connection::connect_to_env().unwrap();
@@ -461,23 +437,19 @@ pub fn wlr_apply_monitor_configuration(
                 let mode_id = wlr_objects.get(&current_mode).unwrap();
                 head_configuration
                     .set_mode(&ZwlrOutputModeV1::from_id(&conn, mode_id.clone()).unwrap());
-                // head_configuration.set_custom_mode(
-                //     monitor.size.0,
-                //     monitor.size.1,
-                //     monitor.refresh_rate as i32 * 1000,
-                // );
                 head_configuration.set_transform(transform.value());
                 head_configuration.set_scale(monitor.scale);
                 head_configuration.set_position(monitor.offset.0, monitor.offset.1);
 
+                // This causes a crash on hyprland as of now
                 // enabling or disabling vrr for monitors that do not offer vrr doesn't work
-                if monitor.features.vrr {
-                    if monitor.vrr {
-                        head_configuration.set_adaptive_sync(AdaptiveSyncState::Enabled);
-                    } else {
-                        head_configuration.set_adaptive_sync(AdaptiveSyncState::Disabled);
-                    }
-                }
+                // if monitor.features.vrr {
+                //     if monitor.vrr {
+                //         head_configuration.set_adaptive_sync(AdaptiveSyncState::Enabled);
+                //     } else {
+                //         head_configuration.set_adaptive_sync(AdaptiveSyncState::Disabled);
+                //     }
+                // }
             }
         }
         configuration.apply();
