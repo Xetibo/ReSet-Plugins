@@ -1,4 +1,4 @@
-use std::{fmt::Display, time::Duration};
+use std::{collections::HashMap, fmt::Display, time::Duration};
 
 use crate::r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS};
 use dbus::{
@@ -11,6 +11,9 @@ use gtk::prelude::WidgetExt;
 use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
+use wayland_client::backend::ObjectId;
+use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::KdeOutputDeviceModeV2;
+use wayland_protocols_wlr::output_management::v1::client::zwlr_output_mode_v1::ZwlrOutputModeV1;
 
 pub fn get_environment() -> String {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP");
@@ -42,6 +45,7 @@ pub fn get_monitor_data() -> Vec<Monitor> {
 #[derive(Debug, Clone)]
 pub struct MonitorData {
     pub monitors: Vec<Monitor>,
+    pub wl_object_ids: Vec<HashMap<u32, ObjectId>>,
 }
 
 #[repr(C)]
@@ -121,6 +125,7 @@ pub struct Monitor {
     pub mode: String,
     pub available_modes: Vec<AvailableMode>,
     pub features: MonitorFeatures,
+    pub wl_object_ids: HashMap<u32, ObjectId>,
 }
 
 impl Monitor {
@@ -163,6 +168,7 @@ impl Monitor {
             drag_information: DragInformation::default(),
             available_modes,
             features,
+            wl_object_ids: HashMap::new(),
         }
     }
 
@@ -252,6 +258,7 @@ impl<'a> Get<'a> for Monitor {
             drag_information: DragInformation::default(),
             available_modes,
             features,
+            wl_object_ids: HashMap::new(),
         })
     }
 }
@@ -259,9 +266,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe {
-            Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbbb))\0")
-        }
+        unsafe { Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbbb))\0") }
     }
 }
 

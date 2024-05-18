@@ -1,24 +1,21 @@
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::ops::RangeInclusive;
 use std::sync::Arc;
 
-use wayland_client::backend::{ObjectData, ObjectId};
+use wayland_client::backend::ObjectData;
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
-use wayland_client::protocol::wl_callback::{self, WlCallback};
+use wayland_client::protocol::wl_callback::{self};
 use wayland_client::protocol::wl_registry;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::Event as OutputModeEvent;
 use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::KdeOutputDeviceModeV2;
-use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::{
-    Event, EVT_MODE_OPCODE,
-};
-use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::{
-    KdeOutputDeviceV2, EVT_CURRENT_MODE_OPCODE,
-};
-use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::Event as OutputConfigurationEvent;
+use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::Event;
+use wayland_protocols_plasma::output_device::v2::client::kde_output_device_v2::KdeOutputDeviceV2;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::KdeOutputConfigurationV2;
+use wayland_protocols_plasma::output_management::v2::client::kde_output_configuration_v2::{
+    Event as OutputConfigurationEvent, VrrPolicy,
+};
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::Event as OutputManagementEvent;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::KdeOutputManagementV2;
 
@@ -50,6 +47,8 @@ struct AppData {
 }
 
 #[derive(Debug)]
+// This is a conversion struct, hence the fields need to be there either way
+#[allow(dead_code)]
 struct WlrMonitor {
     name: String,
     make: String,
@@ -67,7 +66,8 @@ struct WlrMonitor {
     enabled: bool,
     transform: u32,
     current_mode: u32,
-    current_mode_change: ObjectId,
+    original_object: KdeOutputDeviceV2,
+    current_mode_object: Option<KdeOutputDeviceModeV2>,
 }
 
 #[derive(Debug)]
@@ -79,7 +79,7 @@ struct WlrMode {
 impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
     fn event(
         data: &mut Self,
-        obj: &KdeOutputDeviceModeV2,
+        _: &KdeOutputDeviceModeV2,
         event: OutputModeEvent,
         current: &CurrentMode,
         _: &Connection,
@@ -135,37 +135,20 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
                     data.current_mode_refresh_rate = refresh_rate;
                 }
             }
-            // OutputModeEvent::Preferred => {
-            //     let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
-            //     let len = monitor.modes.len() as u32 - 1;
-            //     monitor.current_mode = len;
-            //     monitor.width = data.current_mode_key.0;
-            //     monitor.height = data.current_mode_key.1;
-            //     monitor.refresh_rate = data.current_mode_refresh_rate;
-            // }
             _ => (),
-        }
-        let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
-        if monitor.current_mode_change == obj.id() {
-            let len = monitor.modes.len() as u32 - 1;
-            monitor.current_mode = len;
-            println!("{}, {}", data.current_mode_key.0, data.current_mode_key.1);
-            monitor.width = data.current_mode_key.0;
-            monitor.height = data.current_mode_key.1;
-            monitor.refresh_rate = data.current_mode_refresh_rate;
         }
     }
 }
+
 impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
     fn event(
         _state: &mut Self,
-        obj: &KdeOutputDeviceV2,
+        _: &KdeOutputDeviceV2,
         event: Event,
         _: &(),
-        conn: &Connection,
-        handle: &QueueHandle<AppData>,
+        _: &Connection,
+        _: &QueueHandle<AppData>,
     ) {
-        let opcode = event.opcode();
         match event {
             Event::Geometry {
                 x,
@@ -186,22 +169,15 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().name = name;
             }
             Event::CurrentMode { mode } => {
+                // data passed to each mode
                 let data: &CurrentMode = mode.data().unwrap();
+                // if the mode is the current mode, apply needed info to monitor
                 let monitor = _state.heads.get_mut(&_state.current_monitor).unwrap();
                 monitor.width = data.width.take();
                 monitor.height = data.height.take();
                 monitor.refresh_rate = data.refresh_rate.take();
-                // TODO:
-                // WTF KDE?????!!????!!!?
+                monitor.current_mode_object = Some(mode.clone());
             }
-            // Event::Geometry { x, y, physical_width, physical_height, subpixel, make, model, transform } => todo!(),
-            // Event::Mode { mode } => todo!(),
-            // Event::Uuid { uuid } => todo!(),
-            // Event::EisaId { eisaId } => todo!(),
-            // Event::Capabilities { flags } => todo!(),
-            // Event::Overscan { overscan } => todo!(),
-            // Event::VrrPolicy { vrr_policy } => todo!(),
-            // Event::RgbRange { rgb_range } => todo!(),
             Event::Enabled { enabled } => {
                 _state
                     .heads
@@ -229,13 +205,13 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
         }
     }
 
-    fn event_created_child(code: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
+    fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
         _qhandle.make_data::<KdeOutputDeviceModeV2, CurrentMode>(CurrentMode {
+            // create data for each mode
             refresh_rate: Cell::new(0),
             width: Cell::new(0),
             height: Cell::new(0),
         })
-        // TODO:
     }
 }
 
@@ -250,6 +226,7 @@ impl Dispatch<KdeOutputConfigurationV2, ()> for AppData {
     ) {
     }
 }
+
 impl Dispatch<KdeOutputManagementV2, ()> for AppData {
     fn event(
         _state: &mut Self,
@@ -261,24 +238,19 @@ impl Dispatch<KdeOutputManagementV2, ()> for AppData {
     ) {
     }
 }
+
 impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
     fn event(
         _: &mut AppData,
-        registry: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        globals: &GlobalListContents,
+        _: &wl_registry::WlRegistry,
+        _: wl_registry::Event,
+        _: &GlobalListContents,
         _: &Connection,
-        qh: &QueueHandle<AppData>,
+        _: &QueueHandle<AppData>,
     ) {
-        //         println!("called");
-        //         for global in globals.clone_list() {
-        //             println!("{}", &global.interface);
-        //             if let "kde_output_device_v2" = &global.interface[..] {
-        //                 registry.bind::<KdeOutputDeviceV2, _, _>(global.name, global.version, qh, ());
-        //             }
-        //         }
     }
 }
+
 impl Dispatch<wl_callback::WlCallback, ()> for AppData {
     fn event(
         _: &mut AppData,
@@ -291,38 +263,11 @@ impl Dispatch<wl_callback::WlCallback, ()> for AppData {
     }
 }
 
-// impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
-//     fn event(
-//         _state: &mut Self,
-//         registry: &wl_registry::WlRegistry,
-//         event: wl_registry::Event,
-//         _: &(),
-//         conn: &Connection,
-//         qh: &QueueHandle<AppData>,
-//     ) {
-//         if let wl_registry::Event::Global {
-//             name,
-//             interface,
-//             version,
-//         } = event
-//         {
-//             if let "kde_output_device_v2" = &interface[..] {
-//                 println!("{} {}", interface, name);
-//                 let what = registry.bind::<KdeOutputDeviceV2, _, _>(name, version, qh, ());
-//             }
-//         }
-//     }
-// }
-pub fn kde2_get_monitor_information() -> Vec<Monitor> {
+pub fn kwin_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let conn = Connection::connect_to_env().unwrap();
-    // let display = conn.display();
-    // let mut queue = conn.new_event_queue();
-    // let handle = queue.handle();
-    // let _ = display.get_registry(&handle, ());
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
-    let manager: KdeOutputManagementV2 = globals.bind(&handle, 1..=2, ()).unwrap();
 
     let mut data = AppData {
         heads: HashMap::new(),
@@ -332,8 +277,11 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
     };
 
     for global in globals.contents().clone_list() {
-        println!("{}", &global.interface);
         if &global.interface[..] == "kde_output_device_v2" {
+            let output: KdeOutputDeviceV2 =
+                globals
+                    .registry()
+                    .bind::<KdeOutputDeviceV2, _, _>(global.name, 2, &handle, ());
             let monitor = WlrMonitor {
                 name: String::from(""),
                 make: String::from(""),
@@ -351,20 +299,16 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
                 width: 0,
                 height: 0,
                 refresh_rate: 0,
-                current_mode_change: manager.id(),
+                original_object: output.clone(),
+                current_mode_object: None,
             };
             let len = data.heads.len() as u32;
             data.current_monitor = len;
             data.heads.insert(len, monitor);
-            globals
-                .registry()
-                .bind::<KdeOutputDeviceV2, _, _>(global.name, 2, &handle, ());
 
             queue.blocking_dispatch(&mut data).unwrap();
         }
     }
-
-    // queue.roundtrip(&mut data).unwrap();
 
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
@@ -409,9 +353,54 @@ pub fn kde2_get_monitor_information() -> Vec<Monitor> {
             mode: wlr_monitor.current_mode.to_string(),
             available_modes: modes,
             features: FEATURES,
+            wl_object_ids: HashMap::new(),
         };
         monitors.push(monitor);
     }
-    dbg!(&monitors);
     monitors
+}
+
+pub fn kwin_apply_monitor_configuration(monitors: &[Monitor]) {
+    let conn = Connection::connect_to_env().unwrap();
+    let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
+    let handle = queue.handle();
+
+    // TODO: implement manager
+    let manager: KdeOutputManagementV2 = globals.bind(&handle, 1..=2, ()).unwrap();
+    let configuration = manager.create_configuration(&handle, ());
+
+    let mut data = AppData {
+        heads: HashMap::new(),
+        current_monitor: 0,
+        current_mode_key: (0, 0),
+        current_mode_refresh_rate: 0,
+    };
+    queue.blocking_dispatch(&mut data).unwrap();
+    for monitor in monitors.iter() {
+        for head in data.heads.iter() {
+            if monitor.id == *head.0 {
+                if !monitor.enabled {
+                    configuration.enable(&head.1.original_object, 0);
+                    continue;
+                }
+                configuration.enable(&head.1.original_object, 1);
+                // TODO: make this work
+                // configuration.mode(&head.1.original_object, enabled);
+                configuration.transform(&head.1.original_object, monitor.transform as i32);
+                configuration.position(&head.1.original_object, monitor.offset.0, monitor.offset.1);
+                configuration.scale(&head.1.original_object, monitor.scale);
+                let vrr = if monitor.vrr {
+                    VrrPolicy::Automatic
+                } else {
+                    VrrPolicy::Never
+                };
+                configuration.set_vrr_policy(&head.1.original_object, vrr);
+                if monitor.primary {
+                    configuration.set_primary_output(&head.1.original_object);
+                }
+            }
+        }
+        configuration.apply();
+    }
+    queue.blocking_dispatch(&mut data).unwrap();
 }

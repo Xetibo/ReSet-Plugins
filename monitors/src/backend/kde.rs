@@ -107,6 +107,7 @@ impl KDEMonitor {
                 fractional_scaling: true,
                 hdr: true,
             },
+            wl_object_ids: HashMap::new(),
         }
     }
 }
@@ -250,4 +251,3 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
 
     kscreen
 }
-

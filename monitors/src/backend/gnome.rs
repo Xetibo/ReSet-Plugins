@@ -190,6 +190,7 @@ impl GnomeMonitorConfig {
                     fractional_scaling: get_fractional_scale_support(),
                     hdr: false,
                 },
+                wl_object_ids: HashMap::new(),
             });
         }
         monitors
