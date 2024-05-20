@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use wayland_client::backend::ObjectData;
+use wayland_client::backend::{ObjectData, ObjectId};
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
 use wayland_client::protocol::wl_callback::{self};
 use wayland_client::protocol::wl_registry;
@@ -66,8 +66,10 @@ struct WlrMonitor {
     enabled: bool,
     transform: u32,
     current_mode: u32,
-    original_object: KdeOutputDeviceV2,
-    current_mode_object: Option<KdeOutputDeviceModeV2>,
+    original_object: ObjectId,
+    current_mode_object: Option<ObjectId>,
+    hash_modes: HashMap<u32, ObjectId>,
+    next_mode: u32,
 }
 
 #[derive(Debug)]
@@ -79,7 +81,7 @@ struct WlrMode {
 impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
     fn event(
         data: &mut Self,
-        _: &KdeOutputDeviceModeV2,
+        obj: &KdeOutputDeviceModeV2,
         event: OutputModeEvent,
         current: &CurrentMode,
         _: &Connection,
@@ -90,14 +92,13 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
         }
         match event {
             OutputModeEvent::Size { width, height } => {
-                let len = data.heads.get(&data.current_monitor).unwrap().modes.len() as u32;
                 let mode = WlrMode {
-                    id: len,
+                    id: data.heads.get(&data.current_monitor).unwrap().next_mode,
                     refresh_rate: HashSet::new(),
                 };
+                data.current_mode_key = (width, height);
                 current.width.replace(width);
                 current.height.replace(height);
-                data.current_mode_key = (width, height);
                 if !data
                     .heads
                     .get(&data.current_monitor)
@@ -105,11 +106,9 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
                     .modes
                     .contains_key(&data.current_mode_key)
                 {
-                    data.heads
-                        .get_mut(&data.current_monitor)
-                        .unwrap()
-                        .modes
-                        .insert((width, height), mode);
+                    let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+                    monitor.modes.insert((width, height), mode);
+                    monitor.hash_modes.insert(monitor.next_mode, obj.id());
                 }
             }
             OutputModeEvent::Refresh { refresh } => {
@@ -123,7 +122,9 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
                 };
                 let refresh_rate = refresh_rate as u32;
                 current.refresh_rate.replace(refresh_rate);
-                data.heads
+                let len = data.heads.get(&data.current_monitor).unwrap().next_mode;
+                let new = data
+                    .heads
                     .get_mut(&data.current_monitor)
                     .unwrap()
                     .modes
@@ -131,6 +132,14 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
                     .unwrap()
                     .refresh_rate
                     .insert(refresh_rate);
+                if new && data.heads.get(&data.current_monitor).unwrap().modes.len() != 1 {
+                    data.heads
+                        .get_mut(&data.current_monitor)
+                        .unwrap()
+                        .hash_modes
+                        .insert(len, obj.id());
+                    data.heads.get_mut(&data.current_monitor).unwrap().next_mode = len + 1;
+                }
                 if refresh_rate > data.current_mode_refresh_rate {
                     data.current_mode_refresh_rate = refresh_rate;
                 }
@@ -176,7 +185,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 monitor.width = data.width.take();
                 monitor.height = data.height.take();
                 monitor.refresh_rate = data.refresh_rate.take();
-                monitor.current_mode_object = Some(mode.clone());
+                monitor.current_mode_object = Some(mode.id());
             }
             Event::Enabled { enabled } => {
                 _state
@@ -299,8 +308,10 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
                 width: 0,
                 height: 0,
                 refresh_rate: 0,
-                original_object: output.clone(),
+                original_object: output.id(),
                 current_mode_object: None,
+                hash_modes: HashMap::new(),
+                next_mode: 0,
             };
             let len = data.heads.len() as u32;
             data.current_monitor = len;
@@ -379,28 +390,30 @@ pub fn kwin_apply_monitor_configuration(monitors: &[Monitor]) {
     for monitor in monitors.iter() {
         for head in data.heads.iter() {
             if monitor.id == *head.0 {
+                let current_head =
+                    KdeOutputDeviceV2::from_id(&conn, head.1.original_object.clone()).unwrap();
                 if !monitor.enabled {
-                    configuration.enable(&head.1.original_object, 0);
+                    configuration.enable(&current_head, 0);
                     continue;
                 }
-                configuration.enable(&head.1.original_object, 1);
+                configuration.enable(&current_head, 1);
                 // TODO: make this work
                 // configuration.mode(&head.1.original_object, enabled);
-                configuration.transform(&head.1.original_object, monitor.transform as i32);
-                configuration.position(&head.1.original_object, monitor.offset.0, monitor.offset.1);
-                configuration.scale(&head.1.original_object, monitor.scale);
+                configuration.transform(&current_head, monitor.transform as i32);
+                configuration.position(&current_head, monitor.offset.0, monitor.offset.1);
+                configuration.scale(&current_head, monitor.scale);
                 let vrr = if monitor.vrr {
                     VrrPolicy::Automatic
                 } else {
                     VrrPolicy::Never
                 };
-                configuration.set_vrr_policy(&head.1.original_object, vrr);
+                configuration.set_vrr_policy(&current_head, vrr);
                 if monitor.primary {
-                    configuration.set_primary_output(&head.1.original_object);
+                    configuration.set_primary_output(&current_head);
                 }
             }
         }
-        configuration.apply();
     }
+    configuration.apply();
     queue.blocking_dispatch(&mut data).unwrap();
 }

@@ -310,6 +310,9 @@ pub fn get_monitor_settings_group(
             let original_monitor = monitor.clone();
             monitor.size.0 = new_size_x;
             monitor.size.1 = new_size_y;
+            let (width, height) = monitor.handle_transform();
+            monitor.drag_information.width = width;
+            monitor.drag_information.height = height;
             rearrange_monitors(original_monitor.clone(), monitors);
         }
 
@@ -371,16 +374,80 @@ pub fn get_monitor_settings_group(
 }
 
 pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Vec<Monitor>>) {
-    let mut furthest = 0;
-    // resets the monitors to a single line, this requires the user to rearrange the monitors, but
-    // allows ReSet to ignore an extremely complicated and time consuming calculation with many
-    // possible edge cases that could cause overlap between monitors.
-    // This also assures that the newly generated configuration is GNOME compatible :)
+    let (original_width, original_height) = original_monitor.handle_transform();
+    let mut min = i32::MIN;
+    let mut diff_x = 0;
+    let mut diff_y = 0;
+
+    // check for the difference of x or y offset
+    // and set the rightmost side for overlapped monitors
     for monitor in monitors.iter_mut() {
-        let (width, _) = monitor.handle_transform();
-        monitor.offset.0 = furthest;
-        monitor.offset.1 = original_monitor.offset.1;
-        furthest = monitor.offset.0 + width;
+        // rigth_most for monitors that overlap -> reset monitor to available space
+        let (width, height) = monitor.handle_transform();
+        let right_side = monitor.offset.0 + width;
+        if right_side > min {
+            min = right_side;
+        }
+
+        if monitor.id == original_monitor.id {
+            diff_x = width - original_width;
+            diff_y = height - original_height;
+        }
+    }
+
+    // add the difference to the rightmost side in order to not intersect
+    min += diff_x;
+
+    // apply offset to all affected monitors by the change
+    for monitor in monitors.iter_mut() {
+        if monitor.id == original_monitor.id {
+            continue;
+        }
+
+        let (_, height) = monitor.handle_transform();
+
+        if monitor.offset.0 >= original_monitor.offset.0 + original_width {
+            monitor.offset.0 += diff_x;
+        }
+        if monitor.offset.1 - height >= original_monitor.offset.1 {
+            monitor.offset.1 += diff_y;
+        }
+    }
+
+    // (false, false)
+    // first: already used flag -> don't check for overlaps against the same monitors just in
+    // opposite order
+    // second: bool flag to indicate overlap
+    let mut overlaps = vec![(false, false); monitors.len()];
+    // check for overlaps
+    for (index, monitor) in monitors.iter().enumerate() {
+        for (other_index, other_monitor) in monitors.iter().enumerate() {
+            if monitor.id == other_monitor.id || overlaps[other_index].0 {
+                continue;
+            }
+            let (width, height) = other_monitor.handle_transform();
+            let intersect_horizontal = monitor.intersect_horizontal(
+                other_monitor.offset.0 + other_monitor.drag_information.border_offset_x,
+                width,
+            );
+            let intersect_vertical = monitor.intersect_vertical(
+                other_monitor.offset.1 + other_monitor.drag_information.border_offset_y,
+                height,
+            );
+            if intersect_horizontal && intersect_vertical {
+                overlaps[index].1 = true;
+            }
+        }
+        overlaps[index].0 = true;
+    }
+
+    // if overlapped, send monitor to the end -> monitor is now rightmost monitor
+    for (index, monitor) in monitors.iter_mut().enumerate() {
+        if overlaps[index].1 {
+            let (width, _) = monitor.handle_transform();
+            monitor.offset.0 = min;
+            min = monitor.offset.0 + width;
+        }
     }
 }
 

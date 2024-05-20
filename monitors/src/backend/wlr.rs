@@ -441,7 +441,7 @@ pub fn wlr_apply_monitor_configuration(
                 head_configuration.set_scale(monitor.scale);
                 head_configuration.set_position(monitor.offset.0, monitor.offset.1);
 
-                // This causes a crash on hyprland as of now
+                // This causes an error on hyprland as of now
                 // enabling or disabling vrr for monitors that do not offer vrr doesn't work
                 // if monitor.features.vrr {
                 //     if monitor.vrr {
@@ -452,7 +452,7 @@ pub fn wlr_apply_monitor_configuration(
                 // }
             }
         }
-        configuration.apply();
     }
+    configuration.apply();
     queue.blocking_dispatch(&mut data).unwrap();
 }
