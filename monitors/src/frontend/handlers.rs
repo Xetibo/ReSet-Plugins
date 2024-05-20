@@ -686,7 +686,9 @@ pub fn monitor_drag_end(
 ) {
     let mut changed = false;
     let mut endpoint_left: i32 = 0;
+    let mut endpoint_left_intersect: i32 = 0;
     let mut endpoint_bottom: i32 = 0;
+    let mut endpoint_bottom_intersect: i32 = 0;
     let mut endpoint_right: i32 = 0;
     let mut endpoint_top: i32 = 0;
     let mut previous_width: i32 = 0;
@@ -703,7 +705,9 @@ pub fn monitor_drag_end(
             }
             monitor.drag_information.drag_active = false;
             endpoint_bottom = monitor.offset.1 + monitor.drag_information.drag_y;
+            endpoint_bottom_intersect = endpoint_bottom + monitor.drag_information.border_offset_y;
             endpoint_left = monitor.offset.0 + monitor.drag_information.drag_x;
+            endpoint_left_intersect = endpoint_left + monitor.drag_information.border_offset_x;
             endpoint_right = endpoint_left + monitor.drag_information.width;
             endpoint_top = endpoint_bottom - monitor.drag_information.height;
             previous_width = monitor.drag_information.width;
@@ -747,8 +751,10 @@ pub fn monitor_drag_end(
         }
 
         // both required for a real intersect
-        let intersect_horizontal = monitor.intersect_horizontal(endpoint_left, previous_width);
-        let intersect_vertical = monitor.intersect_vertical(endpoint_bottom, previous_height);
+        let intersect_horizontal =
+            monitor.intersect_horizontal(endpoint_left_intersect, previous_width);
+        let intersect_vertical =
+            monitor.intersect_vertical(endpoint_bottom_intersect, previous_height);
 
         // in case of an intersect, right to right/left to left snapping not allowed -> snap into intersect
         let allow_snap_horizontal = match snap_horizontal {
