@@ -354,9 +354,11 @@ pub fn wlr_get_monitor_information() -> Vec<Monitor> {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
-    globals
-        .bind::<ZwlrOutputManagerV1, _, _>(&handle, RangeInclusive::new(0, 1), ())
-        .unwrap();
+    let manager = globals.bind::<ZwlrOutputManagerV1, _, _>(&handle, RangeInclusive::new(0, 1), ());
+    if manager.is_err() {
+        return Vec::new();
+    }
+    let _ = manager.unwrap();
 
     let mut data = AppData {
         heads: HashMap::new(),
@@ -366,7 +368,6 @@ pub fn wlr_get_monitor_information() -> Vec<Monitor> {
     };
     queue.blocking_dispatch(&mut data).unwrap();
     for (index, wlr_monitor) in data.heads.into_iter() {
-        dbg!(&wlr_monitor.hash_modes);
         let mut modes = Vec::new();
         for ((width, height), mode) in wlr_monitor.modes.into_iter() {
             modes.push(AvailableMode {

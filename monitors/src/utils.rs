@@ -1,6 +1,9 @@
 use std::{collections::HashMap, fmt::Display, time::Duration};
 
-use crate::r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS};
+use crate::{
+    backend::utils::get_wl_backend,
+    r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS},
+};
 use dbus::{
     arg::{self, Append, Arg, ArgType, Get},
     blocking::Connection,
@@ -26,7 +29,7 @@ pub fn check_environment_support() -> bool {
     if SUPPORTED_ENVIRONMENTS.contains(&desktop.as_str()) {
         return true;
     }
-    false
+    matches!(get_wl_backend().as_str(), "WLR" | "KWIN")
 }
 
 pub fn get_monitor_data() -> Vec<Monitor> {

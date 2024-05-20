@@ -1,11 +1,15 @@
 use std::{cell::RefCell, rc::Rc};
 
 use adw::{prelude::PreferencesGroupExt, prelude::PreferencesRowExt, PreferencesGroup};
-use gtk::prelude::WidgetExt;
+use gtk::{
+    prelude::BoxExt,
+    prelude::{ButtonExt, WidgetExt},
+    DrawingArea,
+};
 
-use crate::utils::Monitor;
+use crate::utils::{get_environment, Monitor};
 
-use super::handlers::scaling_update;
+use super::handlers::{apply_monitor_clicked, scaling_update};
 
 pub fn arbitrary_add_scaling_adjustment(
     scale: f64,
@@ -20,6 +24,38 @@ pub fn arbitrary_add_scaling_adjustment(
         scaling_update(state, monitors.clone(), monitor_index);
     });
     settings.add(&scaling);
+}
+
+pub fn add_save_button(
+    save_ref: Rc<RefCell<Vec<Monitor>>>,
+    fallback_save_ref: Rc<RefCell<Vec<Monitor>>>,
+    settings_box_ref_save: gtk::Box,
+    drawing_ref_save: DrawingArea,
+    apply_row: gtk::Box,
+) -> gtk::Button {
+    let save = gtk::Button::builder()
+        .label("Save")
+        .hexpand_set(false)
+        .halign(gtk::Align::End)
+        .sensitive(false)
+        .build();
+    match get_environment().as_str() {
+        "GNOME" | "Hyprland" => {
+            save.connect_clicked(move |_| {
+                apply_monitor_clicked(
+                    save_ref.clone(),
+                    fallback_save_ref.clone(),
+                    &settings_box_ref_save,
+                    &drawing_ref_save,
+                    false,
+                    true,
+                );
+            });
+            apply_row.append(&save);
+        }
+        _ => (),
+    }
+    save
 }
 
 pub fn add_primary_monitor_option(

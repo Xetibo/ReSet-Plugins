@@ -24,7 +24,7 @@ pub fn apply_monitor_configuration(
     wlr_objects_vec: &[HashMap<u32, ObjectId>],
 ) {
     match get_environment().as_str() {
-        //"Hyprland" => hy_apply_monitor_information(monitors),
+        "Hyprland" => hy_apply_monitor_information(monitors),
         "GNOME" => g_apply_monitor_config(1, monitors),
         "KDE" => kde_apply_monitor_config(monitors),
         // fallback to protocol implementations

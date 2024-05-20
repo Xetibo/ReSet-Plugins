@@ -19,9 +19,12 @@ use re_set_lib::utils::{gtk::utils::create_title, plugin::SidebarInfo};
 
 use crate::utils::{get_environment, get_monitor_data};
 
-use self::handlers::{
-    apply_monitor_clicked, drawing_callback, get_monitor_settings_group, monitor_drag_end,
-    monitor_drag_start, monitor_drag_update, reset_monitor_clicked,
+use self::{
+    general::add_save_button,
+    handlers::{
+        apply_monitor_clicked, drawing_callback, get_monitor_settings_group, monitor_drag_end,
+        monitor_drag_start, monitor_drag_update, reset_monitor_clicked,
+    },
 };
 
 pub mod general;
@@ -63,14 +66,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .build();
     apply_row.append(&apply);
 
-    let save = gtk::Button::builder()
-        .label("Save")
-        .hexpand_set(false)
-        .halign(gtk::Align::End)
-        .sensitive(false)
-        .build();
-    apply_row.append(&save);
-
     let reset = gtk::Button::builder()
         .label("Reset")
         .hexpand_set(false)
@@ -79,7 +74,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .build();
     apply_row.append(&reset);
 
-    main_box.append(&apply_row);
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
@@ -150,6 +144,14 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         );
     });
 
+    let save = add_save_button(
+        save_ref.clone(),
+        fallback_save_ref.clone(),
+        settings_box_ref_save,
+        drawing_ref_save,
+        apply_row.clone(),
+    );
+
     let reset_ref = monitor_data.clone();
     reset.connect_clicked(move |button| {
         reset_monitor_clicked(
@@ -157,17 +159,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             &settings_box_ref_reset,
             &drawing_ref_reset,
             button,
-        );
-    });
-
-    save.connect_clicked(move |_| {
-        apply_monitor_clicked(
-            save_ref.clone(),
-            fallback_save_ref.clone(),
-            &settings_box_ref_save,
-            &drawing_ref_save,
-            false,
-            true,
         );
     });
 
@@ -266,6 +257,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .build();
     action_group.add_action_entries([revert_monitors]);
     main_box.insert_action_group("monitor", Some(&action_group));
+    main_box.append(&apply_row);
     main_box.append(&drawing_frame);
     main_box.append(&settings_box);
 

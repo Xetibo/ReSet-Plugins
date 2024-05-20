@@ -31,6 +31,7 @@ use re_set_lib::{utils::config::get_config_value, ERROR};
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::{
+    backend::utils::get_wl_backend,
     r#const::{BASE, DBUS_PATH, INTERFACE},
     utils::{
         get_environment, get_monitor_data, AlertWrapper, Monitor, SnapDirectionHorizontal,
@@ -463,7 +464,12 @@ pub fn add_scale_adjustment(
         "Hyprland" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "GNOME" => g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "KDE" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
-        _ => unreachable!(),
+        _ => match get_wl_backend().as_str() {
+            "WLR" | "KWIN" => {
+                arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings)
+            }
+            _ => unreachable!(),
+        },
     };
 }
 
