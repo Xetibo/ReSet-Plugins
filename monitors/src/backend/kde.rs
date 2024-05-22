@@ -16,12 +16,11 @@ pub fn kde_get_monitor_information() -> Vec<Monitor> {
         serde_json::from_str(&String::from_utf8(get_json()).expect("Could not parse json"))
             .expect("Could not parse json");
     for monitor in kde_monitors.outputs {
-        let monitor = monitor.convert_to_regular_monitor();
-        if !monitor.available_modes.is_empty() {
+        if !monitor.modes.is_empty() {
+            let monitor = monitor.convert_to_regular_monitor();
             monitors.push(monitor);
         }
     }
-    dbg!(&monitors);
     monitors
 }
 
