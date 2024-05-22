@@ -232,10 +232,10 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .activate(move |_, _, description| {
             let enable = description.unwrap().get::<bool>().unwrap();
             apply.set_sensitive(enable);
+            reset.set_sensitive(enable);
             if let Some(save) = save_ref.clone() {
                 save.set_sensitive(enable);
             }
-            reset.set_sensitive(enable);
         })
         .build();
     action_group.add_action_entries([reset_monitor_buttons]);
