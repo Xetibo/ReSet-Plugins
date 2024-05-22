@@ -215,6 +215,7 @@ fn convert_modes(
         }
     });
 
+    dbg!(&current_mode);
     (modes, current_mode.unwrap())
 }
 
