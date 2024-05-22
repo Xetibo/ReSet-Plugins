@@ -17,7 +17,9 @@ pub fn kde_get_monitor_information() -> Vec<Monitor> {
             .expect("Could not parse json");
     for monitor in kde_monitors.outputs {
         let monitor = monitor.convert_to_regular_monitor();
-        monitors.push(monitor);
+        if !monitor.available_modes.is_empty() {
+            monitors.push(monitor);
+        }
     }
     monitors
 }
@@ -212,9 +214,6 @@ fn convert_modes(
         }
     });
 
-    if current_mode.is_none() {
-        return (modes, KDEMode::default());
-    }
     (modes, current_mode.unwrap())
 }
 
