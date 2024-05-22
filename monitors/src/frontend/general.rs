@@ -32,16 +32,17 @@ pub fn add_save_button(
     settings_box_ref_save: gtk::Box,
     drawing_ref_save: DrawingArea,
     apply_row: gtk::Box,
-) -> gtk::Button {
-    let save = gtk::Button::builder()
-        .label("Save")
-        .hexpand_set(false)
-        .halign(gtk::Align::End)
-        .sensitive(false)
-        .build();
+) -> Option<gtk::Button> {
+    let mut save = None;
     match get_environment().as_str() {
         "GNOME" | "Hyprland" => {
-            save.connect_clicked(move |_| {
+            let button = gtk::Button::builder()
+                .label("Save")
+                .hexpand_set(false)
+                .halign(gtk::Align::End)
+                .sensitive(false)
+                .build();
+            button.connect_clicked(move |_| {
                 apply_monitor_clicked(
                     save_ref.clone(),
                     fallback_save_ref.clone(),
@@ -51,7 +52,8 @@ pub fn add_save_button(
                     true,
                 );
             });
-            apply_row.append(&save);
+            apply_row.append(&button);
+            save = Some(button);
         }
         _ => (),
     }
@@ -138,11 +140,11 @@ pub fn add_enabled_monitor_option(
     let monitor = monitors.get(monitor_index).unwrap();
 
     if monitors.len() < 2 {
-        let enabled = adw::ActionRow::builder()
+        let title = adw::ActionRow::builder()
             .title(&monitor.name)
             .subtitle(&monitor.make)
             .build();
-        settings.add(&enabled);
+        settings.add(&title);
         return;
     }
     let enabled = adw::SwitchRow::builder()

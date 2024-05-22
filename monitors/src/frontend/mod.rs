@@ -1,6 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
 
-use glib::clone;
 use gtk::{
     gdk::RGBA,
     gio::{ActionEntry, SimpleActionGroup},
@@ -73,7 +72,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .sensitive(false)
         .build();
     apply_row.append(&reset);
-
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
@@ -228,16 +226,17 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
     drawing_frame.set_child(Some(&drawing_area));
     let action_group = SimpleActionGroup::new();
+    let save_ref = save.clone();
     let reset_monitor_buttons = ActionEntry::builder("reset_monitor_buttons")
         .parameter_type(Some(&bool::static_variant_type()))
-        .activate(
-            clone!(@weak reset, @weak apply, @weak save => move |_, _, description| {
-                let enable = description.unwrap().get::<bool>().unwrap();
-                apply.set_sensitive(enable);
+        .activate(move |_, _, description| {
+            let enable = description.unwrap().get::<bool>().unwrap();
+            apply.set_sensitive(enable);
+            if let Some(save) = save_ref.clone() {
                 save.set_sensitive(enable);
-                reset.set_sensitive(enable);
-            }),
-        )
+            }
+            reset.set_sensitive(enable);
+        })
         .build();
     action_group.add_action_entries([reset_monitor_buttons]);
 
