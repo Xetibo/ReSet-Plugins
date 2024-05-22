@@ -53,7 +53,7 @@ pub struct KDEMonitorConfiguration {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
 pub struct KDEMonitor {
     id: u32,
     name: String,
@@ -129,7 +129,7 @@ fn convert_to_regular_transform(rotation: u32) -> u32 {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct KDEMode {
     id: String,
     refreshRate: f64,
@@ -143,7 +143,7 @@ impl KDESize {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct KDEOffset {
     x: i32,
     y: i32,
@@ -156,7 +156,7 @@ impl KDEOffset {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct KDESize {
     width: i32,
     height: i32,
@@ -171,11 +171,8 @@ fn convert_modes(
     let mut hash_modes: HashMap<(i32, i32), (HashSet<u32>, String)> = HashMap::new();
 
     for mode in kde_modes {
-        println!("{} {}", &mode.id, current_mode_id);
         if &mode.id == current_mode_id {
-            println!("same");
             current_mode = Some(mode.clone());
-            dbg!(&current_mode);
         }
         if let Some(hash_mode) = hash_modes.get_mut(&(mode.size.width, mode.size.height)) {
             hash_mode.0.insert(mode.refreshRate.round() as u32);
@@ -215,7 +212,9 @@ fn convert_modes(
         }
     });
 
-    dbg!(&current_mode);
+    if current_mode.is_none() {
+        return (modes, KDEMode::default());
+    }
     (modes, current_mode.unwrap())
 }
 
