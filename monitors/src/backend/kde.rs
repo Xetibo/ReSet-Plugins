@@ -171,6 +171,7 @@ fn convert_modes(
     let mut hash_modes: HashMap<(i32, i32), (HashSet<u32>, String)> = HashMap::new();
 
     for mode in kde_modes {
+        println!("{} {}", &mode.id, &current_mode_id);
         if &mode.id == current_mode_id {
             current_mode = Some(mode.clone());
         }

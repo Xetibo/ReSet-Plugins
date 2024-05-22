@@ -383,7 +383,7 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
     // check for the difference of x or y offset
     // and set the rightmost side for overlapped monitors
     for monitor in monitors.iter_mut() {
-        // rigth_most for monitors that overlap -> reset monitor to available space
+        // right_most for monitors that overlap -> reset monitor to available space
         let (width, height) = monitor.handle_transform();
         let right_side = monitor.offset.0 + width;
         if right_side > min {
@@ -406,7 +406,6 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
         }
 
         let (_, height) = monitor.handle_transform();
-
         if monitor.offset.0 >= original_monitor.offset.0 + original_width {
             monitor.offset.0 += diff_x;
         }
