@@ -21,6 +21,7 @@ pub fn kde_get_monitor_information() -> Vec<Monitor> {
             monitors.push(monitor);
         }
     }
+    dbg!(&monitors);
     monitors
 }
 
