@@ -175,6 +175,7 @@ fn convert_modes(
         if &mode.id == current_mode_id {
             println!("same");
             current_mode = Some(mode.clone());
+            dbg!(&current_mode);
         }
         if let Some(hash_mode) = hash_modes.get_mut(&(mode.size.width, mode.size.height)) {
             hash_mode.0.insert(mode.refreshRate.round() as u32);
