@@ -376,7 +376,7 @@ pub fn get_monitor_settings_group(
 
 pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Vec<Monitor>>) {
     let (original_width, original_height) = original_monitor.handle_transform();
-    let mut min = i32::MIN;
+    let mut furthest = i32::MIN;
     let mut diff_x = 0;
     let mut diff_y = 0;
 
@@ -386,8 +386,8 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
         // right_most for monitors that overlap -> reset monitor to available space
         let (width, height) = monitor.handle_transform();
         let right_side = monitor.offset.0 + width;
-        if right_side > min {
-            min = right_side;
+        if right_side > furthest {
+            furthest = right_side;
         }
 
         if monitor.id == original_monitor.id {
@@ -397,7 +397,7 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
     }
 
     // add the difference to the rightmost side in order to not intersect
-    min += diff_x;
+    furthest += diff_x;
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
@@ -434,7 +434,8 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
                 other_monitor.offset.1 + other_monitor.drag_information.border_offset_y,
                 height,
             );
-            if intersect_horizontal && intersect_vertical {
+            let is_furthest = furthest == monitor.offset.0 + monitor.size.0;
+            if intersect_horizontal && intersect_vertical && !is_furthest {
                 overlaps[index].1 = true;
             }
         }
@@ -445,8 +446,8 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
     for (index, monitor) in monitors.iter_mut().enumerate() {
         if overlaps[index].1 {
             let (width, _) = monitor.handle_transform();
-            monitor.offset.0 = min;
-            min = monitor.offset.0 + width;
+            monitor.offset.0 = furthest;
+            furthest = monitor.offset.0 + width;
         }
     }
 }
