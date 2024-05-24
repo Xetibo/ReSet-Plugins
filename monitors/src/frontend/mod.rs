@@ -1,7 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use gtk::{
-    gdk::RGBA, gio::{ActionEntry, SimpleActionGroup}, prelude::FrameExt, Align, GestureClick
+    gdk::RGBA,
+    gio::{ActionEntry, SimpleActionGroup},
+    prelude::FrameExt,
+    Align, GestureClick,
 };
 #[allow(deprecated)]
 use gtk::{
