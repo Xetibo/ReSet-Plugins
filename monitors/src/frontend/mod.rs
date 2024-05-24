@@ -1,10 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use gtk::{
-    gdk::RGBA,
-    gio::{ActionEntry, SimpleActionGroup},
-    prelude::FrameExt,
-    GestureClick,
+    gdk::RGBA, gio::{ActionEntry, SimpleActionGroup}, prelude::FrameExt, Align, GestureClick
 };
 #[allow(deprecated)]
 use gtk::{
@@ -52,10 +49,16 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .hexpand(true)
         .vexpand(true)
         .build();
-    main_box.append(&create_title("Monitors"));
     let main_box_ref = main_box.clone();
 
-    let apply_row = gtk::Box::new(Orientation::Horizontal, 5);
+    let top_row = gtk::Box::new(Orientation::Horizontal, 5);
+    top_row.set_homogeneous(true);
+    top_row.append(&create_title("Monitors"));
+
+    let config_buttons = gtk::Box::new(Orientation::Horizontal, 5);
+    config_buttons.set_halign(Align::End);
+    config_buttons.set_margin_top(5);
+    config_buttons.set_margin_bottom(5);
 
     let apply = gtk::Button::builder()
         .label("Apply")
@@ -63,7 +66,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .halign(gtk::Align::End)
         .sensitive(false)
         .build();
-    apply_row.append(&apply);
+    config_buttons.append(&apply);
 
     let reset = gtk::Button::builder()
         .label("Reset")
@@ -71,7 +74,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .halign(gtk::Align::End)
         .sensitive(false)
         .build();
-    apply_row.append(&reset);
+    config_buttons.append(&reset);
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
@@ -147,7 +150,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         fallback_save_ref.clone(),
         settings_box_ref_save,
         drawing_ref_save,
-        apply_row.clone(),
+        config_buttons.clone(),
     );
 
     let reset_ref = monitor_data.clone();
@@ -255,8 +258,9 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         })
         .build();
     action_group.add_action_entries([revert_monitors]);
+    top_row.append(&config_buttons);
     main_box.insert_action_group("monitor", Some(&action_group));
-    main_box.append(&apply_row);
+    main_box.append(&top_row);
     main_box.append(&drawing_frame);
     main_box.append(&settings_box);
 

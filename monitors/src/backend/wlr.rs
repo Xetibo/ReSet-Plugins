@@ -433,7 +433,6 @@ pub fn wlr_apply_monitor_configuration(
                 let head_configuration = configuration.enable_head(&current_head, &handle, ());
                 let transform: TransformWrapper = monitor.transform.into();
 
-                dbg!(wlr_objects);
                 let current_mode = monitor.mode.parse::<u32>().unwrap();
                 let mode_id = wlr_objects.get(&current_mode).unwrap();
                 head_configuration

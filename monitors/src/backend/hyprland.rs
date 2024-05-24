@@ -164,7 +164,7 @@ impl HyprMonitor {
             self.refreshRate.round() as u32,
             self.scale,
             self.transform as u32,
-            self.activelyTearing,
+            self.vrr,
             self.vrr,
             self.x as i32,
             self.y as i32,

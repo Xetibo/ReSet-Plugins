@@ -199,13 +199,17 @@ pub fn get_monitor_settings_group(
 ) -> PreferencesGroup {
     let settings = PreferencesGroup::new();
 
-    let monitors = clicked_monitor.borrow();
-    let monitor = monitors.get(monitor_index);
-    if monitor.is_none() {
-        ERROR!("Could not insert monitor settings", ErrorLevel::Critical);
-        return settings;
+    {
+        let mut monitors = clicked_monitor.borrow_mut();
+        let monitor = monitors.get_mut(monitor_index);
+        if monitor.is_none() {
+            ERROR!("Could not insert monitor settings", ErrorLevel::Critical);
+            return settings;
+        }
+        monitor.unwrap().drag_information.clicked = true;
     }
-    let monitor = monitor.unwrap();
+    let monitors = clicked_monitor.borrow();
+    let monitor = monitors.get(monitor_index).unwrap();
 
     let enabled_ref = clicked_monitor.clone();
     add_enabled_monitor_option(monitor_index, enabled_ref, &settings);
