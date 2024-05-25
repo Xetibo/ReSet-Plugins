@@ -15,6 +15,8 @@ use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 use wayland_client::backend::ObjectId;
+use wayland_protocols_plasma::output_device::v2::client::kde_output_device_mode_v2::KdeOutputDeviceModeV2;
+use wayland_protocols_wlr::output_management::v1::client::zwlr_output_mode_v1::ZwlrOutputModeV1;
 
 pub fn get_environment() -> String {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP");
@@ -46,7 +48,8 @@ pub fn get_monitor_data() -> Vec<Monitor> {
 #[derive(Debug, Clone)]
 pub struct MonitorData {
     pub monitors: Vec<Monitor>,
-    pub wl_object_ids: Vec<HashMap<u32, ObjectId>>,
+    pub kwin_modes: Vec<HashMap<u32, KdeOutputDeviceModeV2>>,
+    pub wlr_modes: Vec<HashMap<u32, ZwlrOutputModeV1>>,
 }
 
 #[repr(C)]
@@ -126,7 +129,8 @@ pub struct Monitor {
     pub mode: String,
     pub available_modes: Vec<AvailableMode>,
     pub features: MonitorFeatures,
-    pub wl_object_ids: HashMap<u32, ObjectId>,
+    pub kwin_modes: HashMap<u32, KdeOutputDeviceModeV2>,
+    pub wlr_modes: HashMap<u32, ZwlrOutputModeV1>,
 }
 
 impl Monitor {
@@ -169,7 +173,8 @@ impl Monitor {
             drag_information: DragInformation::default(),
             available_modes,
             features,
-            wl_object_ids: HashMap::new(),
+            kwin_modes: HashMap::new(),
+            wlr_modes: HashMap::new(),
         }
     }
 
@@ -259,7 +264,8 @@ impl<'a> Get<'a> for Monitor {
             drag_information: DragInformation::default(),
             available_modes,
             features,
-            wl_object_ids: HashMap::new(),
+            kwin_modes: HashMap::new(),
+            wlr_modes: HashMap::new(),
         })
     }
 }

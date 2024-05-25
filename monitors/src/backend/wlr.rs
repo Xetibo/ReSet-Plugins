@@ -95,7 +95,7 @@ struct WlrMonitor {
     current_mode: u32,
     original_object: ObjectId,
     current_mode_object: Option<ObjectId>,
-    hash_modes: HashMap<u32, ObjectId>,
+    hash_modes: HashMap<u32, ZwlrOutputModeV1>,
     next_mode: u32,
 }
 
@@ -135,7 +135,7 @@ impl Dispatch<ZwlrOutputModeV1, CurrentMode> for AppData {
                 {
                     let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
                     monitor.modes.insert((width, height), mode);
-                    monitor.hash_modes.insert(monitor.next_mode, obj.id());
+                    monitor.hash_modes.insert(monitor.next_mode, obj.clone());
                 }
             }
             OutputModeEvent::Refresh { refresh } => {
@@ -164,7 +164,7 @@ impl Dispatch<ZwlrOutputModeV1, CurrentMode> for AppData {
                         .get_mut(&data.current_monitor)
                         .unwrap()
                         .hash_modes
-                        .insert(len, obj.id());
+                        .insert(len, obj.clone());
                     data.heads.get_mut(&data.current_monitor).unwrap().next_mode = len + 1;
                 }
                 if refresh_rate > data.current_mode_refresh_rate {
@@ -404,7 +404,8 @@ pub fn wlr_get_monitor_information() -> Vec<Monitor> {
             mode: wlr_monitor.current_mode.to_string(),
             available_modes: modes,
             features: FEATURES,
-            wl_object_ids: wlr_monitor.hash_modes.clone(),
+            kwin_modes: HashMap::new(),
+            wlr_modes: wlr_monitor.hash_modes.clone(),
         };
         monitors.push(monitor);
     }
@@ -413,7 +414,7 @@ pub fn wlr_get_monitor_information() -> Vec<Monitor> {
 
 pub fn wlr_apply_monitor_configuration(
     monitors: &[Monitor],
-    wlr_objects_vec: &[HashMap<u32, ObjectId>],
+    wlr_objects_vec: &[HashMap<u32, ZwlrOutputModeV1>],
 ) {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
@@ -445,8 +446,7 @@ pub fn wlr_apply_monitor_configuration(
 
                 let current_mode = monitor.mode.parse::<u32>().unwrap();
                 let mode_id = wlr_objects.get(&current_mode).unwrap();
-                head_configuration
-                    .set_mode(&ZwlrOutputModeV1::from_id(&conn, mode_id.clone()).unwrap());
+                head_configuration.set_mode(mode_id);
                 head_configuration.set_transform(transform.value());
                 head_configuration.set_scale(monitor.scale);
                 head_configuration.set_position(monitor.offset.0, monitor.offset.1);

@@ -63,10 +63,12 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
                 }
             },
         },
-        wl_object_ids: Vec::new(),
+        kwin_modes: Vec::new(),
+        wlr_modes: Vec::new(),
     };
     for monitor in data.monitors.iter() {
-        data.wl_object_ids.push(monitor.wl_object_ids.clone());
+        data.kwin_modes.push(monitor.kwin_modes.clone());
+        data.wlr_modes.push(monitor.wlr_modes.clone());
     }
     if data.monitors.is_empty() {
         // means the environment is not supported
@@ -105,7 +107,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    apply_monitor_configuration(&monitors, &d.wl_object_ids);
+                    apply_monitor_configuration(&monitors, &d.kwin_modes, &d.wlr_modes);
                     d.monitors = monitors;
                     Ok(())
                 },
@@ -115,7 +117,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    save_monitor_configuration(&monitors);
+                    save_monitor_configuration(&monitors, &d.kwin_modes, &d.wlr_modes);
                     d.monitors = monitors;
                     Ok(())
                 },

@@ -109,7 +109,8 @@ impl KDEMonitor {
                 fractional_scaling: true,
                 hdr: true,
             },
-            wl_object_ids: HashMap::new(),
+            kwin_modes: HashMap::new(),
+            wlr_modes: HashMap::new(),
         }
     }
 }

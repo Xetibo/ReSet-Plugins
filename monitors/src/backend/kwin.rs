@@ -72,7 +72,7 @@ struct KWinMonitor {
     current_mode: u32,
     original_object: ObjectId,
     current_mode_object: Option<ObjectId>,
-    hash_modes: HashMap<u32, ObjectId>,
+    hash_modes: HashMap<u32, KdeOutputDeviceModeV2>,
     next_mode: u32,
 }
 
@@ -112,7 +112,7 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
                 {
                     let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
                     monitor.modes.insert((width, height), mode);
-                    monitor.hash_modes.insert(monitor.next_mode, obj.id());
+                    monitor.hash_modes.insert(monitor.next_mode, obj.clone());
                 }
             }
             OutputModeEvent::Refresh { refresh } => {
@@ -141,7 +141,7 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
                         .get_mut(&data.current_monitor)
                         .unwrap()
                         .hash_modes
-                        .insert(len, obj.id());
+                        .insert(len, obj.clone());
                     data.heads.get_mut(&data.current_monitor).unwrap().next_mode = len + 1;
                 }
                 if refresh_rate > data.current_mode_refresh_rate {
@@ -377,7 +377,8 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
             mode: kwin_monitor.current_mode.to_string(),
             available_modes: modes,
             features: FEATURES,
-            wl_object_ids: kwin_monitor.hash_modes.clone(),
+            kwin_modes: kwin_monitor.hash_modes.clone(),
+            wlr_modes: HashMap::new(),
         };
         monitors.push(monitor);
     }
@@ -386,7 +387,7 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
 
 pub fn kwin_apply_monitor_configuration(
     monitors: &[Monitor],
-    kwin_objects_vec: &[HashMap<u32, ObjectId>],
+    kwin_objects_vec: &[HashMap<u32, KdeOutputDeviceModeV2>],
 ) {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
@@ -453,12 +454,8 @@ pub fn kwin_apply_monitor_configuration(
                 configuration.enable(&current_head, 1);
 
                 let current_mode = monitor.mode.parse::<u32>().unwrap();
-                dbg!(&current_mode);
                 let mode_id = kwin_objects.get(&current_mode).unwrap();
-                configuration.mode(
-                    &current_head,
-                    &KdeOutputDeviceModeV2::from_id(&conn, mode_id.clone()).unwrap(),
-                );
+                configuration.mode(&current_head, mode_id);
 
                 configuration.transform(&current_head, monitor.transform as i32);
                 configuration.position(&current_head, monitor.offset.0, monitor.offset.1);

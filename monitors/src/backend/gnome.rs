@@ -194,7 +194,8 @@ impl GnomeMonitorConfig {
                 drag_information: DragInformation::default(),
                 available_modes: modes,
                 features: gnome_features(vrr_enabled),
-                wl_object_ids: HashMap::new(),
+                kwin_modes: HashMap::new(),
+                wlr_modes: HashMap::new(),
             });
         }
         monitors
