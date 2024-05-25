@@ -95,7 +95,7 @@ struct WlrMonitor {
     current_mode: u32,
     original_object: ObjectId,
     current_mode_object: Option<ObjectId>,
-    hash_modes: HashMap<u32, ZwlrOutputModeV1>,
+    hash_modes: HashMap<u32, ObjectId>,
     next_mode: u32,
 }
 
@@ -135,7 +135,7 @@ impl Dispatch<ZwlrOutputModeV1, CurrentMode> for AppData {
                 {
                     let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
                     monitor.modes.insert((width, height), mode);
-                    monitor.hash_modes.insert(monitor.next_mode, obj.clone());
+                    monitor.hash_modes.insert(monitor.next_mode, obj.id());
                 }
             }
             OutputModeEvent::Refresh { refresh } => {
@@ -164,7 +164,7 @@ impl Dispatch<ZwlrOutputModeV1, CurrentMode> for AppData {
                         .get_mut(&data.current_monitor)
                         .unwrap()
                         .hash_modes
-                        .insert(len, obj.clone());
+                        .insert(len, obj.id());
                     data.heads.get_mut(&data.current_monitor).unwrap().next_mode = len + 1;
                 }
                 if refresh_rate > data.current_mode_refresh_rate {
@@ -404,18 +404,13 @@ pub fn wlr_get_monitor_information() -> Vec<Monitor> {
             mode: wlr_monitor.current_mode.to_string(),
             available_modes: modes,
             features: FEATURES,
-            kwin_modes: HashMap::new(),
-            wlr_modes: wlr_monitor.hash_modes.clone(),
         };
         monitors.push(monitor);
     }
     monitors
 }
 
-pub fn wlr_apply_monitor_configuration(
-    monitors: &[Monitor],
-    wlr_objects_vec: &[HashMap<u32, ZwlrOutputModeV1>],
-) {
+pub fn wlr_apply_monitor_configuration(monitors: &[Monitor]) {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
@@ -432,11 +427,11 @@ pub fn wlr_apply_monitor_configuration(
         current_mode_refresh_rate: 0,
     };
     queue.blocking_dispatch(&mut data).unwrap();
-    for (monitor, wlr_objects) in monitors.iter().zip(wlr_objects_vec) {
-        for head in data.heads.iter() {
-            if monitor.id == *head.0 {
+    for monitor in monitors.iter() {
+        for (id, head) in data.heads.iter() {
+            if monitor.id == *id {
                 let current_head =
-                    ZwlrOutputHeadV1::from_id(&conn, head.1.original_object.clone()).unwrap();
+                    ZwlrOutputHeadV1::from_id(&conn, head.original_object.clone()).unwrap();
                 if !monitor.enabled {
                     configuration.disable_head(&current_head);
                     continue;
@@ -445,8 +440,10 @@ pub fn wlr_apply_monitor_configuration(
                 let transform: TransformWrapper = monitor.transform.into();
 
                 let current_mode = monitor.mode.parse::<u32>().unwrap();
-                let mode_id = wlr_objects.get(&current_mode).unwrap();
-                head_configuration.set_mode(mode_id);
+                let mode_id = head.hash_modes.get(&current_mode).unwrap();
+                head_configuration
+                    .set_mode(&ZwlrOutputModeV1::from_id(&conn, mode_id.clone()).unwrap());
+
                 head_configuration.set_transform(transform.value());
                 head_configuration.set_scale(monitor.scale);
                 head_configuration.set_position(monitor.offset.0, monitor.offset.1);

@@ -47,7 +47,7 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
     let mut cross = cross.write().unwrap();
     let interface = setup_dbus_interface(&mut cross);
     let env = get_environment();
-    let mut data = MonitorData {
+    let data = MonitorData {
         monitors: match env.as_str() {
             "Hyprland" => hy_get_monitor_information(),
             "GNOME" => g_get_monitor_information(),
@@ -63,13 +63,7 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
                 }
             },
         },
-        kwin_modes: Vec::new(),
-        wlr_modes: Vec::new(),
     };
-    for monitor in data.monitors.iter() {
-        data.kwin_modes.push(monitor.kwin_modes.clone());
-        data.wlr_modes.push(monitor.wlr_modes.clone());
-    }
     if data.monitors.is_empty() {
         // means the environment is not supported
         // hence don't show the plugin
@@ -107,7 +101,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    apply_monitor_configuration(&monitors, &d.kwin_modes, &d.wlr_modes);
+                    apply_monitor_configuration(&monitors);
                     d.monitors = monitors;
                     Ok(())
                 },
@@ -117,7 +111,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    save_monitor_configuration(&monitors, &d.kwin_modes, &d.wlr_modes);
+                    save_monitor_configuration(&monitors);
                     d.monitors = monitors;
                     Ok(())
                 },
