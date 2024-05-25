@@ -435,7 +435,7 @@ pub fn kwin_apply_monitor_configuration(
                 }
             }
         }
+        configuration.apply();
+        queue.blocking_dispatch(&mut data).unwrap();
     }
-    configuration.apply();
-    queue.blocking_dispatch(&mut data).unwrap();
 }
