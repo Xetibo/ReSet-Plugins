@@ -425,10 +425,11 @@ pub fn wlr_apply_monitor_configuration(
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
-    let manager = globals
-        .bind::<ZwlrOutputManagerV1, _, _>(&handle, RangeInclusive::new(0, 1), ())
-        .unwrap();
-    let configuration = manager.create_configuration(0, &handle, ());
+    let manager = globals.bind::<ZwlrOutputManagerV1, _, _>(&handle, RangeInclusive::new(0, 1), ());
+    if manager.is_err() {
+        return;
+    }
+    let configuration = manager.unwrap().create_configuration(0, &handle, ());
 
     let mut data = AppData {
         heads: HashMap::new(),

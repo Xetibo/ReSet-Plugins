@@ -390,8 +390,11 @@ pub fn kwin_apply_monitor_configuration(
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
 
-    let manager: KdeOutputManagementV2 = globals.bind(&handle, 1..=2, ()).unwrap();
-    let configuration = manager.create_configuration(&handle, ());
+    let manager = globals.bind::<KdeOutputManagementV2, _, _>(&handle, 1..=2, ());
+    if manager.is_err() {
+        return;
+    }
+    let configuration = manager.unwrap().create_configuration(&handle, ());
 
     let mut data = AppData {
         heads: HashMap::new(),
@@ -399,7 +402,7 @@ pub fn kwin_apply_monitor_configuration(
         current_mode_key: (0, 0),
         current_mode_refresh_rate: 0,
     };
-    queue.blocking_dispatch(&mut data).unwrap();
+
     for (monitor, kwin_objects) in monitors.iter().zip(kwin_objects_vec) {
         for head in data.heads.iter() {
             if monitor.id == *head.0 {
