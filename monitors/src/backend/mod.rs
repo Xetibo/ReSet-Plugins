@@ -45,6 +45,12 @@ pub extern "C" fn name() -> String {
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
     let mut cross = cross.write().unwrap();
+    let maybe_conn = wayland_client::Connection::connect_to_env();
+    let conn = if let Ok(conn) = maybe_conn {
+        Some(Arc::new(conn))
+    } else {
+        None
+    };
     let interface = setup_dbus_interface(&mut cross);
     let env = get_environment();
     let data = MonitorData {
@@ -52,17 +58,18 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
             "Hyprland" => hy_get_monitor_information(),
             "GNOME" => g_get_monitor_information(),
             //"KDE" => kde_get_monitor_information(),
-            "KDE" => kwin_get_monitor_information(),
+            "KDE" => kwin_get_monitor_information(conn.clone()),
             // fallback to protocol implementations
             _ => match get_wl_backend().as_str() {
-                "WLR" => wlr_get_monitor_information(),
-                "KWIN" => kwin_get_monitor_information(),
+                "WLR" => wlr_get_monitor_information(conn.clone()),
+                "KWIN" => kwin_get_monitor_information(conn.clone()),
                 _ => {
                     ERROR!("Unsupported Environment", ErrorLevel::PartialBreakage);
                     Vec::new()
                 }
             },
         },
+        connection: conn,
     };
     if data.monitors.is_empty() {
         // means the environment is not supported
@@ -101,7 +108,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    apply_monitor_configuration(&monitors);
+                    apply_monitor_configuration(d.connection.clone(), &monitors);
                     d.monitors = monitors;
                     Ok(())
                 },
@@ -111,7 +118,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    save_monitor_configuration(&monitors);
+                    save_monitor_configuration(d.connection.clone(), &monitors);
                     d.monitors = monitors;
                     Ok(())
                 },

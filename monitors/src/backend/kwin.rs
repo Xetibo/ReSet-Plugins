@@ -285,9 +285,12 @@ impl Dispatch<wl_callback::WlCallback, ()> for AppData {
     }
 }
 
-pub fn kwin_get_monitor_information() -> Vec<Monitor> {
+pub fn kwin_get_monitor_information(conn: Option<Arc<wayland_client::Connection>>) -> Vec<Monitor> {
+    if conn.is_none() {
+        return Vec::new();
+    }
+    let conn = conn.clone().unwrap();
     let mut monitors = Vec::new();
-    let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
 
@@ -383,8 +386,14 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
     monitors
 }
 
-pub fn kwin_apply_monitor_configuration(monitors: &[Monitor]) {
-    let conn = Connection::connect_to_env().unwrap();
+pub fn kwin_apply_monitor_configuration(
+    conn: Option<Arc<wayland_client::Connection>>,
+    monitors: &[Monitor],
+) {
+    if conn.is_none() {
+        return;
+    }
+    let conn = conn.clone().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
 
@@ -454,6 +463,12 @@ pub fn kwin_apply_monitor_configuration(monitors: &[Monitor]) {
                     &current_head,
                     &KdeOutputDeviceModeV2::from_id(&conn, mode_id.clone()).unwrap(),
                 );
+                // TODO:
+                // currently uses wrong objects
+                // two solutions
+                // 1 -> hash the values of the mode instead -> and compare, ultra stupid
+                // 2 -> do not drop the connection in order to reuse the same ids....
+                // thanks wayland, great design.
 
                 configuration.transform(&current_head, monitor.transform as i32);
                 configuration.position(&current_head, monitor.offset.0, monitor.offset.1);

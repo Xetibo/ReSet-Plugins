@@ -343,10 +343,12 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
     }
 }
 
-pub fn wlr_get_monitor_information() -> Vec<Monitor> {
+pub fn wlr_get_monitor_information(conn: Option<Arc<wayland_client::Connection>>) -> Vec<Monitor> {
+    if conn.is_none() {
+        return Vec::new();
+    }
     let mut monitors = Vec::new();
-    let conn = Connection::connect_to_env().unwrap();
-    let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
+    let (globals, mut queue) = registry_queue_init::<AppData>(&conn.clone().unwrap()).unwrap();
     let handle = queue.handle();
     let manager = globals.bind::<ZwlrOutputManagerV1, _, _>(&handle, RangeInclusive::new(0, 1), ());
     if manager.is_err() {
@@ -407,11 +409,18 @@ pub fn wlr_get_monitor_information() -> Vec<Monitor> {
         };
         monitors.push(monitor);
     }
+    queue.flush().unwrap();
     monitors
 }
 
-pub fn wlr_apply_monitor_configuration(monitors: &[Monitor]) {
-    let conn = Connection::connect_to_env().unwrap();
+pub fn wlr_apply_monitor_configuration(
+    conn: Option<Arc<wayland_client::Connection>>,
+    monitors: &[Monitor],
+) {
+    if conn.is_none() {
+        return;
+    }
+    let conn = conn.clone().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
     let manager = globals.bind::<ZwlrOutputManagerV1, _, _>(&handle, RangeInclusive::new(0, 1), ());
@@ -462,4 +471,5 @@ pub fn wlr_apply_monitor_configuration(monitors: &[Monitor]) {
     }
     configuration.apply();
     queue.blocking_dispatch(&mut data).unwrap();
+    queue.flush().unwrap();
 }
