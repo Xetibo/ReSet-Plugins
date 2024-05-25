@@ -379,7 +379,6 @@ pub fn kwin_apply_monitor_configuration(
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
 
-    // TODO: implement manager
     let manager: KdeOutputManagementV2 = globals.bind(&handle, 1..=2, ()).unwrap();
     let configuration = manager.create_configuration(&handle, ());
 
@@ -407,6 +406,7 @@ pub fn kwin_apply_monitor_configuration(
                     &current_head,
                     &KdeOutputDeviceModeV2::from_id(&conn, mode_id.clone()).unwrap(),
                 );
+
                 configuration.transform(&current_head, monitor.transform as i32);
                 configuration.position(&current_head, monitor.offset.0, monitor.offset.1);
                 configuration.scale(&current_head, monitor.scale);
@@ -423,5 +423,7 @@ pub fn kwin_apply_monitor_configuration(
         }
     }
     configuration.apply();
+    println!("applied");
     queue.blocking_dispatch(&mut data).unwrap();
+    println!("done");
 }
