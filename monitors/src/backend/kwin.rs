@@ -238,9 +238,10 @@ impl Dispatch<KdeOutputConfigurationV2, ()> for AppData {
         _: &QueueHandle<AppData>,
     ) {
         match event {
-            OutputConfigurationEvent::Applied => (),
+            OutputConfigurationEvent::Applied => println!("applied"),
             OutputConfigurationEvent::Failed => {
                 ERROR!("Could not apply configuration", ErrorLevel::Recoverable);
+                println!("failed?");
             }
             _ => unreachable!(),
         }
@@ -435,7 +436,7 @@ pub fn kwin_apply_monitor_configuration(
                 }
             }
         }
-        configuration.apply();
-        queue.blocking_dispatch(&mut data).unwrap();
     }
+    configuration.apply();
+    queue.blocking_dispatch(&mut data).unwrap();
 }
