@@ -407,6 +407,7 @@ pub fn kwin_apply_monitor_configuration(
 
     for (monitor, kwin_objects) in monitors.iter().zip(kwin_objects_vec) {
         for head in data.heads.iter() {
+            println!("{} and {}", monitor.id, *head.0);
             if monitor.id == *head.0 {
                 let current_head =
                     KdeOutputDeviceV2::from_id(&conn, head.1.original_object.clone()).unwrap();
