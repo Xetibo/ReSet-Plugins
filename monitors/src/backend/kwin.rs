@@ -190,7 +190,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 monitor.height = data.height.take();
                 monitor.refresh_rate = data.refresh_rate.take();
                 monitor.current_mode_object = Some(mode.id());
-                monitor.current_mode = monitor.next_mode;
+                monitor.current_mode = monitor.next_mode - 1;
             }
             Event::Enabled { enabled } => {
                 _state
