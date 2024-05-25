@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
 use std::sync::Arc;
@@ -370,13 +371,28 @@ pub fn wlr_get_monitor_information() -> Vec<Monitor> {
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
         for ((width, height), mode) in wlr_monitor.modes.into_iter() {
+            let mut refresh_rates: Vec<u32> = mode.refresh_rate.into_iter().collect();
+            refresh_rates.sort_unstable_by(|a, b| {
+                if a > b {
+                    Ordering::Greater
+                } else {
+                    Ordering::Less
+                }
+            });
             modes.push(AvailableMode {
                 id: mode.id.to_string(),
                 size: Size(width, height),
-                refresh_rates: mode.refresh_rate.into_iter().collect(),
+                refresh_rates,
                 supported_scales: Vec::new(),
             });
         }
+        modes.sort_unstable_by(|a, b| {
+            if a.size > b.size {
+                Ordering::Greater
+            } else {
+                Ordering::Less
+            }
+        });
         let monitor = Monitor {
             id: index,
             enabled: wlr_monitor.enabled,

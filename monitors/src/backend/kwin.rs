@@ -19,6 +19,10 @@ use wayland_protocols_plasma::output_management::v2::client::kde_output_configur
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::Event as OutputManagementEvent;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::KdeOutputManagementV2;
 
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
+
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
 const FEATURES: MonitorFeatures = MonitorFeatures {
@@ -228,11 +232,18 @@ impl Dispatch<KdeOutputConfigurationV2, ()> for AppData {
     fn event(
         _state: &mut Self,
         _: &KdeOutputConfigurationV2,
-        _: OutputConfigurationEvent,
+        event: OutputConfigurationEvent,
         _: &(),
         _: &Connection,
         _: &QueueHandle<AppData>,
     ) {
+        match event {
+            OutputConfigurationEvent::Applied => (),
+            OutputConfigurationEvent::Failed => {
+                ERROR!("Could not apply configuration", ErrorLevel::Recoverable);
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -321,9 +332,9 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
         }
     }
 
-    for (index, wlr_monitor) in data.heads.into_iter() {
+    for (index, kwin_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
-        for ((width, height), mode) in wlr_monitor.modes.into_iter() {
+        for ((width, height), mode) in kwin_monitor.modes.into_iter() {
             let mut refresh_rates: Vec<u32> = mode.refresh_rate.into_iter().collect();
             refresh_rates.sort_unstable_by(|a, b| {
                 if a > b {
@@ -348,20 +359,20 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
         });
         let monitor = Monitor {
             id: index,
-            enabled: wlr_monitor.enabled,
-            name: wlr_monitor.name,
-            make: wlr_monitor.make,
-            model: wlr_monitor.model,
-            serial: wlr_monitor.serial_number,
-            refresh_rate: wlr_monitor.refresh_rate,
-            scale: wlr_monitor.scale,
-            transform: wlr_monitor.transform,
-            vrr: wlr_monitor.vrr,
+            enabled: kwin_monitor.enabled,
+            name: kwin_monitor.name,
+            make: kwin_monitor.make,
+            model: kwin_monitor.model,
+            serial: kwin_monitor.serial_number,
+            refresh_rate: kwin_monitor.refresh_rate,
+            scale: kwin_monitor.scale,
+            transform: kwin_monitor.transform,
+            vrr: kwin_monitor.vrr,
             primary: false,
-            offset: Offset(wlr_monitor.offset_x, wlr_monitor.offset_y),
-            size: Size(wlr_monitor.width, wlr_monitor.height),
+            offset: Offset(kwin_monitor.offset_x, kwin_monitor.offset_y),
+            size: Size(kwin_monitor.width, kwin_monitor.height),
             drag_information: Default::default(),
-            mode: wlr_monitor.current_mode.to_string(),
+            mode: kwin_monitor.current_mode.to_string(),
             available_modes: modes,
             features: FEATURES,
             wl_object_ids: HashMap::new(),
