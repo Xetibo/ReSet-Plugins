@@ -44,7 +44,7 @@ unsafe impl Sync for CurrentMode {}
 
 #[derive(Debug)]
 struct AppData {
-    heads: HashMap<u32, WlrMonitor>,
+    heads: HashMap<u32, KWinMonitor>,
     current_monitor: u32,
     current_mode_key: (i32, i32),
     current_mode_refresh_rate: u32,
@@ -53,7 +53,7 @@ struct AppData {
 #[derive(Debug)]
 // This is a conversion struct, hence the fields need to be there either way
 #[allow(dead_code)]
-struct WlrMonitor {
+struct KWinMonitor {
     name: String,
     make: String,
     model: String,
@@ -65,7 +65,7 @@ struct WlrMonitor {
     height: i32,
     refresh_rate: u32,
     scale: f64,
-    modes: HashMap<(i32, i32), WlrMode>,
+    modes: HashMap<(i32, i32), KWinMode>,
     vrr: bool,
     enabled: bool,
     transform: u32,
@@ -77,7 +77,7 @@ struct WlrMonitor {
 }
 
 #[derive(Debug)]
-struct WlrMode {
+struct KWinMode {
     id: u32,
     refresh_rate: HashSet<u32>,
 }
@@ -96,7 +96,7 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
         }
         match event {
             OutputModeEvent::Size { width, height } => {
-                let mode = WlrMode {
+                let mode = KWinMode {
                     id: data.heads.get(&data.current_monitor).unwrap().next_mode,
                     refresh_rate: HashSet::new(),
                 };
@@ -190,6 +190,7 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
                 monitor.height = data.height.take();
                 monitor.refresh_rate = data.refresh_rate.take();
                 monitor.current_mode_object = Some(mode.id());
+                monitor.current_mode = monitor.next_mode;
             }
             Event::Enabled { enabled } => {
                 _state
@@ -303,7 +304,7 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
                 globals
                     .registry()
                     .bind::<KdeOutputDeviceV2, _, _>(global.name, 2, &handle, ());
-            let monitor = WlrMonitor {
+            let monitor = KWinMonitor {
                 name: String::from(""),
                 make: String::from(""),
                 model: String::from(""),
@@ -404,7 +405,6 @@ pub fn kwin_apply_monitor_configuration(
         current_mode_refresh_rate: 0,
     };
 
-    dbg!(&kwin_objects_vec);
     for (monitor, kwin_objects) in monitors.iter().zip(kwin_objects_vec) {
         for head in data.heads.iter() {
             if monitor.id == *head.0 {
@@ -417,6 +417,7 @@ pub fn kwin_apply_monitor_configuration(
                 configuration.enable(&current_head, 1);
 
                 let current_mode = monitor.mode.parse::<u32>().unwrap();
+                dbg!(&current_mode);
                 let mode_id = kwin_objects.get(&current_mode).unwrap();
                 configuration.mode(
                     &current_head,

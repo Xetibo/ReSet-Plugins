@@ -171,14 +171,6 @@ impl Dispatch<ZwlrOutputModeV1, CurrentMode> for AppData {
                     data.current_mode_refresh_rate = refresh_rate;
                 }
             }
-            OutputModeEvent::Preferred => {
-                // let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
-                // let len = monitor.modes.len() as u32 - 1;
-                // monitor.current_mode = len;
-                // monitor.width = data.current_mode_key.0;
-                // monitor.height = data.current_mode_key.1;
-                // monitor.refresh_rate = data.current_mode_refresh_rate;
-            }
             _ => (),
         }
     }
@@ -278,6 +270,7 @@ impl Dispatch<ZwlrOutputHeadV1, ()> for AppData {
                 monitor.width = data.width.take();
                 monitor.height = data.height.take();
                 monitor.refresh_rate = data.refresh_rate.take();
+                monitor.current_mode = monitor.next_mode;
                 monitor.current_mode_object = Some(mode.id());
             }
             _ => (),
