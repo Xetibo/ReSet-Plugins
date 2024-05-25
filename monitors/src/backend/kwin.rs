@@ -405,9 +405,44 @@ pub fn kwin_apply_monitor_configuration(
         current_mode_refresh_rate: 0,
     };
 
+    for global in globals.contents().clone_list() {
+        if &global.interface[..] == "kde_output_device_v2" {
+            let output: KdeOutputDeviceV2 =
+                globals
+                    .registry()
+                    .bind::<KdeOutputDeviceV2, _, _>(global.name, 2, &handle, ());
+            let monitor = KWinMonitor {
+                name: String::from(""),
+                make: String::from(""),
+                model: String::from(""),
+                serial_number: String::from(""),
+                description: String::from(""),
+                offset_x: 0,
+                offset_y: 0,
+                scale: 0.0,
+                modes: HashMap::new(),
+                current_mode: 0,
+                vrr: false,
+                transform: 0,
+                enabled: true,
+                width: 0,
+                height: 0,
+                refresh_rate: 0,
+                original_object: output.id(),
+                current_mode_object: None,
+                hash_modes: HashMap::new(),
+                next_mode: 0,
+            };
+            let len = data.heads.len() as u32;
+            data.current_monitor = len;
+            data.heads.insert(len, monitor);
+
+            queue.blocking_dispatch(&mut data).unwrap();
+        }
+    }
+
     for (monitor, kwin_objects) in monitors.iter().zip(kwin_objects_vec) {
         for head in data.heads.iter() {
-            println!("{} and {}", monitor.id, *head.0);
             if monitor.id == *head.0 {
                 let current_head =
                     KdeOutputDeviceV2::from_id(&conn, head.1.original_object.clone()).unwrap();
