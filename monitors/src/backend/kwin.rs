@@ -375,7 +375,7 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
             mode: kwin_monitor.current_mode.to_string(),
             available_modes: modes,
             features: FEATURES,
-            wl_object_ids: HashMap::new(),
+            wl_object_ids: kwin_monitor.hash_modes.clone(),
         };
         monitors.push(monitor);
     }
@@ -434,7 +434,5 @@ pub fn kwin_apply_monitor_configuration(
         }
     }
     configuration.apply();
-    println!("applied");
     queue.blocking_dispatch(&mut data).unwrap();
-    println!("done");
 }
