@@ -371,7 +371,10 @@ pub fn kwin_get_monitor_information() -> Vec<Monitor> {
     monitors
 }
 
-pub fn kwin_apply_monitor_configuration(monitors: &[Monitor]) {
+pub fn kwin_apply_monitor_configuration(
+    monitors: &[Monitor],
+    kwin_objects_vec: &[HashMap<u32, ObjectId>],
+) {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, mut queue) = registry_queue_init::<AppData>(&conn).unwrap();
     let handle = queue.handle();
@@ -387,7 +390,7 @@ pub fn kwin_apply_monitor_configuration(monitors: &[Monitor]) {
         current_mode_refresh_rate: 0,
     };
     queue.blocking_dispatch(&mut data).unwrap();
-    for monitor in monitors.iter() {
+    for (monitor, kwin_objects) in monitors.iter().zip(kwin_objects_vec) {
         for head in data.heads.iter() {
             if monitor.id == *head.0 {
                 let current_head =
@@ -397,8 +400,13 @@ pub fn kwin_apply_monitor_configuration(monitors: &[Monitor]) {
                     continue;
                 }
                 configuration.enable(&current_head, 1);
-                // TODO: make this work
-                // configuration.mode(&head.1.original_object, enabled);
+
+                let current_mode = monitor.mode.parse::<u32>().unwrap();
+                let mode_id = kwin_objects.get(&current_mode).unwrap();
+                configuration.mode(
+                    &current_head,
+                    &KdeOutputDeviceModeV2::from_id(&conn, mode_id.clone()).unwrap(),
+                );
                 configuration.transform(&current_head, monitor.transform as i32);
                 configuration.position(&current_head, monitor.offset.0, monitor.offset.1);
                 configuration.scale(&current_head, monitor.scale);

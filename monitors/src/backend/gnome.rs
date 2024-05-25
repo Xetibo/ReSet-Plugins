@@ -21,6 +21,16 @@ const BASE: &str = "org.gnome.Mutter.DisplayConfig";
 const DBUS_PATH: &str = "/org/gnome/Mutter/DisplayConfig";
 const INTERFACE: &str = "org.gnome.Mutter.DisplayConfig";
 
+pub fn gnome_features(vrr_enabled: bool) -> MonitorFeatures {
+    MonitorFeatures {
+        vrr: vrr_enabled,
+        // Gnome requires a primary monitor to be set
+        primary: true,
+        fractional_scaling: get_fractional_scale_support(),
+        hdr: false,
+    }
+}
+
 fn get_fractional_scale_support() -> bool {
     let settings = gtk::gio::Settings::new("org.gnome.mutter");
     let features = settings.strv("experimental-features");
@@ -77,16 +87,16 @@ pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeMonitorConfig {
-    serial: u32,
-    monitors: Vec<GnomeMonitor>,
-    logical_monitors: Vec<GnomeLogicalMonitor>,
-    _properties: PropMap,
+    pub serial: u32,
+    pub monitors: Vec<GnomeMonitor>,
+    pub logical_monitors: Vec<GnomeLogicalMonitor>,
+    pub _properties: PropMap,
 }
 
 impl GnomeMonitorConfig {
-    fn inplace_to_regular_monitor(self) -> Vec<Monitor> {
+    pub fn inplace_to_regular_monitor(self) -> Vec<Monitor> {
         let mut monitors = Vec::new();
         for (monitor, logical_monitor) in self
             .monitors
@@ -183,13 +193,7 @@ impl GnomeMonitorConfig {
                 mode: current_mode.id.clone(),
                 drag_information: DragInformation::default(),
                 available_modes: modes,
-                features: MonitorFeatures {
-                    vrr: vrr_enabled,
-                    // Gnome requires a primary monitor to be set
-                    primary: true,
-                    fractional_scaling: get_fractional_scale_support(),
-                    hdr: false,
-                },
+                features: gnome_features(vrr_enabled),
                 wl_object_ids: HashMap::new(),
             });
         }
@@ -221,11 +225,11 @@ impl GnomeMonitorConfig {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeMonitor {
-    name: GnomeName,
-    modes: Vec<GnomeMode>,
-    _properties: PropMap,
+    pub name: GnomeName,
+    pub modes: Vec<GnomeMode>,
+    pub _properties: PropMap,
 }
 
 impl<'a> Get<'a> for GnomeMonitor {
@@ -247,7 +251,7 @@ impl Arg for GnomeMonitor {
 }
 
 #[allow(non_snake_case)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeMode {
     id: String,
     width: i32,
@@ -283,7 +287,7 @@ impl Arg for GnomeMode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeLogicalMonitor {
     x: i32,
     y: i32,
@@ -324,7 +328,7 @@ impl Arg for GnomeLogicalMonitor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeLogicalMonitorSend {
     x: i32,
     y: i32,
@@ -370,7 +374,7 @@ impl Append for GnomeLogicalMonitorSend {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeName {
     connector: String,
     vendor: String,

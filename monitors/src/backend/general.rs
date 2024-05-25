@@ -21,7 +21,7 @@ use super::{
 // temporary application of configuration
 pub fn apply_monitor_configuration(
     monitors: &Vec<Monitor>,
-    wlr_objects_vec: &[HashMap<u32, ObjectId>],
+    wl_objects_vec: &[HashMap<u32, ObjectId>],
 ) {
     match get_environment().as_str() {
         "Hyprland" => hy_apply_monitor_information(monitors),
@@ -29,8 +29,8 @@ pub fn apply_monitor_configuration(
         "KDE" => kde_apply_monitor_config(monitors),
         // fallback to protocol implementations
         _ => match get_wl_backend().as_str() {
-            "WLR" => wlr_apply_monitor_configuration(monitors, wlr_objects_vec),
-            "KWIN" => kwin_apply_monitor_configuration(monitors),
+            "WLR" => wlr_apply_monitor_configuration(monitors, wl_objects_vec),
+            "KWIN" => kwin_apply_monitor_configuration(monitors, wl_objects_vec),
             _ => ERROR!("Unsupported Environment", ErrorLevel::PartialBreakage),
         },
     };

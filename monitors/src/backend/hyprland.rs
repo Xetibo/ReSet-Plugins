@@ -14,7 +14,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-const FEATURES: MonitorFeatures = MonitorFeatures {
+pub const HYPRFEATURES: MonitorFeatures = MonitorFeatures {
     vrr: true,
     // Hyprland has no primary monitor concept
     primary: false,
@@ -131,29 +131,29 @@ fn get_json() -> Vec<u8> {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
 pub struct HyprMonitor {
-    id: i64,
-    name: String,
-    description: String,
-    make: String,
-    model: String,
-    serial: String,
-    width: i64,
-    height: i64,
-    refreshRate: f64,
-    x: i64,
-    y: i64,
-    scale: f64,
-    transform: i64,
-    vrr: bool,
-    activelyTearing: bool,
-    disabled: bool,
-    availableModes: Vec<String>,
+    pub id: i64,
+    pub name: String,
+    pub description: String,
+    pub make: String,
+    pub model: String,
+    pub serial: String,
+    pub width: i64,
+    pub height: i64,
+    pub refreshRate: f64,
+    pub x: i64,
+    pub y: i64,
+    pub scale: f64,
+    pub transform: i64,
+    pub vrr: bool,
+    pub activelyTearing: bool,
+    pub disabled: bool,
+    pub availableModes: Vec<String>,
 }
 
 impl HyprMonitor {
-    fn convert_to_regular_monitor(self) -> Monitor {
+    pub fn convert_to_regular_monitor(self) -> Monitor {
         Monitor::new(
             self.id as u32,
             !self.disabled,
@@ -171,7 +171,7 @@ impl HyprMonitor {
             self.width as i32,
             self.height as i32,
             string_to_modes(self.availableModes),
-            FEATURES,
+            HYPRFEATURES,
         )
     }
 }

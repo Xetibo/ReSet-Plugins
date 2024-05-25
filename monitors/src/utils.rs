@@ -50,7 +50,7 @@ pub struct MonitorData {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct DragInformation {
     pub drag_x: i32,
     pub drag_y: i32,
@@ -68,7 +68,7 @@ pub struct DragInformation {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default, Copy)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 pub struct MonitorFeatures {
     pub vrr: bool,
     pub primary: bool,
@@ -107,7 +107,7 @@ impl Arg for MonitorFeatures {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Monitor {
     pub id: u32,
     pub enabled: bool,
@@ -310,7 +310,7 @@ impl Monitor {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Offset(pub i32, pub i32);
 
 impl<'a> Get<'a> for Offset {
@@ -364,7 +364,7 @@ impl Arg for Size {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Scale(pub u32, pub u32);
 
 impl<'a> Get<'a> for Scale {
@@ -397,7 +397,7 @@ impl Display for Scale {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct AvailableMode {
     pub id: String,
     pub size: Size,
