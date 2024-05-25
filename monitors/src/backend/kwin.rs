@@ -404,6 +404,7 @@ pub fn kwin_apply_monitor_configuration(
         current_mode_refresh_rate: 0,
     };
 
+    dbg!(&kwin_objects_vec);
     for (monitor, kwin_objects) in monitors.iter().zip(kwin_objects_vec) {
         for head in data.heads.iter() {
             if monitor.id == *head.0 {
