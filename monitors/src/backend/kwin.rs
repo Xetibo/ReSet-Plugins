@@ -464,11 +464,7 @@ pub fn kwin_apply_monitor_configuration(
                     &KdeOutputDeviceModeV2::from_id(&conn, mode_id.clone()).unwrap(),
                 );
                 // TODO:
-                // currently uses wrong objects
-                // two solutions
-                // 1 -> hash the values of the mode instead -> and compare, ultra stupid
-                // 2 -> do not drop the connection in order to reuse the same ids....
-                // thanks wayland, great design.
+                // test more
 
                 configuration.transform(&current_head, monitor.transform as i32);
                 configuration.position(&current_head, monitor.offset.0, monitor.offset.1);
