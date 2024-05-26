@@ -7,7 +7,6 @@ use crate::keyboard_layout::KeyboardLayout;
 pub fn get_saved_layouts_gnome(all_keyboards: &Vec<KeyboardLayout>) -> Vec<KeyboardLayout> {
     let mut kb = vec![];
     let result = dconf_rs::get_string("/org/gnome/desktop/input-sources/sources");
-    dbg!(result.clone());
 
     if let Ok(layouts) = result {
         let pattern = Regex::new(r"[a-zA-Z0-9_+-]+").unwrap();
