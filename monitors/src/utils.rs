@@ -472,3 +472,20 @@ impl AlertWrapper {
         self.popup.activate_default();
     }
 }
+
+#[macro_export]
+#[cfg(not(test))]
+macro_rules! GNOME_CHECK {
+    () => {{}};
+}
+
+#[macro_export]
+#[cfg(test)]
+macro_rules! GNOME_CHECK {
+    () => {{
+        use $crate::utils::get_environment;
+        if get_environment().as_str() != "GNOME" {
+            return false;
+        }
+    }};
+}

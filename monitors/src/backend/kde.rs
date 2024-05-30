@@ -10,6 +10,14 @@ use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
+pub const KDE_FEATURES: MonitorFeatures = MonitorFeatures {
+    // KDE supports all the features!
+    vrr: true,
+    primary: true,
+    fractional_scaling: true,
+    hdr: true,
+};
+
 pub fn kde_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
     let kde_monitors: KDEMonitorConfiguration =
@@ -57,17 +65,17 @@ pub struct KDEMonitorConfiguration {
 #[allow(non_snake_case)]
 #[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
 pub struct KDEMonitor {
-    id: u32,
-    name: String,
-    enabled: bool,
-    connected: bool,
-    scale: f64,
-    rotation: u32,
-    pos: KDEOffset,
-    priority: u32,
-    vrrPolicy: Option<u32>,
-    currentModeId: String,
-    modes: Vec<KDEMode>,
+    pub id: u32,
+    pub name: String,
+    pub enabled: bool,
+    pub connected: bool,
+    pub scale: f64,
+    pub rotation: u32,
+    pub pos: KDEOffset,
+    pub priority: u32,
+    pub vrrPolicy: Option<u32>,
+    pub currentModeId: String,
+    pub modes: Vec<KDEMode>,
 }
 
 impl KDEMonitor {
@@ -102,13 +110,7 @@ impl KDEMonitor {
             drag_information: Default::default(),
             mode: self.currentModeId,
             available_modes: modes.0,
-            features: MonitorFeatures {
-                // KDE supports all the features!
-                vrr: true,
-                primary: true,
-                fractional_scaling: true,
-                hdr: true,
-            },
+            features: KDE_FEATURES,
         }
     }
 }
@@ -132,9 +134,9 @@ fn convert_to_regular_transform(rotation: u32) -> u32 {
 #[allow(non_snake_case)]
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct KDEMode {
-    id: String,
-    refreshRate: f64,
-    size: KDESize,
+    pub id: String,
+    pub refreshRate: f64,
+    pub size: KDESize,
 }
 
 impl KDESize {
@@ -159,8 +161,8 @@ impl KDEOffset {
 #[allow(non_snake_case)]
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct KDESize {
-    width: i32,
-    height: i32,
+    pub width: i32,
+    pub height: i32,
 }
 
 fn convert_modes(

@@ -15,7 +15,10 @@ use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
-use crate::utils::{AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size};
+use crate::{
+    utils::{AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size},
+    GNOME_CHECK,
+};
 
 const BASE: &str = "org.gnome.Mutter.DisplayConfig";
 const DBUS_PATH: &str = "/org/gnome/Mutter/DisplayConfig";
@@ -32,6 +35,8 @@ pub fn gnome_features(vrr_enabled: bool) -> MonitorFeatures {
 }
 
 fn get_fractional_scale_support() -> bool {
+    // used in order to avoid this check within tests
+    GNOME_CHECK!();
     let settings = gtk::gio::Settings::new("org.gnome.mutter");
     let features = settings.strv("experimental-features");
     for value in features {
@@ -43,6 +48,7 @@ fn get_fractional_scale_support() -> bool {
 }
 
 fn get_variable_refresh_rate_support() -> bool {
+    GNOME_CHECK!();
     let settings = gtk::gio::Settings::new("org.gnome.mutter");
     let features = settings.strv("experimental-features");
     for value in features {
@@ -288,13 +294,13 @@ impl Arg for GnomeMode {
 
 #[derive(Debug, Default)]
 pub struct GnomeLogicalMonitor {
-    x: i32,
-    y: i32,
-    scale: f64,
-    transform: u32,
-    primary: bool,
-    _monitors: Vec<(String, String, String, String)>,
-    _properties: PropMap,
+    pub x: i32,
+    pub y: i32,
+    pub scale: f64,
+    pub transform: u32,
+    pub primary: bool,
+    pub _monitors: Vec<(String, String, String, String)>,
+    pub _properties: PropMap,
 }
 
 impl<'a> Get<'a> for GnomeLogicalMonitor {

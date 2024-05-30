@@ -1,9 +1,10 @@
 use crate::{
     backend::{
-        gnome::{gnome_features, GnomeMonitor, GnomeMonitorConfig},
+        gnome::{gnome_features, GnomeLogicalMonitor, GnomeMonitor, GnomeMonitorConfig},
         hyprland::{HyprMonitor, HYPRFEATURES},
+        kde::{KDEMode, KDEMonitor, KDE_FEATURES},
     },
-    utils::{Monitor, Offset, Size},
+    utils::{AvailableMode, Monitor, Offset, Size},
 };
 
 #[test]
@@ -58,13 +59,18 @@ fn convert_gnomemonitor() {
     let gnome_monitor = GnomeMonitor {
         ..Default::default()
     };
+    let logical_gnome_monitor = GnomeLogicalMonitor {
+        ..Default::default()
+    };
     let gnome_monitor_config = GnomeMonitorConfig {
         monitors: vec![gnome_monitor],
+        logical_monitors: vec![logical_gnome_monitor],
         ..Default::default()
     };
     let monitor = Monitor {
         // hyprland has disabled instead -> invert
-        enabled: true,
+        enabled: false,
+        mode: String::from("-1"),
         features: gnome_features(false),
         ..Default::default()
     };
@@ -75,4 +81,28 @@ fn convert_gnomemonitor() {
             .pop()
             .unwrap()
     );
+}
+
+#[test]
+fn convert_kde_monitor() {
+    let mode = KDEMode {
+        ..Default::default()
+    };
+    let kde_monitor = KDEMonitor {
+        modes: vec![mode],
+        ..Default::default()
+    };
+    let monitor = Monitor {
+        enabled: false,
+        //mode: String::from("-1"),
+        available_modes: vec![AvailableMode {
+            id: String::from(""),
+            size: Size(0, 0),
+            refresh_rates: vec![0],
+            supported_scales: Vec::new(),
+        }],
+        features: KDE_FEATURES,
+        ..Default::default()
+    };
+    assert_eq!(monitor, kde_monitor.convert_to_regular_monitor());
 }
