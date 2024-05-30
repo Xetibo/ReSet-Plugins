@@ -43,17 +43,19 @@
           };
 
           packages =
-            {
-              monitor = pkgs.callPackage ./nix/monitor.nix { inherit inputs; };
-              keyboard = pkgs.callPackage ./nix/keyboard.nix { inherit inputs; };
+            rec {
+              monitorPlugin = pkgs.callPackage ./nix/monitor.nix { inherit inputs; };
+              keyboardPlugin = pkgs.callPackage ./nix/keyboard.nix { inherit inputs; };
             };
         };
-      flake = _: {
+      flake = _ : rec{
         #   nixosModules.home-manager = homeManagerModules.default;
         #   homeManagerModules = rec {
         #     reset = import ./nix/hm.nix inputs.self;
         #     default = reset;
         #   };
+        monitor = monitorPlugin;
+        keybaord = keybaordPlugin;
       };
     };
 }
