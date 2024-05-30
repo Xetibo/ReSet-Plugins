@@ -22,8 +22,7 @@ pub fn apply_monitor_configuration(
     match get_environment().as_str() {
         "Hyprland" => hy_apply_monitor_information(monitors),
         "GNOME" => g_apply_monitor_config(1, monitors),
-        //"KDE" => kde_apply_monitor_config(monitors),
-        "KDE" => kwin_apply_monitor_configuration(conn, monitors),
+        "KDE" => kde_apply_monitor_config(monitors),
         // fallback to protocol implementations
         _ => match get_wl_backend().as_str() {
             "WLR" => wlr_apply_monitor_configuration(conn, monitors),
