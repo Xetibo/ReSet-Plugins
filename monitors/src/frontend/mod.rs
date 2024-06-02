@@ -211,7 +211,9 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         }
     });
 
-    let is_gnome = get_environment().as_str() == "GNOME";
+    let env = get_environment();
+    let env = env.as_str();
+    let disallow_gaps = env == "GNOME" || env == "KDE";
     let gesture = GestureDrag::builder().build();
     let drawing_ref_drag_start = drawing_area.clone();
     gesture.connect_drag_begin(move |_drag, x, y| {
@@ -231,7 +233,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             monitor_data.clone(),
             &drawing_ref_end,
             &main_box_ref,
-            is_gnome,
+            disallow_gaps,
         );
     });
 
