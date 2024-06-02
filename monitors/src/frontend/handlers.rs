@@ -819,8 +819,10 @@ pub fn monitor_drag_end(
             }
             SnapDirectionHorizontal::None => {
                 // GNOME doesn't allow spacing between monitors.... why...
-                dbg!(disallow_gaps);
-                if !disallow_gaps || snap_vertical != SnapDirectionVertical::None {
+                if disallow_gaps && snap_vertical == SnapDirectionVertical::None {
+                    monitor.offset.0 = monitor.drag_information.origin_x;
+                    monitor.offset.1 = monitor.drag_information.origin_y;
+                } else {
                     monitor.offset.0 += monitor.drag_information.drag_x;
                 }
             }
@@ -833,8 +835,10 @@ pub fn monitor_drag_end(
                 monitor.offset.1 = snap;
             }
             SnapDirectionVertical::None => {
-                dbg!(disallow_gaps);
-                if !disallow_gaps || snap_horizontal != SnapDirectionHorizontal::None {
+                if disallow_gaps && snap_vertical == SnapDirectionVertical::None {
+                    monitor.offset.0 = monitor.drag_information.origin_x;
+                    monitor.offset.1 = monitor.drag_information.origin_y;
+                } else {
                     monitor.offset.1 += monitor.drag_information.drag_y
                 }
             }
