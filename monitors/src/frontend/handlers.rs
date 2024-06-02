@@ -381,6 +381,7 @@ pub fn get_monitor_settings_group(
 pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Vec<Monitor>>) {
     let (original_width, original_height) = original_monitor.handle_transform();
     let mut furthest = i32::MIN;
+    let mut first = i32::MAX;
     let mut diff_x = 0;
     let mut diff_y = 0;
 
@@ -390,8 +391,12 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
         // right_most for monitors that overlap -> reset monitor to available space
         let (width, height) = monitor.handle_transform();
         let right_side = monitor.offset.0 + width;
+        let left_side = monitor.offset.0;
         if right_side > furthest {
             furthest = right_side;
+        }
+        if left_side < first {
+            first = left_side;
         }
 
         if monitor.id == original_monitor.id {
@@ -405,6 +410,9 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
+        if first < 0 {
+            monitor.offset.0 += first.abs();
+        }
         if monitor.id == original_monitor.id {
             continue;
         }
