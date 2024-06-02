@@ -7,12 +7,14 @@ use xkbregistry::{rxkb_context_new, RXKB_CONTEXT_NO_FLAGS, rxkb_context_parse_de
 
 use crate::backend::gnome::{get_saved_layouts_gnome, write_to_config_gnome};
 use crate::backend::hyprland::{get_saved_layouts_hyprland, write_to_config_hyprland};
+use crate::backend::kde::{get_saved_layouts_kde, write_to_config_kde};
 use crate::keyboard_layout::KeyboardLayout;
-use crate::r#const::{GNOME, HYPRLAND, INTERFACE};
+use crate::r#const::{GNOME, HYPRLAND, INTERFACE, KDE};
 use crate::utils::get_environment;
 
 mod hyprland;
 mod gnome;
+mod kde;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -30,7 +32,10 @@ pub fn get_saved_layouts() -> Vec<KeyboardLayout> {
             get_saved_layouts_hyprland(&all_keyboards)
         }
         GNOME => {
-            get_saved_layouts_gnome(all_keyboards)
+            get_saved_layouts_gnome(&all_keyboards)
+        }
+        KDE => {
+            get_saved_layouts_kde(&all_keyboards)
         }
         _ => {
             let kb = vec![];
@@ -46,6 +51,9 @@ fn write_to_config(layouts: Vec<KeyboardLayout>) {
         }
         GNOME => {
             write_to_config_gnome(layouts);
+        }
+        KDE => {
+            write_to_config_kde(layouts);
         }
         _ => {}
     }
@@ -83,6 +91,7 @@ fn get_max_active_keyboards() -> u32 {
     match get_environment().as_str() {
         HYPRLAND => { 4 }
         GNOME => { 4 }
+        KDE => { 4 }
         _ => { 4 }
     }
 }

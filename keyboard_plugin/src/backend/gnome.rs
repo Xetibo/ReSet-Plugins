@@ -4,7 +4,7 @@ use regex::Regex;
 
 use crate::keyboard_layout::KeyboardLayout;
 
-pub fn get_saved_layouts_gnome(all_keyboards: Vec<KeyboardLayout>) -> Vec<KeyboardLayout> {
+pub fn get_saved_layouts_gnome(all_keyboards: &Vec<KeyboardLayout>) -> Vec<KeyboardLayout> {
     let mut kb = vec![];
     let result = dconf_rs::get_string("/org/gnome/desktop/input-sources/sources");
 
