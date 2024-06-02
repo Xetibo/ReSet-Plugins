@@ -7,6 +7,10 @@
 , libadwaita
 , dbus
 , pulseaudio
+, cargo
+, rust-analyzer
+, rustc
+, clippy
 , lib
 , ...
 }:
@@ -42,10 +46,10 @@ rustPlatform.buildRustPackage rec {
   nativeBuildInputs = [
     pkg-config
     wrapGAppsHook4
-    (rust-bin.selectLatestNightlyWith
-    (toolchain: toolchain.default))
-    # (rust-bin.selectLatestNightlyWith
-    # (toolchain: toolchain.default))
+    cargo
+    rustc
+    rust-analyzer
+    clippy
   ];
 
   copyLibs = true;

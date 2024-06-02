@@ -70,12 +70,9 @@ pub fn apply_monitor_clicked(
     } else {
         proxy.method_call(INTERFACE, "SetMonitors", (monitor_ref.borrow().clone(),))
     };
-    if res.is_err() {
+    if let Err(error) = res {
         ERROR!(
-            format!(
-                "Could not apply monitor configuration {}",
-                res.err().unwrap()
-            ),
+            format!("Could not apply monitor configuration {}", error),
             ErrorLevel::Recoverable
         );
     }

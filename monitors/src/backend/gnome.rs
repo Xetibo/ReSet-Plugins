@@ -85,12 +85,9 @@ pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
         "ApplyMonitorsConfig",
         GnomeMonitorConfig::from_regular_monitor(apply_mode, monitors),
     );
-    if res.is_err() {
+    if let Err(error) = res {
         ERROR!(
-            format!(
-                "Could not apply monitor configuration {}",
-                res.err().unwrap()
-            ),
+            format!("Could not apply monitor configuration {}", error),
             ErrorLevel::Recoverable
         );
     }

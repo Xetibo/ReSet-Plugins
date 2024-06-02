@@ -19,7 +19,7 @@ use wayland_protocols_plasma::output_management::v2::client::kde_output_configur
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::Event as OutputManagementEvent;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::KdeOutputManagementV2;
 
-use re_set_lib::ERROR;
+use re_set_lib::{ERROR, LOG};
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
@@ -239,10 +239,9 @@ impl Dispatch<KdeOutputConfigurationV2, ()> for AppData {
         _: &QueueHandle<AppData>,
     ) {
         match event {
-            OutputConfigurationEvent::Applied => println!("applied"),
+            OutputConfigurationEvent::Applied => LOG!("applied configuration"),
             OutputConfigurationEvent::Failed => {
                 ERROR!("Could not apply configuration", ErrorLevel::Recoverable);
-                println!("failed?");
             }
             _ => unreachable!(),
         }

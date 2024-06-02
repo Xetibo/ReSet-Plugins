@@ -243,9 +243,6 @@ impl Dispatch<ZwlrOutputHeadV1, ()> for AppData {
             Event::Scale { scale } => {
                 _state.heads.get_mut(&_state.current_monitor).unwrap().scale = scale;
             }
-            Event::Finished => {
-                println!("monitor done");
-            }
             Event::AdaptiveSync { state } => {
                 // 0 is disabled, 1 enabled
                 let value: u32 = state.into();
