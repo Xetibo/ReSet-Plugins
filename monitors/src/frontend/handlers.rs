@@ -808,6 +808,7 @@ pub fn monitor_drag_end(
         monitor.offset.0 = monitor.drag_information.origin_x;
         monitor.offset.1 = monitor.drag_information.origin_y;
         drawing_ref_end.queue_draw();
+        return;
     } else {
         match snap_horizontal {
             SnapDirectionHorizontal::RightRight(snap)
@@ -819,9 +820,17 @@ pub fn monitor_drag_end(
             }
             SnapDirectionHorizontal::None => {
                 // GNOME doesn't allow spacing between monitors.... why...
-                if disallow_gaps && snap_vertical == SnapDirectionVertical::None {
+                if disallow_gaps
+                    && matches!(
+                        snap_vertical,
+                        SnapDirectionVertical::None
+                            | SnapDirectionVertical::TopTop(_)
+                            | SnapDirectionVertical::BottomBottom(_)
+                    )
+                {
                     monitor.offset.0 = monitor.drag_information.origin_x;
                     monitor.offset.1 = monitor.drag_information.origin_y;
+                    return;
                 } else {
                     monitor.offset.0 += monitor.drag_information.drag_x;
                 }
@@ -834,14 +843,7 @@ pub fn monitor_drag_end(
             SnapDirectionVertical::BottomTop(snap) | SnapDirectionVertical::BottomBottom(snap) => {
                 monitor.offset.1 = snap;
             }
-            SnapDirectionVertical::None => {
-                if disallow_gaps && snap_vertical == SnapDirectionVertical::None {
-                    monitor.offset.0 = monitor.drag_information.origin_x;
-                    monitor.offset.1 = monitor.drag_information.origin_y;
-                } else {
-                    monitor.offset.1 += monitor.drag_information.drag_y
-                }
-            }
+            SnapDirectionVertical::None => monitor.offset.1 += monitor.drag_information.drag_y,
         }
     }
     monitor.drag_information.drag_x = 0;
