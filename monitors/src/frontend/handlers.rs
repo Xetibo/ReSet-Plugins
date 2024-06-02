@@ -830,6 +830,7 @@ pub fn monitor_drag_end(
                 {
                     monitor.offset.0 = monitor.drag_information.origin_x;
                     monitor.offset.1 = monitor.drag_information.origin_y;
+                    drawing_ref_end.queue_draw();
                     return;
                 } else {
                     monitor.offset.0 += monitor.drag_information.drag_x;
