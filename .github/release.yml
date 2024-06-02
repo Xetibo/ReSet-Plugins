@@ -1,0 +1,30 @@
+on:
+  release:
+    types: [created]
+jobs:
+  release:
+    runs-on: [self-hosted, ubuntu]
+    steps:
+      - uses: actions/checkout@v3
+      - name: nightly-rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+      - name: Build rust package
+        run: cargo build --release --verbose
+      - name: Build Ubuntu package
+        run: |
+          cp ./keyboard_plugin/target/release/libreset_keyboard_plugin.so ./keyboard_deb/.
+          dpkg-deb --build debian
+          mv debian.deb keyboard_plugin.deb
+          cp ./monitors/target/release/libreset_monitors.so ./monitor_deb/.
+          mv debian.deb monitor_plugin.deb
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./keyboard_plugin/target/release/libreset_keyboard_plugin.so
+            ./monitors/target/release/libreset_monitors.so
+            keyboard_plugin.deb
+            monitor_plugin.deb

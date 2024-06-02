@@ -1,0 +1,5 @@
+Package: ReSet-Keyboard
+Version: 0.1
+Maintainer: DashieTM
+Architecture: all
+Description: A keyboard plugin for the ReSet settings application.
