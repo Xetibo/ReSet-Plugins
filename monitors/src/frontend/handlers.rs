@@ -395,7 +395,7 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
         let (width, height) = monitor.handle_transform();
         let right_side = monitor.offset.0 + width;
         let left_side = monitor.offset.0;
-        let top_side = monitor.offset.1;
+        let top_side = monitor.offset.1 - height;
         if right_side > furthest {
             furthest = right_side;
         }
@@ -414,6 +414,12 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
 
     // add the difference to the rightmost side in order to not intersect
     furthest += diff_x;
+
+    // add the difference to the leftmost side in order to ensure > 0 start
+    left += diff_x;
+
+    // add the difference to the top most side in order to ensure > 0 start
+    top += diff_y;
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
@@ -846,9 +852,8 @@ pub fn monitor_drag_end(
                     monitor.offset.1 = monitor.drag_information.origin_y;
                     drawing_ref_end.queue_draw();
                     return;
-                } else {
-                    monitor.offset.0 += monitor.drag_information.drag_x;
                 }
+                monitor.offset.0 += monitor.drag_information.drag_x;
             }
         }
         match snap_vertical {
@@ -858,7 +863,25 @@ pub fn monitor_drag_end(
             SnapDirectionVertical::BottomTop(snap) | SnapDirectionVertical::BottomBottom(snap) => {
                 monitor.offset.1 = snap;
             }
-            SnapDirectionVertical::None => monitor.offset.1 += monitor.drag_information.drag_y,
+            SnapDirectionVertical::None => {
+                // GNOME doesn't allow spacing between monitors.... why...
+                if disallow_gaps
+                    && matches!(
+                        snap_horizontal,
+                        SnapDirectionHorizontal::None
+                            | SnapDirectionHorizontal::LeftLeft(_)
+                            | SnapDirectionHorizontal::RightRight(_)
+                    )
+                {
+                    monitor.drag_information.drag_x = 0;
+                    monitor.drag_information.drag_y = 0;
+                    monitor.offset.0 = monitor.drag_information.origin_x;
+                    monitor.offset.1 = monitor.drag_information.origin_y;
+                    drawing_ref_end.queue_draw();
+                    return;
+                }
+                monitor.offset.1 += monitor.drag_information.drag_y
+            }
         }
     }
     monitor.drag_information.drag_x = 0;
