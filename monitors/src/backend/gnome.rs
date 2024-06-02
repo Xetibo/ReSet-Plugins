@@ -87,7 +87,10 @@ pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
     );
     if res.is_err() {
         ERROR!(
-            "Could not apply monitor configuration",
+            format!(
+                "Could not apply monitor configuration {}",
+                res.err().unwrap()
+            ),
             ErrorLevel::Recoverable
         );
     }

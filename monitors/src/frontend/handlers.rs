@@ -72,7 +72,10 @@ pub fn apply_monitor_clicked(
     };
     if res.is_err() {
         ERROR!(
-            "Could not apply monitor configuration",
+            format!(
+                "Could not apply monitor configuration {}",
+                res.err().unwrap()
+            ),
             ErrorLevel::Recoverable
         );
     }
