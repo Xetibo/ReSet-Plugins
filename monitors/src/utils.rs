@@ -1,13 +1,19 @@
-use std::{fmt::Display, time::Duration};
+use std::{fmt::Display, sync::Arc, time::Duration};
 
-use crate::r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS};
+use crate::{
+    backend::utils::get_wl_backend,
+    r#const::{BASE, DBUS_PATH, INTERFACE, SUPPORTED_ENVIRONMENTS},
+};
 use dbus::{
     arg::{self, Append, Arg, ArgType, Get},
     blocking::Connection,
     Error, Signature,
 };
 use gtk::prelude::WidgetExt;
-use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
+
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 pub fn get_environment() -> String {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP");
@@ -22,7 +28,7 @@ pub fn check_environment_support() -> bool {
     if SUPPORTED_ENVIRONMENTS.contains(&desktop.as_str()) {
         return true;
     }
-    false
+    matches!(get_wl_backend().as_str(), "WLR" | "KWIN")
 }
 
 pub fn get_monitor_data() -> Vec<Monitor> {
@@ -39,10 +45,11 @@ pub fn get_monitor_data() -> Vec<Monitor> {
 #[derive(Debug, Clone)]
 pub struct MonitorData {
     pub monitors: Vec<Monitor>,
+    pub connection: Option<Arc<wayland_client::Connection>>,
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct DragInformation {
     pub drag_x: i32,
     pub drag_y: i32,
@@ -60,23 +67,22 @@ pub struct DragInformation {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default, Copy)]
+#[derive(Debug, Clone, Default, Copy, PartialEq, Eq)]
 pub struct MonitorFeatures {
     pub vrr: bool,
     pub primary: bool,
     pub fractional_scaling: bool,
-    pub full_transform: bool,
+    pub hdr: bool,
 }
 
 impl<'a> Get<'a> for MonitorFeatures {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
-        let (vrr, primary, fractional_scaling, full_transform) =
-            <(bool, bool, bool, bool)>::get(i)?;
+        let (vrr, primary, fractional_scaling, hdr) = <(bool, bool, bool, bool)>::get(i)?;
         Some(Self {
             vrr,
             primary,
             fractional_scaling,
-            full_transform,
+            hdr,
         })
     }
 }
@@ -87,7 +93,7 @@ impl Append for MonitorFeatures {
             i.append(self.vrr);
             i.append(self.primary);
             i.append(self.fractional_scaling);
-            i.append(self.full_transform);
+            i.append(self.hdr);
         });
     }
 }
@@ -100,7 +106,7 @@ impl Arg for MonitorFeatures {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Monitor {
     pub id: u32,
     pub enabled: bool,
@@ -300,7 +306,7 @@ impl Monitor {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Offset(pub i32, pub i32);
 
 impl<'a> Get<'a> for Offset {
@@ -354,7 +360,7 @@ impl Arg for Size {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Scale(pub u32, pub u32);
 
 impl<'a> Get<'a> for Scale {
@@ -386,34 +392,8 @@ impl Display for Scale {
     }
 }
 
-// TODO: move this to reset-lib
-#[derive(Debug)]
-pub struct PluginInstantiationError(&'static str);
-
-impl PluginInstantiationError {
-    pub fn message(&self) -> &'static str {
-        self.0
-    }
-
-    pub fn new(message: &'static str) -> Self {
-        Self(message)
-    }
-}
-
-impl Default for PluginInstantiationError {
-    fn default() -> Self {
-        Self("Environment not supported")
-    }
-}
-
-impl Display for PluginInstantiationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.0)
-    }
-}
-
 #[repr(C)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct AvailableMode {
     pub id: String,
     pub size: Size,
@@ -480,15 +460,32 @@ pub enum SnapDirectionVertical {
     None,
 }
 
-pub struct Wrapper {
+pub struct AlertWrapper {
     pub popup: adw::AlertDialog,
 }
 
-unsafe impl Send for Wrapper {}
-unsafe impl Sync for Wrapper {}
+unsafe impl Send for AlertWrapper {}
+unsafe impl Sync for AlertWrapper {}
 
-impl Wrapper {
+impl AlertWrapper {
     pub fn action(&self) {
         self.popup.activate_default();
     }
+}
+
+#[macro_export]
+#[cfg(not(test))]
+macro_rules! GNOME_CHECK {
+    () => {{}};
+}
+
+#[macro_export]
+#[cfg(test)]
+macro_rules! GNOME_CHECK {
+    () => {{
+        use $crate::utils::get_environment;
+        if get_environment().as_str() != "GNOME" {
+            return false;
+        }
+    }};
 }

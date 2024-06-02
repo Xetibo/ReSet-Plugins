@@ -5,6 +5,8 @@ pub mod backend;
 pub mod r#const;
 pub mod frontend;
 pub mod utils;
+#[cfg(test)]
+mod tests;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]

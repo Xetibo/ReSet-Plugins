@@ -1,0 +1,33 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: [self-hosted, ubuntu]
+    steps:
+      - uses: actions/checkout@v3
+      - name: nightly-rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+      - name: Build
+        run: | 
+          cd monitors
+          cargo build --verbose
+          cd ../keyboard_plugin
+          cargo build --verbose
+      - name: Run clippy
+        run: |
+          cd monitors
+          cargo clippy --fix
+          cd ../keyboard_plugin
+          cargo build --verbose

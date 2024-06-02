@@ -1,6 +1,8 @@
 // NOTE: This implementation is for the hyprland compositor
 
-use re_set_lib::utils::config::CONFIG;
+use re_set_lib::{utils::config::CONFIG, ERROR};
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Size};
 use std::{
@@ -12,32 +14,56 @@ use std::{
     process::{Command, Stdio},
 };
 
-const FEATURES: MonitorFeatures = MonitorFeatures {
+pub const HYPRFEATURES: MonitorFeatures = MonitorFeatures {
     vrr: true,
     // Hyprland has no primary monitor concept
     primary: false,
     fractional_scaling: true,
-    full_transform: true,
+    hdr: false,
 };
 
+// Due to hyprland moving away from WLR, ReSet chose to fetch data via hyprctl instead.
+// The tool is also always installed for hyprland.
 pub fn hy_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
-    let hypr_monitors: Vec<HyprMonitor> =
-        serde_json::from_str(&String::from_utf8(get_json()).expect("Could not parse json"))
-            .expect("Could not parse json");
-    for monitor in hypr_monitors {
-        let monitor = monitor.convert_to_regular_monitor();
-        monitors.push(monitor);
+    let json_string = String::from_utf8(get_json());
+    if let Ok(json_string) = json_string {
+        let hypr_monitors: Result<Vec<HyprMonitor>, _> = serde_json::from_str(&json_string);
+        if hypr_monitors.is_err() {
+            ERROR!(
+                "Failed to deserialize to monitor datastructure",
+                ErrorLevel::PartialBreakage
+            );
+            return Vec::new();
+        }
+        for monitor in hypr_monitors.unwrap() {
+            let monitor = monitor.convert_to_regular_monitor();
+            monitors.push(monitor);
+        }
+    } else {
+        ERROR!(
+            "Failed to get string from json",
+            ErrorLevel::PartialBreakage
+        );
     }
+
     monitors
 }
 
+// The same applies to applying
 pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {
-    Command::new("hyprctl")
+    let command = Command::new("hyprctl")
         .args(["--batch", &monitor_to_configstring(monitors)])
         .stdout(Stdio::null())
-        .spawn()
-        .expect("Could not enable specified monitor");
+        .spawn();
+    if command.is_err() {
+        ERROR!(
+            "The environment is hyprland, but hyprctl can't be spawned",
+            ErrorLevel::Critical
+        );
+        return;
+    }
+    command.unwrap();
 }
 
 fn get_default_path() -> String {
@@ -47,6 +73,8 @@ fn get_default_path() -> String {
     String::from(path)
 }
 
+// saving can only be done via configuration file and hence is not supported via the wlr protocol
+// either way
 pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
     let config = CONFIG;
     let path;
@@ -103,29 +131,29 @@ fn get_json() -> Vec<u8> {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
 pub struct HyprMonitor {
-    id: i64,
-    name: String,
-    description: String,
-    make: String,
-    model: String,
-    serial: String,
-    width: i64,
-    height: i64,
-    refreshRate: f64,
-    x: i64,
-    y: i64,
-    scale: f64,
-    transform: i64,
-    vrr: bool,
-    activelyTearing: bool,
-    disabled: bool,
-    availableModes: Vec<String>,
+    pub id: i64,
+    pub name: String,
+    pub description: String,
+    pub make: String,
+    pub model: String,
+    pub serial: String,
+    pub width: i64,
+    pub height: i64,
+    pub refreshRate: f64,
+    pub x: i64,
+    pub y: i64,
+    pub scale: f64,
+    pub transform: i64,
+    pub vrr: bool,
+    pub activelyTearing: bool,
+    pub disabled: bool,
+    pub availableModes: Vec<String>,
 }
 
 impl HyprMonitor {
-    fn convert_to_regular_monitor(self) -> Monitor {
+    pub fn convert_to_regular_monitor(self) -> Monitor {
         Monitor::new(
             self.id as u32,
             !self.disabled,
@@ -136,14 +164,14 @@ impl HyprMonitor {
             self.refreshRate.round() as u32,
             self.scale,
             self.transform as u32,
-            self.activelyTearing,
+            self.vrr,
             self.vrr,
             self.x as i32,
             self.y as i32,
             self.width as i32,
             self.height as i32,
             string_to_modes(self.availableModes),
-            FEATURES,
+            HYPRFEATURES,
         )
     }
 }

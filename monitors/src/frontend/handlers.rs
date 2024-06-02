@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    cell::{RefCell, RefMut},
     f64::consts,
     rc::Rc,
     sync::{
@@ -25,16 +25,17 @@ use gtk::{
     prelude::{BoxExt, DrawingAreaExtManual, GdkCairoContextExt, NativeExt, WidgetExt},
     DrawingArea, StringList, StringObject,
 };
-use re_set_lib::{
-    utils::{config::get_config_value, macros::ErrorLevel},
-    write_log_to_file, ERROR,
-};
+use re_set_lib::{utils::config::get_config_value, ERROR};
+
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::{
+    backend::utils::get_wl_backend,
     r#const::{BASE, DBUS_PATH, INTERFACE},
     utils::{
-        get_environment, get_monitor_data, Monitor, SnapDirectionHorizontal, SnapDirectionVertical,
-        Wrapper,
+        get_environment, get_monitor_data, AlertWrapper, Monitor, SnapDirectionHorizontal,
+        SnapDirectionVertical,
     },
 };
 
@@ -69,9 +70,9 @@ pub fn apply_monitor_clicked(
     } else {
         proxy.method_call(INTERFACE, "SetMonitors", (monitor_ref.borrow().clone(),))
     };
-    if res.is_err() {
+    if let Err(error) = res {
         ERROR!(
-            "Could not apply monitor configuration",
+            format!("Could not apply monitor configuration {}", error),
             ErrorLevel::Recoverable
         );
     }
@@ -85,7 +86,11 @@ pub fn apply_monitor_clicked(
         };
     }
     monitor_ref.replace(get_monitor_data());
-    settings_ref.append(&get_monitor_settings_group(monitor_ref.clone(), index));
+    settings_ref.append(&get_monitor_settings_group(
+        monitor_ref.clone(),
+        index,
+        drawing_ref,
+    ));
     if persistent {
         get_config_value("Monitor", "save_warning", |value| {
             if let Some(warning) = value.as_bool() {
@@ -134,7 +139,7 @@ pub fn apply_monitor_clicked(
         });
 
         let settings = settings_ref.clone();
-        let thread_settings = Wrapper {
+        let thread_settings = AlertWrapper {
             popup: popup.clone(),
         };
 
@@ -173,7 +178,11 @@ pub fn reset_monitor_clicked(
         };
     }
     reset_ref.replace(get_monitor_data());
-    settings_box_ref_reset.append(&get_monitor_settings_group(reset_ref.clone(), index));
+    settings_box_ref_reset.append(&get_monitor_settings_group(
+        reset_ref.clone(),
+        index,
+        drawing_ref_reset,
+    ));
     drawing_ref_reset.queue_draw();
     button
         .activate_action(
@@ -186,16 +195,21 @@ pub fn reset_monitor_clicked(
 pub fn get_monitor_settings_group(
     clicked_monitor: Rc<RefCell<Vec<Monitor>>>,
     monitor_index: usize,
+    drawing_area: &DrawingArea,
 ) -> PreferencesGroup {
     let settings = PreferencesGroup::new();
 
-    let monitors = clicked_monitor.borrow();
-    let monitor = monitors.get(monitor_index);
-    if monitor.is_none() {
-        ERROR!("Could not insert monitor settings", ErrorLevel::Critical);
-        return settings;
+    {
+        let mut monitors = clicked_monitor.borrow_mut();
+        let monitor = monitors.get_mut(monitor_index);
+        if monitor.is_none() {
+            ERROR!("Could not insert monitor settings", ErrorLevel::Critical);
+            return settings;
+        }
+        monitor.unwrap().drag_information.clicked = true;
     }
-    let monitor = monitor.unwrap();
+    let monitors = clicked_monitor.borrow();
+    let monitor = monitors.get(monitor_index).unwrap();
 
     let enabled_ref = clicked_monitor.clone();
     add_enabled_monitor_option(monitor_index, enabled_ref, &settings);
@@ -209,20 +223,16 @@ pub fn get_monitor_settings_group(
     let scaling_ref = clicked_monitor.clone();
     add_scale_adjustment(monitor.scale, monitor_index, scaling_ref, &settings);
 
-    let model_list = if monitor.features.full_transform {
-        StringList::new(&[
-            "0",
-            "90",
-            "180",
-            "270",
-            "0-flipped",
-            "90-flipped",
-            "180-flipped",
-            "270-flipped",
-        ])
-    } else {
-        StringList::new(&["0", "90", "180", "270"])
-    };
+    let model_list = StringList::new(&[
+        "0",
+        "90",
+        "180",
+        "270",
+        "0-flipped",
+        "90-flipped",
+        "180-flipped",
+        "270-flipped",
+    ]);
     let transform = adw::ComboRow::new();
     transform.set_title("Transform");
     transform.set_model(Some(&model_list));
@@ -238,9 +248,10 @@ pub fn get_monitor_settings_group(
         _ => ERROR!("Received unexpected transform", ErrorLevel::Recoverable),
     }
     let transform_ref = clicked_monitor.clone();
+    let transform_drawing_ref = drawing_area.clone();
     transform.connect_selected_item_notify(move |dropdown| {
-        let mut monitor = transform_ref.borrow_mut();
-        let monitor = monitor.get_mut(monitor_index).unwrap();
+        let mut monitors = transform_ref.borrow_mut();
+        let monitor = monitors.get_mut(monitor_index).unwrap();
         match model_list.string(dropdown.selected()).unwrap().as_str() {
             "0" => monitor.transform = 0,
             "90" => monitor.transform = 1,
@@ -252,12 +263,14 @@ pub fn get_monitor_settings_group(
             "270-flipped" => monitor.transform = 7,
             _ => ERROR!("Received unexpected transform", ErrorLevel::Recoverable),
         };
+        rearrange_monitors(monitor.clone(), monitors);
         dropdown
             .activate_action(
                 "monitor.reset_monitor_buttons",
                 Some(&glib::Variant::from(true)),
             )
             .expect("Could not activate reset action");
+        transform_drawing_ref.queue_draw();
     });
     settings.add(&transform);
 
@@ -281,6 +294,7 @@ pub fn get_monitor_settings_group(
     resolution.set_model(Some(&model_list));
     resolution.set_selected(index as u32);
     let resolution_ref = clicked_monitor.clone();
+    let resolution_drawing_ref = drawing_area.clone();
     resolution.connect_selected_item_notify(move |dropdown| {
         let index = dropdown.selected();
         let selected = dropdown.selected_item();
@@ -289,15 +303,22 @@ pub fn get_monitor_settings_group(
         let (x, y) = selected.split_once('x').unwrap();
         let refresh_rates;
         {
-            let mut monitor = resolution_ref.borrow_mut();
-            let monitor = monitor.get_mut(monitor_index).unwrap();
+            let mut monitors = resolution_ref.borrow_mut();
+            let monitor = monitors.get_mut(monitor_index).unwrap();
             let mode = monitor.available_modes.get(index as usize).unwrap();
             refresh_rates = mode.refresh_rates.clone();
             let highest = refresh_rates.first().unwrap();
             monitor.mode = String::from(&mode.id);
             monitor.refresh_rate = *highest;
-            monitor.size.0 = x.parse().unwrap();
-            monitor.size.1 = y.parse().unwrap();
+            let new_size_x: i32 = x.parse().unwrap();
+            let new_size_y: i32 = y.parse().unwrap();
+            let original_monitor = monitor.clone();
+            monitor.size.0 = new_size_x;
+            monitor.size.1 = new_size_y;
+            let (width, height) = monitor.handle_transform();
+            monitor.drag_information.width = width;
+            monitor.drag_information.height = height;
+            rearrange_monitors(original_monitor.clone(), monitors);
         }
 
         let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.to_string()).collect();
@@ -311,6 +332,7 @@ pub fn get_monitor_settings_group(
                 Some(&glib::Variant::from(true)),
             )
             .expect("Could not activate reset action");
+        resolution_drawing_ref.queue_draw();
     });
     settings.add(&resolution);
 
@@ -356,6 +378,110 @@ pub fn get_monitor_settings_group(
     settings
 }
 
+pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Vec<Monitor>>) {
+    let env = get_environment();
+    let env = env.as_str();
+    let (original_width, original_height) = original_monitor.handle_transform();
+    let mut furthest = i32::MIN;
+    let mut left = i32::MAX;
+    let mut top = i32::MAX;
+    let mut diff_x = 0;
+    let mut diff_y = 0;
+
+    // check for the difference of x or y offset
+    // and set the rightmost side for overlapped monitors
+    for monitor in monitors.iter_mut() {
+        // right_most for monitors that overlap -> reset monitor to available space
+        let (width, height) = monitor.handle_transform();
+        let right_side = monitor.offset.0 + width;
+        let left_side = monitor.offset.0;
+        let top_side = monitor.offset.1 - height;
+        if right_side > furthest {
+            furthest = right_side;
+        }
+        if left_side < left {
+            left = left_side;
+        }
+        if top_side < top {
+            top = top_side;
+        }
+
+        if monitor.id == original_monitor.id {
+            diff_x = width - original_width;
+            diff_y = height - original_height;
+        }
+    }
+
+    // add the difference to the rightmost side in order to not intersect
+    furthest += diff_x;
+
+    // add the difference to the leftmost side in order to ensure > 0 start
+    left += diff_x;
+
+    // add the difference to the top most side in order to ensure > 0 start
+    top += diff_y;
+
+    // apply offset to all affected monitors by the change
+    for monitor in monitors.iter_mut() {
+        if env == "GNOME" {
+            if top < 0 {
+                monitor.offset.1 += top.abs();
+            }
+            if left < 0 {
+                monitor.offset.0 += left.abs();
+            }
+        }
+        if monitor.id == original_monitor.id {
+            continue;
+        }
+
+        let (_, height) = monitor.handle_transform();
+        if monitor.offset.0 >= original_monitor.offset.0 + original_width {
+            monitor.offset.0 += diff_x;
+        }
+        if monitor.offset.1 - height >= original_monitor.offset.1 {
+            monitor.offset.1 += diff_y;
+        }
+    }
+
+    // (false, false)
+    // first: already used flag -> don't check for overlaps against the same monitors just in
+    // opposite order
+    // second: bool flag to indicate overlap
+    let mut overlaps = vec![(false, false); monitors.len()];
+    // check for overlaps
+    for (index, monitor) in monitors.iter().enumerate() {
+        for (other_index, other_monitor) in monitors.iter().enumerate() {
+            if monitor.id == other_monitor.id || overlaps[other_index].0 {
+                continue;
+            }
+            let (width, height) = other_monitor.handle_transform();
+            let intersect_horizontal = monitor.intersect_horizontal(
+                other_monitor.offset.0 + other_monitor.drag_information.border_offset_x,
+                width,
+            );
+            let intersect_vertical = monitor.intersect_vertical(
+                other_monitor.offset.1 + other_monitor.drag_information.border_offset_y,
+                height,
+            );
+            let is_furthest = furthest == monitor.offset.0 + monitor.size.0;
+            if intersect_horizontal && intersect_vertical && !is_furthest {
+                overlaps[index].1 = true;
+            }
+        }
+        overlaps[index].0 = true;
+    }
+
+    // if overlapped, send monitor to the end -> monitor is now rightmost monitor
+    for (index, monitor) in monitors.iter_mut().enumerate() {
+        if overlaps[index].1 {
+            let (width, _) = monitor.handle_transform();
+            monitor.offset.0 = furthest;
+            furthest = monitor.offset.0 + width;
+        }
+    }
+}
+
 pub fn add_scale_adjustment(
     scale: f64,
     monitor_index: usize,
@@ -368,7 +494,12 @@ pub fn add_scale_adjustment(
         "Hyprland" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "GNOME" => g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         "KDE" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
-        _ => unreachable!(),
+        _ => match get_wl_backend().as_str() {
+            "WLR" | "KWIN" => {
+                arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings)
+            }
+            _ => unreachable!(),
+        },
     };
 }
 
@@ -378,6 +509,7 @@ pub fn drawing_callback(
     color: gtk::gdk::RGBA,
     draggin_color: gtk::gdk::RGBA,
     clicked_color: gtk::gdk::RGBA,
+    selected_text_color: gtk::gdk::RGBA,
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
 ) {
     area.set_draw_func(move |area, context, _, _| {
@@ -395,7 +527,7 @@ pub fn drawing_callback(
         let mut max_monitor_height = 0;
         let mut min_monitor_width = 0;
         let mut min_monitor_height = 0;
-        for monitor in monitor_data.borrow().iter() {
+        for monitor in monitor_data.borrow_mut().iter_mut() {
             let (width, height) = monitor.handle_transform();
             let current_min_height = monitor.offset.1;
             let current_min_width = monitor.offset.0;
@@ -515,7 +647,9 @@ pub fn drawing_callback(
             context.stroke().expect("Could not fill context");
 
             // text
-            // TODO: change to different color
+            if monitor.drag_information.drag_active || monitor.drag_information.clicked {
+                context.set_source_color(&selected_text_color);
+            }
             context.set_font_size((140 / factor) as f64);
             context.move_to((offset_x + 10) as f64, (offset_y + 30) as f64);
             context
@@ -534,6 +668,7 @@ pub fn monitor_drag_start(
     y: f64,
     start_ref: Rc<RefCell<Vec<Monitor>>>,
     settings_box_ref: &gtk::Box,
+    drawing_area: &DrawingArea,
 ) {
     let mut iter = -1;
     for (index, monitor) in start_ref.borrow_mut().iter_mut().enumerate() {
@@ -557,6 +692,7 @@ pub fn monitor_drag_start(
     settings_box_ref.append(&get_monitor_settings_group(
         start_ref.clone(),
         iter as usize,
+        drawing_area,
     ));
 }
 
@@ -582,10 +718,13 @@ pub fn monitor_drag_end(
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
     drawing_ref_end: &DrawingArea,
     main_box_ref: &gtk::Box,
+    disallow_gaps: bool,
 ) {
     let mut changed = false;
     let mut endpoint_left: i32 = 0;
+    let mut endpoint_left_intersect: i32 = 0;
     let mut endpoint_bottom: i32 = 0;
+    let mut endpoint_bottom_intersect: i32 = 0;
     let mut endpoint_right: i32 = 0;
     let mut endpoint_top: i32 = 0;
     let mut previous_width: i32 = 0;
@@ -602,7 +741,9 @@ pub fn monitor_drag_end(
             }
             monitor.drag_information.drag_active = false;
             endpoint_bottom = monitor.offset.1 + monitor.drag_information.drag_y;
+            endpoint_bottom_intersect = endpoint_bottom + monitor.drag_information.border_offset_y;
             endpoint_left = monitor.offset.0 + monitor.drag_information.drag_x;
+            endpoint_left_intersect = endpoint_left + monitor.drag_information.border_offset_x;
             endpoint_right = endpoint_left + monitor.drag_information.width;
             endpoint_top = endpoint_bottom - monitor.drag_information.height;
             previous_width = monitor.drag_information.width;
@@ -646,8 +787,10 @@ pub fn monitor_drag_end(
         }
 
         // both required for a real intersect
-        let intersect_horizontal = monitor.intersect_horizontal(endpoint_left, previous_width);
-        let intersect_vertical = monitor.intersect_vertical(endpoint_bottom, previous_height);
+        let intersect_horizontal =
+            monitor.intersect_horizontal(endpoint_left_intersect, previous_width);
+        let intersect_vertical =
+            monitor.intersect_vertical(endpoint_bottom_intersect, previous_height);
 
         // in case of an intersect, right to right/left to left snapping not allowed -> snap into intersect
         let allow_snap_horizontal = match snap_horizontal {
@@ -678,9 +821,12 @@ pub fn monitor_drag_end(
     let mut monitor = monitor_data.borrow_mut();
     let monitor = monitor.get_mut(iter).unwrap();
     if intersected {
+        monitor.drag_information.drag_x = 0;
+        monitor.drag_information.drag_y = 0;
         monitor.offset.0 = monitor.drag_information.origin_x;
         monitor.offset.1 = monitor.drag_information.origin_y;
         drawing_ref_end.queue_draw();
+        return;
     } else {
         match snap_horizontal {
             SnapDirectionHorizontal::RightRight(snap)
@@ -690,7 +836,25 @@ pub fn monitor_drag_end(
             SnapDirectionHorizontal::LeftRight(snap) | SnapDirectionHorizontal::LeftLeft(snap) => {
                 monitor.offset.0 = snap;
             }
-            SnapDirectionHorizontal::None => monitor.offset.0 += monitor.drag_information.drag_x,
+            SnapDirectionHorizontal::None => {
+                // GNOME doesn't allow spacing between monitors.... why...
+                if disallow_gaps
+                    && matches!(
+                        snap_vertical,
+                        SnapDirectionVertical::None
+                            | SnapDirectionVertical::TopTop(_)
+                            | SnapDirectionVertical::BottomBottom(_)
+                    )
+                {
+                    monitor.drag_information.drag_x = 0;
+                    monitor.drag_information.drag_y = 0;
+                    monitor.offset.0 = monitor.drag_information.origin_x;
+                    monitor.offset.1 = monitor.drag_information.origin_y;
+                    drawing_ref_end.queue_draw();
+                    return;
+                }
+                monitor.offset.0 += monitor.drag_information.drag_x;
+            }
         }
         match snap_vertical {
             SnapDirectionVertical::TopTop(snap) | SnapDirectionVertical::TopBottom(snap) => {
@@ -699,14 +863,31 @@ pub fn monitor_drag_end(
             SnapDirectionVertical::BottomTop(snap) | SnapDirectionVertical::BottomBottom(snap) => {
                 monitor.offset.1 = snap;
             }
-            SnapDirectionVertical::None => monitor.offset.1 += monitor.drag_information.drag_y,
+            SnapDirectionVertical::None => {
+                // GNOME doesn't allow spacing between monitors.... why...
+                if disallow_gaps
+                    && matches!(
+                        snap_horizontal,
+                        SnapDirectionHorizontal::None
+                            | SnapDirectionHorizontal::LeftLeft(_)
+                            | SnapDirectionHorizontal::RightRight(_)
+                    )
+                {
+                    monitor.drag_information.drag_x = 0;
+                    monitor.drag_information.drag_y = 0;
+                    monitor.offset.0 = monitor.drag_information.origin_x;
+                    monitor.offset.1 = monitor.drag_information.origin_y;
+                    drawing_ref_end.queue_draw();
+                    return;
+                }
+                monitor.offset.1 += monitor.drag_information.drag_y
+            }
         }
     }
     monitor.drag_information.drag_x = 0;
     monitor.drag_information.drag_y = 0;
 
     drawing_ref_end.queue_draw();
-    // refs
     if changed {
         main_box_ref
             .activate_action(
@@ -743,10 +924,17 @@ pub fn scaling_update(
     if monitor.size.0 as f64 % scale != 0.0 && monitor.size.1 as f64 % scale != 0.0 && scale != 1.0
     {
         // search the traveled distance for a possible match
-        search_nearest_scale(18, &mut search_scale, monitor, direction, &mut found, false);
+        search_nearest_scale(6, &mut search_scale, monitor, direction, &mut found, true);
         // search additional distance if no match has been found
         if !found {
-            search_nearest_scale(100, &mut search_scale, monitor, direction, &mut found, true);
+            search_nearest_scale(
+                100,
+                &mut search_scale,
+                monitor,
+                direction,
+                &mut found,
+                false,
+            );
         }
 
         // user has entered a scale without a possible scale nearby, show error banner
@@ -796,14 +984,14 @@ fn search_nearest_scale(
     reverse: bool,
 ) {
     // reverse x for the second run
-    let reverse_scale = if reverse { 1.0 } else { -1.0 };
-    for x in 1..amount {
+    let reverse_scale = if reverse { -1.0 } else { 1.0 };
+    for x in 0..amount {
         // increment here does not equal to increment of 1, but 1/120 of an increment
         // specified at: https://wayland.app/protocols/fractional-scale-v1
         let scale_move = if direction {
-            (*search_scale - (x as f64) * reverse_scale) / 120.0
-        } else {
             (*search_scale + (x as f64) * reverse_scale) / 120.0
+        } else {
+            (*search_scale - (x as f64) * reverse_scale) / 120.0
         };
 
         let maybe_move_x = monitor.size.0 as f64 / scale_move;

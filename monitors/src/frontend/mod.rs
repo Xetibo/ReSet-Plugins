@@ -1,10 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
-use glib::clone;
 use gtk::{
+    gdk::RGBA,
     gio::{ActionEntry, SimpleActionGroup},
     prelude::FrameExt,
-    GestureClick,
+    Align, GestureClick,
 };
 #[allow(deprecated)]
 use gtk::{
@@ -16,16 +16,21 @@ use gtk::{
 };
 use re_set_lib::utils::{gtk::utils::create_title, plugin::SidebarInfo};
 
-use crate::utils::get_monitor_data;
+use crate::utils::{get_environment, get_monitor_data};
 
-use self::handlers::{
-    apply_monitor_clicked, drawing_callback, get_monitor_settings_group, monitor_drag_end,
-    monitor_drag_start, monitor_drag_update, reset_monitor_clicked,
+use self::{
+    general::add_save_button,
+    handlers::{
+        apply_monitor_clicked, drawing_callback, get_monitor_settings_group, monitor_drag_end,
+        monitor_drag_start, monitor_drag_update, reset_monitor_clicked,
+    },
 };
 
 pub mod general;
 pub mod gnome;
 pub mod handlers;
+
+const NAME: &str = "Monitors";
 
 #[no_mangle]
 pub extern "C" fn frontend_startup() {
@@ -37,9 +42,15 @@ pub extern "C" fn frontend_shutdown() {}
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
+pub extern "C" fn frontend_name() -> String {
+    String::from(NAME)
+}
+
+#[no_mangle]
+#[allow(improper_ctypes_definitions)]
 pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let info = SidebarInfo {
-        name: "Monitors",
+        name: NAME,
         icon_name: "preferences-desktop-display-symbolic",
         parent: None,
     };
@@ -49,10 +60,16 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .hexpand(true)
         .vexpand(true)
         .build();
-    main_box.append(&create_title("Monitors"));
     let main_box_ref = main_box.clone();
 
-    let apply_row = gtk::Box::new(Orientation::Horizontal, 5);
+    let top_row = gtk::Box::new(Orientation::Horizontal, 5);
+    top_row.set_homogeneous(true);
+    top_row.append(&create_title(NAME));
+
+    let config_buttons = gtk::Box::new(Orientation::Horizontal, 5);
+    config_buttons.set_halign(Align::End);
+    config_buttons.set_margin_top(5);
+    config_buttons.set_margin_bottom(5);
 
     let apply = gtk::Button::builder()
         .label("Apply")
@@ -60,15 +77,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .halign(gtk::Align::End)
         .sensitive(false)
         .build();
-    apply_row.append(&apply);
-
-    let save = gtk::Button::builder()
-        .label("Save")
-        .hexpand_set(false)
-        .halign(gtk::Align::End)
-        .sensitive(false)
-        .build();
-    apply_row.append(&save);
+    config_buttons.append(&apply);
 
     let reset = gtk::Button::builder()
         .label("Reset")
@@ -76,9 +85,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .halign(gtk::Align::End)
         .sensitive(false)
         .build();
-    apply_row.append(&reset);
-
-    main_box.append(&apply_row);
+    config_buttons.append(&reset);
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
     let settings_box_ref = settings_box.clone();
@@ -92,13 +99,15 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     #[allow(deprecated)]
     let context = settings_box.style_context();
     #[allow(deprecated)]
-    let color = context.lookup_color("headerbar_border_color").unwrap();
+    let color = context.lookup_color("card_bg_color").unwrap();
     #[allow(deprecated)]
-    let border_color = context.lookup_color("accent_color").unwrap();
+    let border_color = context.lookup_color("window_fg_color").unwrap();
     #[allow(deprecated)]
-    let dragging_color = context.lookup_color("blue_5").unwrap();
+    let dragging_color = context.lookup_color("blue_4").unwrap();
     #[allow(deprecated)]
-    let clicked_color = context.lookup_color("blue_4").unwrap();
+    let clicked_color = RGBA::new(0.093, 0.34, 0.67, 1.0);
+    #[allow(deprecated)]
+    let selected_text_color = context.lookup_color("light_1").unwrap();
 
     let drawing_frame = gtk::Frame::builder()
         .margin_top(10)
@@ -147,6 +156,14 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         );
     });
 
+    let save = add_save_button(
+        save_ref.clone(),
+        fallback_save_ref.clone(),
+        settings_box_ref_save,
+        drawing_ref_save,
+        config_buttons.clone(),
+    );
+
     let reset_ref = monitor_data.clone();
     reset.connect_clicked(move |button| {
         reset_monitor_clicked(
@@ -154,17 +171,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             &settings_box_ref_reset,
             &drawing_ref_reset,
             button,
-        );
-    });
-
-    save.connect_clicked(move |_| {
-        apply_monitor_clicked(
-            save_ref.clone(),
-            fallback_save_ref.clone(),
-            &settings_box_ref_save,
-            &drawing_ref_save,
-            false,
-            true
         );
     });
 
@@ -176,7 +182,11 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         }
     }
 
-    settings_box.append(&get_monitor_settings_group(monitor_data.clone(), 0));
+    settings_box.append(&get_monitor_settings_group(
+        monitor_data.clone(),
+        0,
+        &drawing_area,
+    ));
 
     drawing_callback(
         &drawing_area,
@@ -184,6 +194,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         color,
         dragging_color,
         clicked_color,
+        selected_text_color,
         monitor_data.clone(),
     );
     let clicked = GestureClick::builder().build();
@@ -200,16 +211,30 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         }
     });
 
+    let env = get_environment();
+    let env = env.as_str();
+    let disallow_gaps = env == "GNOME" || env == "KDE";
     let gesture = GestureDrag::builder().build();
-
+    let drawing_ref_drag_start = drawing_area.clone();
     gesture.connect_drag_begin(move |_drag, x, y| {
-        monitor_drag_start(x, y, start_ref.clone(), &settings_box_ref);
+        monitor_drag_start(
+            x,
+            y,
+            start_ref.clone(),
+            &settings_box_ref,
+            &drawing_ref_drag_start,
+        );
     });
     gesture.connect_drag_update(move |_drag, x, y| {
         monitor_drag_update(x, y, update_ref.clone(), &drawing_ref);
     });
     gesture.connect_drag_end(move |_drag, _x, _y| {
-        monitor_drag_end(monitor_data.clone(), &drawing_ref_end, &main_box_ref);
+        monitor_drag_end(
+            monitor_data.clone(),
+            &drawing_ref_end,
+            &main_box_ref,
+            disallow_gaps,
+        );
     });
 
     drawing_area.add_controller(gesture);
@@ -217,16 +242,17 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
     drawing_frame.set_child(Some(&drawing_area));
     let action_group = SimpleActionGroup::new();
+    let save_ref = save.clone();
     let reset_monitor_buttons = ActionEntry::builder("reset_monitor_buttons")
         .parameter_type(Some(&bool::static_variant_type()))
-        .activate(
-            clone!(@weak reset, @weak apply, @weak save => move |_, _, description| {
-                let enable = description.unwrap().get::<bool>().unwrap();
-                apply.set_sensitive(enable);
+        .activate(move |_, _, description| {
+            let enable = description.unwrap().get::<bool>().unwrap();
+            apply.set_sensitive(enable);
+            reset.set_sensitive(enable);
+            if let Some(save) = save_ref.clone() {
                 save.set_sensitive(enable);
-                reset.set_sensitive(enable);
-            }),
-        )
+            }
+        })
         .build();
     action_group.add_action_entries([reset_monitor_buttons]);
 
@@ -245,7 +271,9 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         })
         .build();
     action_group.add_action_entries([revert_monitors]);
+    top_row.append(&config_buttons);
     main_box.insert_action_group("monitor", Some(&action_group));
+    main_box.append(&top_row);
     main_box.append(&drawing_frame);
     main_box.append(&settings_box);
 
