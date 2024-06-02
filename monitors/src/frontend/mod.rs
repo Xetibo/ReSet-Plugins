@@ -30,6 +30,8 @@ pub mod general;
 pub mod gnome;
 pub mod handlers;
 
+const NAME: &str = "Monitors";
+
 #[no_mangle]
 pub extern "C" fn frontend_startup() {
     adw::init().unwrap();
@@ -40,9 +42,15 @@ pub extern "C" fn frontend_shutdown() {}
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
+pub extern "C" fn frontend_name() -> String {
+    String::from(NAME)
+}
+
+#[no_mangle]
+#[allow(improper_ctypes_definitions)]
 pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     let info = SidebarInfo {
-        name: "Monitors",
+        name: NAME,
         icon_name: "preferences-desktop-display-symbolic",
         parent: None,
     };
@@ -56,7 +64,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
     let top_row = gtk::Box::new(Orientation::Horizontal, 5);
     top_row.set_homogeneous(true);
-    top_row.append(&create_title("Monitors"));
+    top_row.append(&create_title(NAME));
 
     let config_buttons = gtk::Box::new(Orientation::Horizontal, 5);
     config_buttons.set_halign(Align::End);
