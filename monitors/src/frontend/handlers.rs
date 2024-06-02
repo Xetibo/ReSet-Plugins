@@ -383,7 +383,8 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
     let env = env.as_str();
     let (original_width, original_height) = original_monitor.handle_transform();
     let mut furthest = i32::MIN;
-    let mut first = i32::MAX;
+    let mut left = i32::MAX;
+    let mut top = i32::MAX;
     let mut diff_x = 0;
     let mut diff_y = 0;
 
@@ -394,11 +395,15 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
         let (width, height) = monitor.handle_transform();
         let right_side = monitor.offset.0 + width;
         let left_side = monitor.offset.0;
+        let top_side = monitor.offset.1;
         if right_side > furthest {
             furthest = right_side;
         }
-        if left_side < first {
-            first = left_side;
+        if left_side < left {
+            left = left_side;
+        }
+        if top_side < top {
+            top = top_side;
         }
 
         if monitor.id == original_monitor.id {
@@ -412,8 +417,11 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
-        if env == "GNOME" && first < 0 {
-            monitor.offset.0 += first.abs();
+        if env == "GNOME" && left < 0 {
+            monitor.offset.0 += left.abs();
+        }
+        if env == "GNOME" && top < 0 {
+            monitor.offset.1 += top.abs();
         }
         if monitor.id == original_monitor.id {
             continue;
