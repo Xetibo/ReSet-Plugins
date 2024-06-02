@@ -417,11 +417,13 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
-        if env == "GNOME" && left < 0 {
-            monitor.offset.0 += left.abs();
-        }
-        if env == "GNOME" && top < 0 {
-            monitor.offset.1 += top.abs();
+        if env == "GNOME" {
+            if top < 0 {
+                monitor.offset.1 += top.abs();
+            }
+            if left < 0 {
+                monitor.offset.0 += left.abs();
+            }
         }
         if monitor.id == original_monitor.id {
             continue;
@@ -813,6 +815,8 @@ pub fn monitor_drag_end(
     let mut monitor = monitor_data.borrow_mut();
     let monitor = monitor.get_mut(iter).unwrap();
     if intersected {
+        monitor.drag_information.drag_x = 0;
+        monitor.drag_information.drag_y = 0;
         monitor.offset.0 = monitor.drag_information.origin_x;
         monitor.offset.1 = monitor.drag_information.origin_y;
         drawing_ref_end.queue_draw();
@@ -836,6 +840,8 @@ pub fn monitor_drag_end(
                             | SnapDirectionVertical::BottomBottom(_)
                     )
                 {
+                    monitor.drag_information.drag_x = 0;
+                    monitor.drag_information.drag_y = 0;
                     monitor.offset.0 = monitor.drag_information.origin_x;
                     monitor.offset.1 = monitor.drag_information.origin_y;
                     drawing_ref_end.queue_draw();
