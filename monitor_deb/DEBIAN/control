@@ -1,0 +1,5 @@
+Package: ReSet-Monitors
+Version: 0.1
+Maintainer: DashieTM
+Architecture: all
+Description: A monitor plugin for the ReSet settings application.
