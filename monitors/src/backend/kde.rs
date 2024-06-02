@@ -4,9 +4,19 @@ use std::{
     process::Command,
 };
 
-use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
+
+pub const KDE_FEATURES: MonitorFeatures = MonitorFeatures {
+    // KDE supports all the features!
+    vrr: true,
+    primary: true,
+    fractional_scaling: true,
+    hdr: true,
+};
 
 pub fn kde_get_monitor_information() -> Vec<Monitor> {
     let mut monitors = Vec::new();
@@ -14,18 +24,24 @@ pub fn kde_get_monitor_information() -> Vec<Monitor> {
         serde_json::from_str(&String::from_utf8(get_json()).expect("Could not parse json"))
             .expect("Could not parse json");
     for monitor in kde_monitors.outputs {
-        let monitor = monitor.convert_to_regular_monitor();
-        monitors.push(monitor);
+        if !monitor.modes.is_empty() {
+            let monitor = monitor.convert_to_regular_monitor();
+            monitors.push(monitor);
+        }
     }
     monitors
 }
 
 fn get_json() -> Vec<u8> {
-    Command::new("kscreen-doctor")
-        .args(["-j"])
-        .output()
-        .expect("Could not retrieve monitor json")
-        .stdout
+    let command = Command::new("kscreen-doctor").args(["-j"]).output();
+    if let Ok(command) = command {
+        return command.stdout;
+    }
+    ERROR!(
+        "Kscreen is not installed, please install kscreen for kde.",
+        ErrorLevel::PartialBreakage
+    );
+    Vec::new()
 }
 
 pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {
@@ -47,19 +63,19 @@ pub struct KDEMonitorConfiguration {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default)]
 pub struct KDEMonitor {
-    id: u32,
-    name: String,
-    enabled: bool,
-    connected: bool,
-    scale: f64,
-    rotation: u32,
-    pos: KDEOffset,
-    priority: u32,
-    vrrPolicy: Option<u32>,
-    currentModeId: String,
-    modes: Vec<KDEMode>,
+    pub id: u32,
+    pub name: String,
+    pub enabled: bool,
+    pub connected: bool,
+    pub scale: f64,
+    pub rotation: u32,
+    pub pos: KDEOffset,
+    pub priority: u32,
+    pub vrrPolicy: Option<u32>,
+    pub currentModeId: String,
+    pub modes: Vec<KDEMode>,
 }
 
 impl KDEMonitor {
@@ -94,13 +110,7 @@ impl KDEMonitor {
             drag_information: Default::default(),
             mode: self.currentModeId,
             available_modes: modes.0,
-            features: MonitorFeatures {
-                // KDE supports all the features! (other than full_transform)
-                vrr: true,
-                primary: true,
-                fractional_scaling: true,
-                full_transform: false,
-            },
+            features: KDE_FEATURES,
         }
     }
 }
@@ -122,11 +132,11 @@ fn convert_to_regular_transform(rotation: u32) -> u32 {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct KDEMode {
-    id: String,
-    refreshRate: f64,
-    size: KDESize,
+    pub id: String,
+    pub refreshRate: f64,
+    pub size: KDESize,
 }
 
 impl KDESize {
@@ -136,7 +146,7 @@ impl KDESize {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct KDEOffset {
     x: i32,
     y: i32,
@@ -149,10 +159,10 @@ impl KDEOffset {
 }
 
 #[allow(non_snake_case)]
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct KDESize {
-    width: i32,
-    height: i32,
+    pub width: i32,
+    pub height: i32,
 }
 
 fn convert_modes(
@@ -213,10 +223,14 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
 
     for monitor in monitors {
         let rotation = match monitor.transform {
-            0 | 4 => "none",
-            1 | 5 => "right",
-            2 | 6 => "down",
-            3 | 7 => "inverted",
+            0 => "none",
+            1 => "right",
+            2 => "inverted",
+            3 => "left",
+            4 => "flipped",
+            5 => "flipped90",
+            6 => "flipped180",
+            7 => "flipped270",
             _ => unreachable!(),
         };
         let start = format!("output.{}.", monitor.name);

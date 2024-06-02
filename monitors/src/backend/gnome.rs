@@ -10,15 +10,33 @@ use dbus::{
     Error, Signature,
 };
 use gtk::prelude::SettingsExtManual;
-use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
 
-use crate::utils::{AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size};
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
+
+use crate::{
+    utils::{AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size},
+    GNOME_CHECK,
+};
 
 const BASE: &str = "org.gnome.Mutter.DisplayConfig";
 const DBUS_PATH: &str = "/org/gnome/Mutter/DisplayConfig";
 const INTERFACE: &str = "org.gnome.Mutter.DisplayConfig";
 
+pub fn gnome_features(vrr_enabled: bool) -> MonitorFeatures {
+    MonitorFeatures {
+        vrr: vrr_enabled,
+        // Gnome requires a primary monitor to be set
+        primary: true,
+        fractional_scaling: get_fractional_scale_support(),
+        hdr: false,
+    }
+}
+
 fn get_fractional_scale_support() -> bool {
+    // used in order to avoid this check within tests
+    GNOME_CHECK!();
     let settings = gtk::gio::Settings::new("org.gnome.mutter");
     let features = settings.strv("experimental-features");
     for value in features {
@@ -30,6 +48,7 @@ fn get_fractional_scale_support() -> bool {
 }
 
 fn get_variable_refresh_rate_support() -> bool {
+    GNOME_CHECK!();
     let settings = gtk::gio::Settings::new("org.gnome.mutter");
     let features = settings.strv("experimental-features");
     for value in features {
@@ -66,24 +85,24 @@ pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
         "ApplyMonitorsConfig",
         GnomeMonitorConfig::from_regular_monitor(apply_mode, monitors),
     );
-    if res.is_err() {
+    if let Err(error) = res {
         ERROR!(
-            "Could not apply monitor configuration",
+            format!("Could not apply monitor configuration {}", error),
             ErrorLevel::Recoverable
         );
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeMonitorConfig {
-    serial: u32,
-    monitors: Vec<GnomeMonitor>,
-    logical_monitors: Vec<GnomeLogicalMonitor>,
-    _properties: PropMap,
+    pub serial: u32,
+    pub monitors: Vec<GnomeMonitor>,
+    pub logical_monitors: Vec<GnomeLogicalMonitor>,
+    pub _properties: PropMap,
 }
 
 impl GnomeMonitorConfig {
-    fn inplace_to_regular_monitor(self) -> Vec<Monitor> {
+    pub fn inplace_to_regular_monitor(self) -> Vec<Monitor> {
         let mut monitors = Vec::new();
         for (monitor, logical_monitor) in self
             .monitors
@@ -173,7 +192,6 @@ impl GnomeMonitorConfig {
                 refresh_rate: current_mode.refresh_rate.round() as u32,
                 scale: logical_monitor.scale,
                 transform: logical_monitor.transform,
-                // TODO: bug
                 vrr,
                 primary: logical_monitor.primary,
                 offset: Offset(logical_monitor.x, logical_monitor.y),
@@ -181,13 +199,7 @@ impl GnomeMonitorConfig {
                 mode: current_mode.id.clone(),
                 drag_information: DragInformation::default(),
                 available_modes: modes,
-                features: MonitorFeatures {
-                    vrr: vrr_enabled,
-                    // Gnome requires a primary monitor to be set
-                    primary: true,
-                    fractional_scaling: get_fractional_scale_support(),
-                    full_transform: true
-                },
+                features: gnome_features(vrr_enabled),
             });
         }
         monitors
@@ -211,7 +223,6 @@ impl GnomeMonitorConfig {
                 scale: monitor.scale,
                 transform: monitor.transform,
                 primary: monitor.primary,
-                // TODO: propmap
                 monitors: vec![(monitor.name.clone(), mode, PropMap::new())],
             });
         }
@@ -219,11 +230,11 @@ impl GnomeMonitorConfig {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeMonitor {
-    name: GnomeName,
-    modes: Vec<GnomeMode>,
-    _properties: PropMap,
+    pub name: GnomeName,
+    pub modes: Vec<GnomeMode>,
+    pub _properties: PropMap,
 }
 
 impl<'a> Get<'a> for GnomeMonitor {
@@ -245,7 +256,7 @@ impl Arg for GnomeMonitor {
 }
 
 #[allow(non_snake_case)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeMode {
     id: String,
     width: i32,
@@ -281,15 +292,15 @@ impl Arg for GnomeMode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeLogicalMonitor {
-    x: i32,
-    y: i32,
-    scale: f64,
-    transform: u32,
-    primary: bool,
-    _monitors: Vec<(String, String, String, String)>,
-    _properties: PropMap,
+    pub x: i32,
+    pub y: i32,
+    pub scale: f64,
+    pub transform: u32,
+    pub primary: bool,
+    pub _monitors: Vec<(String, String, String, String)>,
+    pub _properties: PropMap,
 }
 
 impl<'a> Get<'a> for GnomeLogicalMonitor {
@@ -322,7 +333,7 @@ impl Arg for GnomeLogicalMonitor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeLogicalMonitorSend {
     x: i32,
     y: i32,
@@ -368,7 +379,7 @@ impl Append for GnomeLogicalMonitorSend {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct GnomeName {
     connector: String,
     vendor: String,
