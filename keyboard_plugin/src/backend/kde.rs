@@ -62,7 +62,7 @@ pub fn write_to_config_kde(layouts: Vec<KeyboardLayout>) {
         .arg(layout_string)
         .output()
         .expect("Could not save layouts");
-    Command::new("kreadconfig6")
+    Command::new("kwriteconfig6")
         .arg("--file")
         .arg("kxkbrc")
         .arg("--group")
@@ -73,4 +73,3 @@ pub fn write_to_config_kde(layouts: Vec<KeyboardLayout>) {
         .output()
         .expect("Could not save variants");
 }
-
