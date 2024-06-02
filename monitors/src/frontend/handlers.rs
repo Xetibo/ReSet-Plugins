@@ -379,6 +379,8 @@ pub fn get_monitor_settings_group(
 }
 
 pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Vec<Monitor>>) {
+    let env = get_environment();
+    let env = env.as_str();
     let (original_width, original_height) = original_monitor.handle_transform();
     let mut furthest = i32::MIN;
     let mut first = i32::MAX;
@@ -410,7 +412,7 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
-        if first < 0 {
+        if env == "GNOME" && first < 0 {
             monitor.offset.0 += first.abs();
         }
         if monitor.id == original_monitor.id {
