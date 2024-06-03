@@ -35,7 +35,7 @@ pub fn add_save_button(
 ) -> Option<gtk::Button> {
     let mut save = None;
     match get_environment().as_str() {
-        "GNOME" | "Hyprland" => {
+        "GNOME" | "ubuntu:GNOME" | "Hyprland" => {
             let button = gtk::Button::builder()
                 .label("Save")
                 .hexpand_set(false)

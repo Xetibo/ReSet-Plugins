@@ -16,7 +16,7 @@ use gtk::{
 };
 use re_set_lib::utils::{gtk::utils::create_title, plugin::SidebarInfo};
 
-use crate::utils::{get_environment, get_monitor_data};
+use crate::utils::{get_environment, get_monitor_data, is_gnome};
 
 use self::{
     general::add_save_button,
@@ -213,7 +213,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
     let env = get_environment();
     let env = env.as_str();
-    let disallow_gaps = env == "GNOME" || env == "KDE";
+    let disallow_gaps = is_gnome() || env == "KDE" ;
     let gesture = GestureDrag::builder().build();
     let drawing_ref_drag_start = drawing_area.clone();
     gesture.connect_drag_begin(move |_drag, x, y| {
