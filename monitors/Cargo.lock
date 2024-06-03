@@ -873,18 +873,19 @@ dependencies = [
 
 [[package]]
 name = "re_set-lib"
-version = "3.3.0"
-source = "git+https://github.com/Xetibo/ReSet-Lib?branch=dashie#ee7c45f923076dd53c84835d1f95b0e5e9357e67"
+version = "5.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01fb110dc5087cdb0d8df799c3855c13e4ecb41f987e9691bf3d101c2dad1b3a"
 dependencies = [
  "dbus",
  "dbus-crossroads",
- "directories-next",
  "gtk4",
  "libloading",
  "libpulse-binding",
  "once_cell",
  "serial_test",
  "toml",
+ "xdg",
 ]
 
 [[package]]
@@ -1486,3 +1487,9 @@ checksum = "86c949fede1d13936a99f14fafd3e76fd642b556dd2ce96287fbe2e0151bfac6"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "xdg"
+version = "2.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "213b7324336b53d2414b2db8537e56544d981803139155afa84f76eeebb7a546"

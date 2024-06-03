@@ -7,10 +7,6 @@
 , libadwaita
 , dbus
 , pulseaudio
-, cargo
-, rust-analyzer
-, rustc
-, clippy
 , lib
 , ...
 }:
@@ -35,21 +31,15 @@ rustPlatform.buildRustPackage rec {
 
   cargoLock = {
     # outputHashes = {
-    #   "re_set-lib-3.4.1" = "";
+    #   "re_set-lib-3.3.0" = "sha256-f+0+rrM+Z0sOXNwYtJxrlcK6wGFbdwamU0sNUm2ennM=";
     # };
-    outputHashes = {
-      "re_set-lib-3.3.0" = "sha256-f+0+rrM+Z0sOXNwYtJxrlcK6wGFbdwamU0sNUm2ennM=";
-    };
     inherit lockFile;
   };
 
   nativeBuildInputs = [
     pkg-config
     wrapGAppsHook4
-    cargo
-    rustc
-    rust-analyzer
-    clippy
+    rust-bin.nightly."2024-05-10".default
   ];
 
   copyLibs = true;

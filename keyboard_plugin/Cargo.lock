@@ -863,7 +863,8 @@ dependencies = [
 [[package]]
 name = "re_set-lib"
 version = "5.2.1"
-source = "git+https://github.com/Xetibo/ReSet-Lib#b8fcca7ee0e4788534b86f3d6a31fa4b2915a64c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01fb110dc5087cdb0d8df799c3855c13e4ecb41f987e9691bf3d101c2dad1b3a"
 dependencies = [
  "dbus",
  "dbus-crossroads",

@@ -37,9 +37,15 @@
               # (rust-bin.selectLatestNightlyWith
               # (toolchain: toolchain.default))
               rust-bin.nightly."2024-05-10".default
+              llvmPackages.clang
+              libxkbcommon
               glib
+              pkg-config
+              xorg.setxkbmap
+              libclang
             ];
             LD_LIBRARY_PATH = "${pkgs.glib}/lib";
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
           };
 
           packages =
@@ -48,12 +54,6 @@
               keyboard = pkgs.callPackage ./nix/keyboard.nix { inherit inputs; };
             };
         };
-      flake = _: {
-        #   nixosModules.home-manager = homeManagerModules.default;
-        #   homeManagerModules = rec {
-        #     reset = import ./nix/hm.nix inputs.self;
-        #     default = reset;
-        #   };
-      };
     };
 }
+
