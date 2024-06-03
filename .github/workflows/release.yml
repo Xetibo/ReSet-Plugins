@@ -12,7 +12,11 @@ jobs:
           profile: minimal
           toolchain: nightly
       - name: Build rust package
-        run: cargo build --release --verbose
+        run: |
+          cd keyboard_plugin
+          cargo build --release --verbose
+          cd ../monitors
+          cargo build --release --verbose
       - name: Build Ubuntu package
         run: |
           cp ./keyboard_plugin/target/release/libreset_keyboard_plugin.so ./keyboard_deb/.

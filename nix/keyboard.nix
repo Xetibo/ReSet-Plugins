@@ -7,7 +7,11 @@
 , libadwaita
 , dbus
 , xorg
+, libxkbcommon
+, libclang
+, llvmPackages
 , pulseaudio
+, glib
 , lib
 , ...
 }:
@@ -29,24 +33,31 @@ rustPlatform.buildRustPackage rec {
     dbus
     xorg.setxkbmap
     pulseaudio
+    libxkbcommon
+    llvmPackages.clang
+    libclang
   ];
 
   cargoLock = {
-    outputHashes = {
-      "re_set-lib-3.4.1" = "";
-    };
+    # outputHashes = {
+    #   "re_set-lib-3.4.1" = "";
+    # };
     inherit lockFile;
   };
 
   nativeBuildInputs = [
     pkg-config
     wrapGAppsHook4
-    # (rust-bin.selectLatestNightlyWith
-    # (toolchain: toolchain.default))
     rust-bin.nightly."2024-05-10".default
+    libxkbcommon
+    llvmPackages.clang
+    libclang
   ];
 
   copyLibs = true;
+
+  LIBCLANG_PATH = "${libclang.lib}/lib";
+  LD_LIBRARY_PATH = "${glib}/lib";
 
   meta = with lib; {
     description = "A keyboard configuration plugin for the ReSet settings application.";

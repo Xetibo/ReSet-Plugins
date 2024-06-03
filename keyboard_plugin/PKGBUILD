@@ -1,11 +1,11 @@
 # Maintainer: Fabio Lenherr <dashie@dashie.org>
 
-pkgname=reset_monitors
+pkgname=reset_keyboard
 pkgver=1.0.0
 pkgrel=0
 arch=('x86_64')
 pkgdir="$home/.config/reset/plugins"
-pkgdesc="A monitor plugin for the ReSet settings application."
+pkgdesc="A keyboard plugin for the ReSet settings application."
 depends=('rust' 'gtk4' 'dbus')
 
 build() {
@@ -13,6 +13,6 @@ build() {
 }
 
 package() {
-	cd ..
-	install -Dm755 target/release/lib"$pkgname".so "$pkgdir"/lib"$pkgname".so
+	cd ../keyboard_plugin
+	install -Dm755 target/release/lib"$pkgname"_plugin.so "$pkgdir"/lib"$pkgname"_plugin.so
 }
