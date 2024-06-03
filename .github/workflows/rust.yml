@@ -30,4 +30,4 @@ jobs:
           cd monitors
           cargo clippy --fix
           cd ../keyboard_plugin
-          cargo build --verbose
+          cargo clippy --fix
