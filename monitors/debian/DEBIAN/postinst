@@ -1,0 +1,1 @@
+install -Dm755 target/release/libreset_monitors.so $HOME/.config/reset/plugins/libreset_monitors.so
