@@ -56,7 +56,7 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
     let data = MonitorData {
         monitors: match env.as_str() {
             "Hyprland" => hy_get_monitor_information(),
-            "GNOME" => g_get_monitor_information(),
+            "GNOME" | "ubuntu:GNOME" => g_get_monitor_information(),
             "KDE" => kde_get_monitor_information(),
             // fallback to protocol implementations
             _ => match get_wl_backend().as_str() {

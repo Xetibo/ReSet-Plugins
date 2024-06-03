@@ -34,8 +34,8 @@ use crate::{
     backend::utils::get_wl_backend,
     r#const::{BASE, DBUS_PATH, INTERFACE},
     utils::{
-        get_environment, get_monitor_data, AlertWrapper, Monitor, SnapDirectionHorizontal,
-        SnapDirectionVertical,
+        get_environment, get_monitor_data, is_gnome, AlertWrapper, Monitor,
+        SnapDirectionHorizontal, SnapDirectionVertical,
     },
 };
 
@@ -70,9 +70,9 @@ pub fn apply_monitor_clicked(
     } else {
         proxy.method_call(INTERFACE, "SetMonitors", (monitor_ref.borrow().clone(),))
     };
-    if let Err(error) = res {
+    if let Err(_error) = res {
         ERROR!(
-            format!("Could not apply monitor configuration {}", error),
+            format!("Could not apply monitor configuration {}", _error),
             ErrorLevel::Recoverable
         );
     }
@@ -379,8 +379,6 @@ pub fn get_monitor_settings_group(
 }
 
 pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Vec<Monitor>>) {
-    let env = get_environment();
-    let env = env.as_str();
     let (original_width, original_height) = original_monitor.handle_transform();
     let mut furthest = i32::MIN;
     let mut left = i32::MAX;
@@ -423,7 +421,7 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
-        if env == "GNOME" {
+        if is_gnome() {
             if top < 0 {
                 monitor.offset.1 += top.abs();
             }
@@ -492,7 +490,9 @@ pub fn add_scale_adjustment(
     // Hyprland allows arbitrary scales, Gnome offers a set of supported scales per monitor mode
     match get_environment().as_str() {
         "Hyprland" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
-        "GNOME" => g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
+        "GNOME" | "ubuntu:GNOME" => {
+            g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings)
+        }
         "KDE" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
         _ => match get_wl_backend().as_str() {
             "WLR" | "KWIN" => {

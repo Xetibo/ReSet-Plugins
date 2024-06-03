@@ -473,6 +473,10 @@ impl AlertWrapper {
     }
 }
 
+pub fn is_gnome() -> bool {
+    get_environment().as_str().contains("GNOME")
+}
+
 #[macro_export]
 #[cfg(not(test))]
 macro_rules! GNOME_CHECK {
@@ -483,9 +487,7 @@ macro_rules! GNOME_CHECK {
 #[cfg(test)]
 macro_rules! GNOME_CHECK {
     () => {{
-        use $crate::utils::get_environment;
-        if get_environment().as_str() != "GNOME" {
-            return false;
-        }
+        use $crate::utils::is_gnome;
+        is_gnome()
     }};
 }
