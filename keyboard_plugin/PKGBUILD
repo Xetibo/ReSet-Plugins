@@ -13,6 +13,6 @@ build() {
 }
 
 package() {
-	cd ../keyboard_plugin
+	cd ..
 	install -Dm755 target/release/lib"$pkgname"_plugin.so "$pkgdir"/lib"$pkgname"_plugin.so
 }

@@ -13,6 +13,6 @@ build() {
 }
 
 package() {
-	cd ../monitors
+	cd ..
 	install -Dm755 target/release/lib"$pkgname".so "$pkgdir"/lib"$pkgname".so
 }
