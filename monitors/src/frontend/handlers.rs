@@ -113,7 +113,7 @@ pub fn apply_monitor_clicked(
 
     if !revert {
         // Gnome has their own popup, hence two popups would appear -> solution, disable ours
-        if persistent && get_environment().as_str() == "GNOME" {
+        if persistent && is_gnome() {
             return;
         }
         let popup = adw::AlertDialog::new(Some("Confirm Configuration"), Some("Is this configuration correct?\n
