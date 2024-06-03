@@ -16,7 +16,7 @@ use re_set_lib::ERROR;
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::{
-    utils::{AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size},
+    utils::{get_environment, AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size},
     GNOME_CHECK,
 };
 
@@ -37,6 +37,9 @@ pub fn gnome_features(vrr_enabled: bool) -> MonitorFeatures {
 fn get_fractional_scale_support() -> bool {
     // used in order to avoid this check within tests
     GNOME_CHECK!();
+    if get_environment().as_str() == "ubuntu:GNOME" {
+        return false;
+    }
     let settings = gtk::gio::Settings::new("org.gnome.mutter");
     let features = settings.strv("experimental-features");
     for value in features {
@@ -49,6 +52,9 @@ fn get_fractional_scale_support() -> bool {
 
 fn get_variable_refresh_rate_support() -> bool {
     GNOME_CHECK!();
+    if get_environment().as_str() == "ubuntu:GNOME" {
+        return false;
+    }
     let settings = gtk::gio::Settings::new("org.gnome.mutter");
     let features = settings.strv("experimental-features");
     for value in features {
