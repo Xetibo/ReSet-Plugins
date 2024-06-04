@@ -16,9 +16,7 @@ use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
-pub static ENV: Lazy<String> = Lazy::new(|| {
-    get_environment()
-});
+pub static ENV: Lazy<String> = Lazy::new(get_environment);
 pub const GNOME: &str = "GNOME";
 
 pub fn get_environment() -> String {
@@ -26,7 +24,12 @@ pub fn get_environment() -> String {
     if desktop.is_err() {
         return "NONE".into();
     }
-    desktop.unwrap()
+    let desktop = desktop.unwrap();
+    let split = desktop.split_once(':');
+    if split.is_none() {
+        return desktop;
+    }
+    split.unwrap().1.to_string()
 }
 
 pub fn check_environment_support() -> bool {
