@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use adw::{ActionRow, NavigationPage, NavigationView};
-use adw::prelude::{ActionRowExt, PreferencesRowExt};
+use adw::{ActionRow, NavigationPage, NavigationView, PreferencesGroup};
+use adw::prelude::{ActionRowExt, PreferencesGroupExt, PreferencesRowExt};
 use glib::{clone, SignalHandlerId, Variant};
 use glib::translate::FromGlib;
-use gtk::{Button, GestureClick, Image, Label, ListBox, Orientation, ScrolledWindow, SearchEntry};
+use gtk::{Button, GestureClick, Image, ListBox, Orientation, ScrolledWindow, SearchEntry};
 use gtk::prelude::*;
 
 use crate::frontend::get_keyboard_list_frontend;
@@ -19,6 +19,20 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
         .child(&add_keyboard_page_box)
         .build();
     nav_view.add(&add_keyboard_page);
+
+    let back_group = PreferencesGroup::builder()
+        .margin_bottom(10)
+        .build();
+    
+    let back_button = ActionRow::builder()
+        .title("Back")
+        .activatable(true)
+        .action_name("navigation.pop")
+        
+        .build();
+    back_button.add_suffix(&Image::from_icon_name("go-previous-symbolic"));
+    back_group.add(&back_button);
+    add_keyboard_page_box.append(&back_group);
 
     let search_box = gtk::Box::new(Orientation::Horizontal, 5);
     add_keyboard_page_box.append(&search_box);
