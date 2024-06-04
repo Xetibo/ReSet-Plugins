@@ -86,6 +86,7 @@ pub fn apply_monitor_clicked(
         };
     }
     monitor_ref.replace(get_monitor_data());
+    fallback.replace(monitor_ref.borrow().clone());
     settings_ref.append(&get_monitor_settings_group(
         monitor_ref.clone(),
         index,
@@ -234,6 +235,7 @@ pub fn get_monitor_settings_group(
         "270-flipped",
     ]);
     let transform = adw::ComboRow::new();
+    transform.set_tooltip_markup(Some("Changes the orientation of the monitor"));
     transform.set_title("Transform");
     transform.set_model(Some(&model_list));
     match monitor.transform {
@@ -290,6 +292,7 @@ pub fn get_monitor_settings_group(
         model_list.append(&(x.to_string() + "x" + &y.to_string()));
     }
     let resolution = adw::ComboRow::new();
+    resolution.set_tooltip_markup(Some("Changes the current resolution"));
     resolution.set_title("Resolution");
     resolution.set_model(Some(&model_list));
     resolution.set_selected(index as u32);
@@ -351,6 +354,7 @@ pub fn get_monitor_settings_group(
     let refresh_rate_model = StringList::new(&refresh_rates);
     refresh_rate.set_model(Some(&refresh_rate_model));
     refresh_rate.set_title("Refresh-Rate");
+    refresh_rate.set_tooltip_markup(Some("Changes the current refresh-rate"));
     refresh_rate.set_selected(index as u32);
     let refresh_rate_ref = clicked_monitor.clone();
     refresh_rate.connect_selected_item_notify(move |dropdown| {
@@ -650,12 +654,13 @@ pub fn drawing_callback(
             if monitor.drag_information.drag_active || monitor.drag_information.clicked {
                 context.set_source_color(&selected_text_color);
             }
-            context.set_font_size((140 / factor) as f64);
-            context.move_to((offset_x + 10) as f64, (offset_y + 30) as f64);
+            // context.set_font_size((140 / factor) as f64);
+            context.set_font_size(20.0);
+            context.move_to((offset_x + 10) as f64, (offset_y + 25) as f64);
             context
                 .show_text(&monitor.name.clone())
                 .expect("Could not draw text");
-            context.move_to((offset_x + 10) as f64, (offset_y + 60) as f64);
+            context.move_to((offset_x +  10) as f64, (offset_y + 45) as f64);
             context
                 .show_text(&(monitor.size.0.to_string() + ":" + &monitor.size.1.to_string()))
                 .expect("Could not draw text");

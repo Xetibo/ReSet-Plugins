@@ -99,11 +99,12 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
     let mut monitor_string = String::new();
 
     for monitor in monitors {
+        let vrr = if monitor.vrr { 1 } else { 0 };
         if !monitor.enabled {
             monitor_string += &format!("keyword monitor {},disabled;", monitor.name);
         } else {
             monitor_string += &format!(
-                "monitor={},{}x{}@{},{}x{},{:.6},transform,{}\n",
+                "monitor={},{}x{}@{},{}x{},{:.6},transform,{},vrr,{}\n",
                 monitor.name,
                 monitor.size.0,
                 monitor.size.1,
@@ -112,6 +113,7 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
                 monitor.offset.1,
                 monitor.scale,
                 monitor.transform,
+                vrr
             );
         }
     }
@@ -165,7 +167,7 @@ impl HyprMonitor {
             self.scale,
             self.transform as u32,
             self.vrr,
-            self.vrr,
+            false,
             self.x as i32,
             self.y as i32,
             self.width as i32,
@@ -180,11 +182,12 @@ fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
     let mut strings = Vec::new();
 
     for monitor in monitors {
+        let vrr = if monitor.vrr { 1 } else { 0 };
         if !monitor.enabled {
             strings.push(format!("keyword monitor {},disabled;", monitor.name));
         } else {
             strings.push(format!(
-                "keyword monitor {},{}x{}@{},{}x{},{:.6},transform,{};",
+                "keyword monitor {},{}x{}@{},{}x{},{:.6},transform,{},vrr,{};",
                 monitor.name,
                 &monitor.size.0,
                 &monitor.size.1,
@@ -192,7 +195,8 @@ fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
                 &monitor.offset.0,
                 &monitor.offset.1,
                 &monitor.scale,
-                &monitor.transform
+                &monitor.transform,
+                vrr
             ));
         }
     }

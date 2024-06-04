@@ -17,8 +17,9 @@ pub fn arbitrary_add_scaling_adjustment(
     monitors: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
 ) {
-    let scaling_adjustment = gtk::Adjustment::new(scale, 0.1, 10.0, 0.05, 0.0, 0.0);
+    let scaling_adjustment = gtk::Adjustment::new(scale, 0.1, 4.0, 0.05, 0.0, 0.0);
     let scaling = adw::SpinRow::new(Some(&scaling_adjustment), 0.000001, 2);
+    scaling.set_tooltip_markup(Some("This allows you to set your own custom scale.\nPlease note, that the scale needs to result in a full number for both width and height of the resolution."));
     scaling.set_title("Scaling");
     scaling.connect_value_notify(move |state| {
         scaling_update(state, monitors.clone(), monitor_index);
@@ -42,6 +43,7 @@ pub fn add_save_button(
                 .halign(gtk::Align::End)
                 .sensitive(false)
                 .build();
+            button.set_tooltip_markup(Some("Persistant saving of configuration"));
             button.connect_clicked(move |_| {
                 apply_monitor_clicked(
                     save_ref.clone(),
@@ -78,6 +80,7 @@ pub fn add_primary_monitor_option(
     let primary = adw::SwitchRow::new();
     primary.set_title("Primary Monitor");
     primary.set_active(primary_value);
+    primary.set_tooltip_markup(Some("Changes your primary monitor"));
 
     if monitors.borrow().len() < 2 {
         return;
@@ -119,6 +122,11 @@ pub fn add_vrr_monitor_option(
     let vrr = adw::SwitchRow::new();
     vrr.set_title("Variable Refresh-Rate");
     vrr.set_active(vrr_value);
+    if get_environment().as_str() == "Hyprland" {
+        vrr.set_tooltip_markup(Some("Please note that this option will set the configuration for this monitor, however, if your monitor does not offer VRR, this setting will fail to make a change."));
+    } else {
+        vrr.set_tooltip_markup(Some("Enable or disable Variable Refresh Rate"));
+    }
     vrr.connect_active_notify(move |state| {
         monitors.borrow_mut().get_mut(monitor_index).unwrap().vrr = state.is_active();
         state
@@ -152,6 +160,7 @@ pub fn add_enabled_monitor_option(
         .subtitle(&monitor.make)
         .active(monitor.enabled)
         .build();
+    enabled.set_tooltip_markup(Some("Disables or enables monitors"));
     let enabled_ref = monitors_ref.clone();
     enabled.connect_active_notify(move |state| {
         enabled_ref
