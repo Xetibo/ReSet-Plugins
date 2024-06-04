@@ -23,13 +23,13 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
     let back_group = PreferencesGroup::builder()
         .margin_bottom(10)
         .build();
-    
+
     let back_button = ActionRow::builder()
         .title("Back")
         .activatable(true)
         .action_name("navigation.pop")
-        
         .build();
+    
     back_button.add_suffix(&Image::from_icon_name("go-previous-symbolic"));
     back_group.add(&back_button);
     add_keyboard_page_box.append(&back_group);
