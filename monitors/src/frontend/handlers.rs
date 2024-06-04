@@ -35,7 +35,7 @@ use crate::{
     r#const::{BASE, DBUS_PATH, INTERFACE},
     utils::{
         get_environment, get_monitor_data, is_gnome, AlertWrapper, Monitor,
-        SnapDirectionHorizontal, SnapDirectionVertical,
+        SnapDirectionHorizontal, SnapDirectionVertical, GNOME,
     },
 };
 
@@ -393,7 +393,7 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
         let (width, height) = monitor.handle_transform();
         let right_side = monitor.offset.0 + width;
         let left_side = monitor.offset.0;
-        let top_side = monitor.offset.1 - height;
+        let top_side = monitor.offset.1;
         if right_side > furthest {
             furthest = right_side;
         }
@@ -414,19 +414,19 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
     furthest += diff_x;
 
     // add the difference to the leftmost side in order to ensure > 0 start
-    left += diff_x;
+    left -= diff_x;
 
     // add the difference to the top most side in order to ensure > 0 start
-    top += diff_y;
+    top -= diff_y;
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
         if is_gnome() {
             if top < 0 {
-                monitor.offset.1 += top.abs();
+                monitor.offset.1 += top;
             }
             if left < 0 {
-                monitor.offset.0 += left.abs();
+                monitor.offset.0 += left;
             }
         }
         if monitor.id == original_monitor.id {
@@ -490,7 +490,7 @@ pub fn add_scale_adjustment(
     // Hyprland allows arbitrary scales, Gnome offers a set of supported scales per monitor mode
     match get_environment().as_str() {
         "Hyprland" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),
-        "GNOME" | "ubuntu:GNOME" => {
+        GNOME | "ubuntu:GNOME" => {
             g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings)
         }
         "KDE" => arbitrary_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings),

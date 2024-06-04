@@ -1,5 +1,7 @@
+use crate::utils::GNOME;
+
 pub const BASE: &str = "org.Xetibo.ReSet.Daemon";
 pub const DBUS_PATH: &str = "/org/Xebito/ReSet/Plugins/Monitors";
 pub const INTERFACE: &str = "org.Xetibo.ReSet.Monitors";
 
-pub const SUPPORTED_ENVIRONMENTS: [&str; 3] = ["Hyprland", "GNOME", "ubuntu:GNOME", "KDE"];
+pub const SUPPORTED_ENVIRONMENTS: [&str; 4] = ["Hyprland", GNOME , "ubuntu:GNOME", "KDE"];

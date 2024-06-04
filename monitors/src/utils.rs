@@ -11,9 +11,15 @@ use dbus::{
 };
 use gtk::prelude::WidgetExt;
 
+use once_cell::sync::Lazy;
 use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
+
+pub const ENV: Lazy<String> = Lazy::new(|| {
+    get_environment()
+});
+pub const GNOME: &str = "GNOME";
 
 pub fn get_environment() -> String {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP");
@@ -474,7 +480,7 @@ impl AlertWrapper {
 }
 
 pub fn is_gnome() -> bool {
-    get_environment().as_str().contains("GNOME")
+    ENV.contains(GNOME)
 }
 
 #[macro_export]

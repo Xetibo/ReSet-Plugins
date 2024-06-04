@@ -7,7 +7,7 @@ use gtk::{
     DrawingArea,
 };
 
-use crate::utils::{get_environment, Monitor};
+use crate::utils::{get_environment, Monitor, GNOME};
 
 use super::handlers::{apply_monitor_clicked, scaling_update};
 
@@ -35,7 +35,7 @@ pub fn add_save_button(
 ) -> Option<gtk::Button> {
     let mut save = None;
     match get_environment().as_str() {
-        "GNOME" | "ubuntu:GNOME" | "Hyprland" => {
+        GNOME | "ubuntu:GNOME" | "Hyprland" => {
             let button = gtk::Button::builder()
                 .label("Save")
                 .hexpand_set(false)

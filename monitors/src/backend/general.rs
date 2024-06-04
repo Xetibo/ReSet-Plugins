@@ -3,7 +3,7 @@ use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
-use crate::utils::{get_environment, Monitor};
+use crate::utils::{get_environment, Monitor, GNOME};
 
 use super::{
     gnome::g_apply_monitor_config,
@@ -21,7 +21,7 @@ pub fn apply_monitor_configuration(
 ) {
     match get_environment().as_str() {
         "Hyprland" => hy_apply_monitor_information(monitors),
-        "GNOME" | "ubuntu:GNOME" => g_apply_monitor_config(1, monitors),
+        GNOME | "ubuntu:GNOME" => g_apply_monitor_config(1, monitors),
         "KDE" => kde_apply_monitor_config(monitors),
         // fallback to protocol implementations
         _ => match get_wl_backend().as_str() {
@@ -39,7 +39,7 @@ pub fn save_monitor_configuration(
 ) {
     match get_environment().as_str() {
         "Hyprland" => hy_save_monitor_configuration(monitors),
-        "GNOME" | "ubuntu:GNOME" => g_apply_monitor_config(2, monitors),
+        GNOME | "ubuntu:GNOME" => g_apply_monitor_config(2, monitors),
         "KDE" => kde_save_monitor_config(monitors),
         _ => match get_wl_backend().as_str() {
             "KWIN" => kwin_apply_monitor_configuration(conn, monitors),
