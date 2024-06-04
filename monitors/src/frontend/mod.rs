@@ -78,6 +78,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .sensitive(false)
         .build();
     config_buttons.append(&apply);
+    apply.set_tooltip_markup(Some("Temporarily saves configuration"));
 
     let reset = gtk::Button::builder()
         .label("Reset")
@@ -85,6 +86,9 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .halign(gtk::Align::End)
         .sensitive(false)
         .build();
+    reset.set_tooltip_markup(Some(
+        "Resets currently set configuration to the last saved/applied one",
+    ));
     config_buttons.append(&reset);
 
     let settings_box = gtk::Box::new(Orientation::Vertical, 5);
@@ -213,7 +217,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
 
     let env = get_environment();
     let env = env.as_str();
-    let disallow_gaps = is_gnome() || env == "KDE" ;
+    let disallow_gaps = is_gnome() || env == "KDE";
     let gesture = GestureDrag::builder().build();
     let drawing_ref_drag_start = drawing_area.clone();
     gesture.connect_drag_begin(move |_drag, x, y| {
