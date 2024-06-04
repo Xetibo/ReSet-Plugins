@@ -16,7 +16,7 @@ use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
-pub const ENV: Lazy<String> = Lazy::new(|| {
+pub static ENV: Lazy<String> = Lazy::new(|| {
     get_environment()
 });
 pub const GNOME: &str = "GNOME";
@@ -494,6 +494,8 @@ macro_rules! GNOME_CHECK {
 macro_rules! GNOME_CHECK {
     () => {{
         use $crate::utils::is_gnome;
-        is_gnome()
+        if !is_gnome() {
+            return false;
+        }
     }};
 }
