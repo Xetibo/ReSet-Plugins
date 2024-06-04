@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use adw::{NavigationPage, NavigationView};
 use gtk::{Box, ListBox, Orientation};
 use gtk::prelude::*;

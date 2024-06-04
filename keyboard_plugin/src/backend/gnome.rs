@@ -1,14 +1,15 @@
-use std::process::Command;
-
+use glib::Variant;
+use gtk::prelude::{SettingsExt, SettingsExtManual};
 use regex::Regex;
 
 use crate::keyboard_layout::KeyboardLayout;
 
 pub fn get_saved_layouts_gnome(all_keyboards: &Vec<KeyboardLayout>) -> Vec<KeyboardLayout> {
     let mut kb = vec![];
-    let result = dconf_rs::get_string("/org/gnome/desktop/input-sources/sources");
+    let input_sources = gtk::gio::Settings::new("org.gnome.desktop.input-sources");
+    let layouts = input_sources.value("sources").to_string();
 
-    if let Ok(layouts) = result {
+    if !layouts.is_empty() {
         let pattern = Regex::new(r"[a-zA-Z0-9_+-]+").unwrap();
         for layout in pattern.captures_iter(layouts.as_str()) {
             let layout = &layout[0];
@@ -36,22 +37,14 @@ pub fn get_saved_layouts_gnome(all_keyboards: &Vec<KeyboardLayout>) -> Vec<Keybo
 pub fn write_to_config_gnome(layouts: Vec<KeyboardLayout>) {
     let mut all_layouts = vec![];
     for x in layouts {
-        let mut layout_string = format!("('xkb', '{}", x.name.clone());
-        if let Some(var) = x.variant {
-            layout_string += &format!("+{}", var);
+        let mut option = x.variant.unwrap_or(String::new());
+        if !option.is_empty() {
+            option = "+".to_string() + &option;
         }
-        layout_string += "')";
-        all_layouts.push(layout_string);
+        all_layouts.push(("xkb", x.name.clone() + &option));
     }
 
-    let mut all_layouts = all_layouts.join(", ");
-    all_layouts.insert_str(0, "[");
-    all_layouts.push_str("]");
-
-    Command::new("dconf")
-        .arg("write")
-        .arg("/org/gnome/desktop/input-sources/sources")
-        .arg(all_layouts)
-        .status()
-        .expect("failed to execute command");
+    let variant = Variant::from(all_layouts);
+    let input_sources = gtk::gio::Settings::new("org.gnome.desktop.input-sources");
+    input_sources.set("sources", variant).expect("failed to write layouts");
 }
