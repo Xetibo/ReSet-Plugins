@@ -16,14 +16,16 @@ pub fn arbitrary_add_scaling_adjustment(
     monitor_index: usize,
     monitors: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
+    drawing_area: DrawingArea,
 ) {
     let scaling_adjustment = gtk::Adjustment::new(scale, 0.1, 4.0, 0.05, 0.0, 0.0);
     let scaling = adw::SpinRow::new(Some(&scaling_adjustment), 0.000001, 2);
     scaling.set_tooltip_markup(Some("This allows you to set your own custom scale.\nPlease note, that the scale needs to result in a full number for both width and height of the resolution."));
     scaling.set_title("Scaling");
     scaling.connect_value_notify(move |state| {
-        scaling_update(state, monitors.clone(), monitor_index);
+        scaling_update(state, monitors.clone(), monitor_index, drawing_area.clone());
     });
+
     settings.add(&scaling);
 }
 

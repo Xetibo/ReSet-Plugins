@@ -1,6 +1,7 @@
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
+    hash::{DefaultHasher, Hash, Hasher},
     time::Duration,
 };
 
@@ -16,7 +17,9 @@ use re_set_lib::ERROR;
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::{
-    utils::{get_environment, AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size},
+    utils::{
+        get_environment, AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size,
+    },
     GNOME_CHECK,
 };
 
@@ -65,7 +68,7 @@ fn get_variable_refresh_rate_support() -> bool {
     false
 }
 
-pub fn g_get_monitor_information() -> Vec<Monitor> {
+pub fn g_get_monitor_information(serial: &mut u32) -> Vec<Monitor> {
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
     let res: Result<(u32, Vec<GnomeMonitor>, Vec<GnomeLogicalMonitor>, PropMap), Error> =
@@ -73,9 +76,10 @@ pub fn g_get_monitor_information() -> Vec<Monitor> {
     if res.is_err() {
         ERROR!("Could fetch monitor configuration", ErrorLevel::Recoverable);
     }
-    let (serial, monitors, logical_monitors, _properties) = res.unwrap();
+    let (fetched_serial, monitors, logical_monitors, _properties) = res.unwrap();
+    *serial = fetched_serial;
     let gnome_monitors = GnomeMonitorConfig {
-        serial,
+        serial: fetched_serial,
         monitors,
         logical_monitors,
         _properties,
@@ -83,13 +87,13 @@ pub fn g_get_monitor_information() -> Vec<Monitor> {
     gnome_monitors.inplace_to_regular_monitor()
 }
 
-pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
+pub fn g_apply_monitor_config(serial: u32, apply_mode: u32, monitors: &Vec<Monitor>) {
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
     let res: Result<(), Error> = proxy.method_call(
         INTERFACE,
         "ApplyMonitorsConfig",
-        GnomeMonitorConfig::from_regular_monitor(apply_mode, monitors),
+        GnomeMonitorConfig::from_regular_monitor(serial, apply_mode, monitors),
     );
     if let Err(_error) = res {
         ERROR!(
@@ -188,8 +192,12 @@ impl GnomeMonitorConfig {
                 }
             }
 
+            let mut hasher = DefaultHasher::new();
+            monitor.name.connector.hash(&mut hasher);
+            let id = hasher.finish();
+
             monitors.push(Monitor {
-                id: self.serial,
+                id: id as u32,
                 enabled,
                 name: monitor.name.connector,
                 make: monitor.name.vendor,
@@ -212,11 +220,11 @@ impl GnomeMonitorConfig {
     }
 
     pub fn from_regular_monitor(
+        serial: u32,
         apply_mode: u32,
         monitors: &Vec<Monitor>,
     ) -> (u32, u32, Vec<GnomeLogicalMonitorSend>, PropMap) {
         let mut g_logical_monitors = Vec::new();
-        let id = monitors.first().unwrap().id;
         for monitor in monitors {
             let mode = if monitor.enabled {
                 monitor.mode.clone()
@@ -232,7 +240,7 @@ impl GnomeMonitorConfig {
                 monitors: vec![(monitor.name.clone(), mode, PropMap::new())],
             });
         }
-        (id, apply_mode, g_logical_monitors, PropMap::new())
+        (serial, apply_mode, g_logical_monitors, PropMap::new())
     }
 }
 

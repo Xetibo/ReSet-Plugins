@@ -16,12 +16,13 @@ use super::{
 
 // temporary application of configuration
 pub fn apply_monitor_configuration(
+    serial: u32,
     conn: Option<std::sync::Arc<wayland_client::Connection>>,
     monitors: &Vec<Monitor>,
 ) {
     match get_environment().as_str() {
         "Hyprland" => hy_apply_monitor_information(monitors),
-        GNOME | "ubuntu:GNOME" => g_apply_monitor_config(1, monitors),
+        GNOME | "ubuntu:GNOME" => g_apply_monitor_config(serial, 1, monitors),
         "KDE" => kde_apply_monitor_config(monitors),
         // fallback to protocol implementations
         _ => match get_wl_backend().as_str() {
@@ -34,12 +35,13 @@ pub fn apply_monitor_configuration(
 
 // persistent application of configuration
 pub fn save_monitor_configuration(
+    serial: u32,
     conn: Option<std::sync::Arc<wayland_client::Connection>>,
     monitors: &Vec<Monitor>,
 ) {
     match get_environment().as_str() {
         "Hyprland" => hy_save_monitor_configuration(monitors),
-        GNOME | "ubuntu:GNOME" => g_apply_monitor_config(2, monitors),
+        GNOME | "ubuntu:GNOME" => g_apply_monitor_config(serial, 2, monitors),
         "KDE" => kde_save_monitor_config(monitors),
         _ => match get_wl_backend().as_str() {
             "KWIN" => kwin_apply_monitor_configuration(conn, monitors),

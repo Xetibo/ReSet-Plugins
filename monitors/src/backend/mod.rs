@@ -8,7 +8,7 @@ use re_set_lib::{
     ERROR,
 };
 
-use crate::utils::{get_environment, Monitor, MonitorData, GNOME};
+use crate::utils::{get_environment, is_gnome, Monitor, MonitorData, GNOME};
 
 use self::{
     general::{apply_monitor_configuration, save_monitor_configuration},
@@ -53,10 +53,11 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
     };
     let interface = setup_dbus_interface(&mut cross);
     let env = get_environment();
+    let mut serial = 0;
     let data = MonitorData {
         monitors: match env.as_str() {
             "Hyprland" => hy_get_monitor_information(),
-            GNOME | "ubuntu:GNOME" => g_get_monitor_information(),
+            GNOME | "ubuntu:GNOME" => g_get_monitor_information(&mut serial),
             "KDE" => kde_get_monitor_information(),
             // fallback to protocol implementations
             _ => match get_wl_backend().as_str() {
@@ -69,6 +70,7 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
             },
         },
         connection: conn,
+        serial,
     };
     if data.monitors.is_empty() {
         // means the environment is not supported
@@ -100,14 +102,20 @@ pub fn setup_dbus_interface(
                 "GetMonitors",
                 (),
                 ("monitors",),
-                move |_, d: &mut MonitorData, ()| Ok((d.monitors.clone(),)),
+                move |_, d: &mut MonitorData, ()| {
+                    if is_gnome() {
+                        Ok((g_get_monitor_information(&mut d.serial),))
+                    } else {
+                        Ok((d.monitors.clone(),))
+                    }
+                },
             );
             c.method(
                 "SetMonitors",
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    apply_monitor_configuration(d.connection.clone(), &monitors);
+                    apply_monitor_configuration(d.serial, d.connection.clone(), &monitors);
                     d.monitors = monitors;
                     Ok(())
                 },
@@ -117,7 +125,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    save_monitor_configuration(d.connection.clone(), &monitors);
+                    save_monitor_configuration(d.serial, d.connection.clone(), &monitors);
                     d.monitors = monitors;
                     Ok(())
                 },
