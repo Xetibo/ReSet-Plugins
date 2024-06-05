@@ -17,6 +17,7 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
     let add_keyboard_page = NavigationPage::builder()
         .tag("add_keyboard")
         .child(&add_keyboard_page_box)
+        .title("Add keyboard layout")
         .build();
     nav_view.add(&add_keyboard_page);
 
@@ -25,7 +26,7 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
         .build();
 
     let back_button = ActionRow::builder()
-        .title("Back")
+        .title("Keyboard Layouts")
         .activatable(true)
         .action_name("navigation.pop")
         .build();
@@ -33,8 +34,12 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
     back_button.add_suffix(&Image::from_icon_name("go-previous-symbolic"));
     back_group.add(&back_button);
     add_keyboard_page_box.append(&back_group);
-
-    let search_box = gtk::Box::new(Orientation::Horizontal, 5);
+    
+    let search_box = gtk::Box::builder()
+        .orientation(Orientation::Horizontal)
+        .spacing(5)
+        .margin_bottom(5)
+        .build();
     add_keyboard_page_box.append(&search_box);
 
     let search = SearchEntry::builder()
@@ -59,14 +64,25 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
     scroll_window.set_child(Some(&list));
 
     add_keyboard_page_box.append(&scroll_window);
-    add_keyboard_list_to_view(&list);
+    add_keyboard_list_to_view(&list, &add_layout_button);
 
-    list.connect_row_selected(clone!(@weak add_layout_button => move |_, _| {
-        add_layout_button.set_sensitive(true);
+    list.connect_row_selected(clone!(@weak add_layout_button => move |_, selected_row| {
+        if let Some(row) = selected_row {
+            let action_row = row.downcast_ref::<ActionRow>().unwrap();
+            if action_row.title() == "Back" || has_suffix(action_row) {
+                add_layout_button.set_sensitive(false);
+                return;
+            }
+            add_layout_button.set_sensitive(true);
+        }
     }));
-
+    
     add_layout_button.connect_clicked(clone!(@weak nav_view, @weak list => move |button| {
-        let selected_row = list.selected_row().unwrap();
+        let selected_row = list.selected_row();
+        if selected_row.is_none() {
+            return;
+        }
+        let selected_row = selected_row.unwrap();
         let selected_row = selected_row.downcast_ref::<ActionRow>();
         let description = selected_row.unwrap().title().to_string();
         button.activate_action("keyboard.addlayout", Some(&Variant::from(description)))
@@ -93,7 +109,7 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
     }));
 }
 
-fn add_keyboard_list_to_view(list: &ListBox) {
+fn add_keyboard_list_to_view(list: &ListBox, add_layout_button: &Button) {
     list.grab_focus();
     let keyboard_layouts = get_keyboard_list();
 
@@ -111,14 +127,15 @@ fn add_keyboard_list_to_view(list: &ListBox) {
     back_row.add_prefix(&Image::from_icon_name("go-previous-symbolic"));
     let click = GestureClick::builder().build();
 
-    click.connect_pressed(clone!(@weak list => move |_, _, _, _| {
+    click.connect_pressed(clone!(@weak list, @weak add_layout_button => move |_, _, _, _| {
         unsafe {
             let asdf = SignalHandlerId::from_glib(id.as_raw());
             list.disconnect(asdf);
         }
         list.remove_all();
         list.unselect_all();
-        add_keyboard_list_to_view(&list);
+        add_layout_button.set_sensitive(false);
+        add_keyboard_list_to_view(&list, &add_layout_button);
     }));
 
     back_row.add_controller(click);
@@ -165,6 +182,12 @@ fn add_keyboard_list_to_view(list: &ListBox) {
             }));
         }
     }
+}
+
+fn has_suffix(action_row: &ActionRow) -> bool {
+    let widget = action_row.first_child().unwrap();
+    let suffix = widget.last_child().unwrap();
+    suffix.first_child().is_some()
 }
 
 fn get_keyboard_list() -> Vec<(String, String, Vec<KeyboardLayout>)> {

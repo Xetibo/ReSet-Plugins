@@ -26,6 +26,7 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
     let front_page = NavigationPage::builder()
         .tag("main")
         .child(front_page_box)
+        .title("Keyboard Settings")
         .build();
     nav_view.add(&front_page);
 
