@@ -932,7 +932,6 @@ dependencies = [
  "gtk4",
  "libadwaita",
  "re_set-lib",
- "regex",
  "toml",
  "xkbregistry",
 ]
