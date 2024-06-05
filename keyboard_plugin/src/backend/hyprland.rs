@@ -2,7 +2,12 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
+
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
+use re_set_lib::ERROR;
 use re_set_lib::utils::config::CONFIG;
+
 use crate::keyboard_layout::KeyboardLayout;
 use crate::utils::{get_default_path, parse_setting};
 
@@ -10,16 +15,22 @@ pub fn get_saved_layouts_hyprland(all_keyboards: &Vec<KeyboardLayout>) -> Vec<Ke
     let kb_layout = Command::new("hyprctl")
         .arg("getoption")
         .arg("input:kb_layout")
-        .output()
-        .expect("Failed to get saved layouts");
-    let kb_layout = parse_setting(kb_layout);
+        .output();
+    if kb_layout.is_err() {
+        ERROR!("Failed to fetch keyboard layouts", ErrorLevel::PartialBreakage);
+        return vec![];
+    }
+    let kb_layout = parse_setting(kb_layout.unwrap());
 
     let kb_variant = Command::new("hyprctl")
         .arg("getoption")
         .arg("input:kb_variant")
-        .output()
-        .expect("Failed to get saved variants");
-    let mut kb_variant = parse_setting(kb_variant);
+        .output();
+    if kb_variant.is_err() {
+        ERROR!("Failed to fetch keyboard variants", ErrorLevel::PartialBreakage);
+        return vec![];
+    }
+    let mut kb_variant = parse_setting(kb_variant.unwrap());
     kb_variant.resize(kb_layout.len(), String::new());
 
     let mut kb = vec![];
