@@ -19,6 +19,12 @@ This is done to avoid loading of arbitrary plugins that might be placed within t
 
 Compile the source for the chosen plugin by cloning the repository and building the plugin.
 After this, simply compile the plugin and move it to the ReSet plugins folder in your `$xdg_config_dir/reset/plugins` directory.
+You can define a custom directory like this:
+```toml
+plugin_path = "/your/path"
+```
+Note, alternatively, you can specify a custom path within the configuration file mentioned in [Confirmation](#confirmation). 
+Or you can use the path ```/usr/lib/reset``` which is used by the arch and debian installations respectively.
 
 ### Arch Linux
 
