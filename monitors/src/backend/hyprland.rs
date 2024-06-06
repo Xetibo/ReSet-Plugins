@@ -76,9 +76,8 @@ fn get_default_path() -> String {
 // saving can only be done via configuration file and hence is not supported via the wlr protocol
 // either way
 pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
-    let config = CONFIG;
     let path;
-    if let Some(config) = config.get("Monitor") {
+    if let Some(config) = CONFIG.get("Monitor") {
         if let Some(test) = config.get("path") {
             path = test.as_str().unwrap().to_string();
         } else {
