@@ -4,7 +4,7 @@ pkgname=reset_keyboard
 pkgver=1.0.0
 pkgrel=0
 arch=('x86_64')
-pkgdir="$home/.config/reset/plugins"
+pkgdir="$HOME/.config/reset/plugins"
 pkgdesc="A keyboard plugin for the ReSet settings application."
 depends=('rust' 'gtk4' 'dbus')
 
