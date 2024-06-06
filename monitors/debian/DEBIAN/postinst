@@ -1,2 +1,0 @@
-mkdir -p /usr/lib/reset
-install -Dm755 target/release/libreset_monitors.so /usr/lib/reset/libreset_monitors.so
