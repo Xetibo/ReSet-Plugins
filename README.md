@@ -42,4 +42,5 @@ Flatpak does not allow ReSet to ship plugins directly, therefore, you would be r
 
 ## Configuration
 
+By default, the configuration file is the ReSet.toml found in `$xdg_config_dir/reset/ReSet.toml` as defined by [ReSet](https://github.com/Xetibo/ReSet).
 Configuration can be found in the respective plugin folders.
