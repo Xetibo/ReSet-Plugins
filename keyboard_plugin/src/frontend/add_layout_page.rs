@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use adw::{ActionRow, NavigationPage, NavigationView, PreferencesGroup};
 use adw::prelude::{ActionRowExt, PreferencesGroupExt, PreferencesRowExt};
-use glib::{clone, SignalHandlerId, Variant};
+use adw::{ActionRow, NavigationPage, NavigationView, PreferencesGroup};
 use glib::translate::FromGlib;
-use gtk::{Button, GestureClick, Image, ListBox, Orientation, ScrolledWindow, SearchEntry};
+use glib::{clone, SignalHandlerId, Variant};
 use gtk::prelude::*;
+use gtk::{Button, GestureClick, Image, ListBox, Orientation, ScrolledWindow, SearchEntry};
 
 use crate::frontend::get_keyboard_list_frontend;
 use crate::keyboard_layout::KeyboardLayout;
@@ -21,20 +21,18 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
         .build();
     nav_view.add(&add_keyboard_page);
 
-    let back_group = PreferencesGroup::builder()
-        .margin_bottom(10)
-        .build();
+    let back_group = PreferencesGroup::builder().margin_bottom(10).build();
 
     let back_button = ActionRow::builder()
         .title("Keyboard Layouts")
         .activatable(true)
         .action_name("navigation.pop")
         .build();
-    
+
     back_button.add_suffix(&Image::from_icon_name("go-previous-symbolic"));
     back_group.add(&back_button);
     add_keyboard_page_box.append(&back_group);
-    
+
     let search_box = gtk::Box::builder()
         .orientation(Orientation::Horizontal)
         .spacing(5)
@@ -48,10 +46,7 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
         .build();
     search_box.append(&search);
 
-    let add_layout_button = Button::builder()
-        .label("Add")
-        .sensitive(false)
-        .build();
+    let add_layout_button = Button::builder().label("Add").sensitive(false).build();
     search_box.append(&add_layout_button);
 
     let list = ListBox::new();
@@ -76,7 +71,7 @@ pub fn create_add_keyboard_page(nav_view: &NavigationView) {
             add_layout_button.set_sensitive(true);
         }
     }));
-    
+
     add_layout_button.connect_clicked(clone!(@weak nav_view, @weak list => move |button| {
         let selected_row = list.selected_row();
         if selected_row.is_none() {
@@ -127,16 +122,18 @@ fn add_keyboard_list_to_view(list: &ListBox, add_layout_button: &Button) {
     back_row.add_prefix(&Image::from_icon_name("go-previous-symbolic"));
     let click = GestureClick::builder().build();
 
-    click.connect_pressed(clone!(@weak list, @weak add_layout_button => move |_, _, _, _| {
-        unsafe {
-            let asdf = SignalHandlerId::from_glib(id.as_raw());
-            list.disconnect(asdf);
-        }
-        list.remove_all();
-        list.unselect_all();
-        add_layout_button.set_sensitive(false);
-        add_keyboard_list_to_view(&list, &add_layout_button);
-    }));
+    click.connect_pressed(
+        clone!(@weak list, @weak add_layout_button => move |_, _, _, _| {
+            unsafe {
+                let asdf = SignalHandlerId::from_glib(id.as_raw());
+                list.disconnect(asdf);
+            }
+            list.remove_all();
+            list.unselect_all();
+            add_layout_button.set_sensitive(false);
+            add_keyboard_list_to_view(&list, &add_layout_button);
+        }),
+    );
 
     back_row.add_controller(click);
     for (_, description, keyboard_layouts) in keyboard_layouts {
@@ -148,39 +145,40 @@ fn add_keyboard_list_to_view(list: &ListBox, add_layout_button: &Button) {
         } else {
             layout_row.add_suffix(&Image::from_icon_name("go-previous-symbolic-rtl"));
 
-            layout_row.connect_activate(clone!(@strong keyboard_layouts, @weak list, @strong back_row => move |_| {
-                // add variants to list
-                for keyboard_layout in keyboard_layouts.clone() {
-                    let layout_row = create_layout_row(keyboard_layout.description.clone());
-                    list.append(&layout_row);
-                }
-                
-                list.prepend(&back_row); // add back button at top
+            layout_row.connect_activate(
+                clone!(@strong keyboard_layouts, @weak list, @strong back_row => move |_| {
+                    // add variants to list
+                    for keyboard_layout in keyboard_layouts.clone() {
+                        let layout_row = create_layout_row(keyboard_layout.description.clone());
+                        list.append(&layout_row);
+                    }
 
-                // remove all but first
-                let mut last_row = list.last_child();
-                let mut skip = keyboard_layouts.len();
-                
-                // remove all but first
-                while last_row != None {
-                    if list.first_child() == last_row {
-                        list.grab_focus();
-                        break;
+                    list.prepend(&back_row); // add back button at top
+
+                    // remove all but first
+                    let mut last_row = list.last_child();
+                    let mut skip = keyboard_layouts.len();
+
+                    // remove all but first
+                    while last_row.is_some() {
+                        if list.first_child() == last_row {
+                            list.grab_focus();
+                            break;
+                        }
+                        if skip > 0 {
+                            last_row = last_row.unwrap().prev_sibling();
+                            skip -= 1;
+                            continue;
+                        }
+                        let temp = last_row.clone().unwrap().prev_sibling();
+                        list.remove(&last_row.unwrap());
+                        last_row = temp;
                     }
-                    if skip > 0 {
-                        last_row = last_row.unwrap().prev_sibling();
-                        skip -= 1;
-                        continue;
-                    }
-                    let temp = last_row.clone().unwrap().prev_sibling();
-                    list.remove(&last_row.unwrap());
-                    last_row = temp;
-                }
-            }));
+                }),
+            );
         }
     }
 }
-
 
 fn has_suffix(action_row: &ActionRow) -> bool {
     let widget = action_row.first_child().unwrap();
@@ -196,8 +194,10 @@ fn get_keyboard_list() -> Vec<(String, String, Vec<KeyboardLayout>)> {
         let variant = layout.variant.clone();
         let description = layout.description.clone();
         let name = layout.name.clone();
-        collection.entry(layout.name.clone())
-            .or_insert((String::new(), Vec::new())).1
+        collection
+            .entry(layout.name.clone())
+            .or_insert((String::new(), Vec::new()))
+            .1
             .push(layout);
         if variant.is_none() {
             collection.get_mut(&name).unwrap().0 = description;

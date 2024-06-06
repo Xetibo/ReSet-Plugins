@@ -1,23 +1,24 @@
 use adw::{NavigationPage, NavigationView};
-use gtk::{Box, ListBox, Orientation};
 use gtk::prelude::*;
-use re_set_lib::utils::plugin::{PluginCapabilities, PluginImplementation, PluginTestError, PluginTestFunc, SidebarInfo};
+use gtk::{Box, ListBox, Orientation};
+use re_set_lib::utils::plugin::{
+    PluginCapabilities, PluginImplementation, PluginTestError, PluginTestFunc, SidebarInfo,
+};
 
 use crate::backend::get_saved_layouts;
 use crate::frontend::add_layout_page::create_add_keyboard_page;
 use crate::frontend::create_title;
 use crate::frontend::main_page::create_keyboard_main_page;
 
-mod frontend;
 mod backend;
 mod r#const;
-mod utils;
+mod frontend;
 mod keyboard_layout;
+mod utils;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn capabilities() -> PluginCapabilities {
-    println!("frontend capabilities called");
     PluginCapabilities::new(vec!["Keyboard"], true, PluginImplementation::Both)
 }
 
@@ -33,9 +34,7 @@ pub extern "C" fn frontend_startup() {
 }
 
 #[no_mangle]
-pub extern "C" fn frontend_shutdown() {
-    println!("frontend shutdown called");
-}
+pub extern "C" fn frontend_shutdown() {}
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -64,20 +63,14 @@ pub extern "C" fn name() -> String {
 }
 
 #[no_mangle]
-pub extern "C" fn backend_startup() {
-    println!("startup called");
-}
+pub extern "C" fn backend_startup() {}
 
 #[no_mangle]
-pub extern "C" fn backend_shutdown() {
-    println!("shutdown called");
-}
+pub extern "C" fn backend_shutdown() {}
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn frontend_tests() -> Vec<PluginTestFunc> {
-    println!("keyboard frontend tests called");
-    
     let check_layouts = PluginTestFunc::new(can_get_layouts, "Get layouts");
     let move_ui = PluginTestFunc::new(check_layouts_in_ui, "Check layouts in UI");
     let vec1 = vec![check_layouts, move_ui];
@@ -87,7 +80,6 @@ pub extern "C" fn frontend_tests() -> Vec<PluginTestFunc> {
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn backend_tests() -> Vec<PluginTestFunc> {
-    println!("keyboard backend tests called");
     vec![]
 }
 
@@ -103,13 +95,10 @@ fn check_layouts_in_ui() -> Result<(), PluginTestError> {
     adw::init().expect("Adw failed to initialize");
     let (_, layout_boxes) = frontend_data();
     let layouts_length = get_saved_layouts().len();
-    let result = layout_boxes.first().
-        ok_or_else(|| PluginTestError::new("No layout boxes found"));
-    if let Err(e) = result {
-        return Err(e);
-    }
-    let main = result.unwrap();
-    let nav_view = main.last_child().unwrap();
+    let result = layout_boxes
+        .first()
+        .ok_or_else(|| PluginTestError::new("No layout boxes found"));
+    let nav_view = result?.last_child().unwrap();
     let mut nav_view_child = nav_view.first_child().unwrap();
 
     while nav_view_child.type_() != NavigationPage::static_type() {
@@ -124,10 +113,12 @@ fn check_layouts_in_ui() -> Result<(), PluginTestError> {
     let temp = temp.first_child().unwrap();
     let list_box = temp.downcast_ref::<ListBox>().unwrap();
 
-    let last_layout = list_box.row_at_index((layouts_length - 1) as i32);
-    
-    if last_layout.is_none() {
-        return Err(PluginTestError::new("Not all layouts selected"));
+    if layouts_length > 0 {
+        let last_layout = list_box.row_at_index((layouts_length - 1) as i32);
+
+        if last_layout.is_none() {
+            return Err(PluginTestError::new("Not all layouts selected"));
+        }
     }
 
     Ok(())

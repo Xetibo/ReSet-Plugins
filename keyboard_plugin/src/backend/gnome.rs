@@ -3,7 +3,7 @@ use gtk::prelude::{SettingsExt, SettingsExtManual};
 
 use crate::keyboard_layout::KeyboardLayout;
 
-pub fn get_saved_layouts_gnome(all_keyboards: &Vec<KeyboardLayout>) -> Vec<KeyboardLayout> {
+pub fn get_saved_layouts_gnome(all_keyboards: &[KeyboardLayout]) -> Vec<KeyboardLayout> {
     let mut kb = vec![];
     let input_sources = gtk::gio::Settings::new("org.gnome.desktop.input-sources");
     let layout_variant = input_sources.value("sources");
@@ -13,19 +13,20 @@ pub fn get_saved_layouts_gnome(all_keyboards: &Vec<KeyboardLayout>) -> Vec<Keybo
 
     let layouts = layout_variant.get::<Vec<(String, String)>>().unwrap();
     for layout in layouts {
-        let kb_layout: Vec<&KeyboardLayout>;
-        if layout.1.contains("+") {
+        let kb_layout: Vec<&KeyboardLayout> = if layout.1.contains("+") {
             let kb_data: Vec<&str> = layout.1.split("+").collect();
-            kb_layout = all_keyboards.iter()
+            all_keyboards
+                .iter()
                 .filter(|x| x.name == kb_data[0])
                 .filter(|x| x.variant.as_ref().unwrap_or(&String::new()) == kb_data[1].trim())
-                .collect();
+                .collect()
         } else {
-            kb_layout = all_keyboards.iter()
+            all_keyboards
+                .iter()
                 .filter(|x| x.name == layout.1.trim())
                 .filter(|x| x.variant.is_none())
-                .collect();
-        }
+                .collect()
+        };
         if let Some(option) = kb_layout.first() {
             kb.push((*option).clone());
         }
@@ -45,5 +46,7 @@ pub fn write_to_config_gnome(layouts: Vec<KeyboardLayout>) {
 
     let variant = Variant::from(all_layouts);
     let input_sources = gtk::gio::Settings::new("org.gnome.desktop.input-sources");
-    input_sources.set("sources", variant).expect("failed to write layouts");
+    input_sources
+        .set("sources", variant)
+        .expect("failed to write layouts");
 }
