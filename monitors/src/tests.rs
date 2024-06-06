@@ -1,6 +1,6 @@
 use crate::{
     backend::{
-        gnome::{gnome_features, GnomeLogicalMonitor, GnomeMonitor, GnomeMonitorConfig},
+        gnome::{gnome_features, GnomeLogicalMonitor, GnomeMode, GnomeMonitor, GnomeMonitorConfig},
         hyprland::{HyprMonitor, HYPRFEATURES},
         kde::{KDEMode, KDEMonitor, KDE_FEATURES},
     },
@@ -56,7 +56,9 @@ fn convert_hyprmonitor() {
 
 #[test]
 fn convert_gnomemonitor() {
+    let gnome_mode = GnomeMode::default();
     let gnome_monitor = GnomeMonitor {
+        modes: vec![gnome_mode],
         ..Default::default()
     };
     let logical_gnome_monitor = GnomeLogicalMonitor {
@@ -69,9 +71,18 @@ fn convert_gnomemonitor() {
     };
     let monitor = Monitor {
         // hyprland has disabled instead -> invert
+        id: 600129007,
         enabled: false,
-        mode: String::from("-1"),
+        size: Size(500, 500),
+        offset: Offset(-1050, 0),
+        scale: 1.0,
         features: gnome_features(false),
+        available_modes: vec![AvailableMode {
+            id: "".into(),
+            size: Size(0, 0),
+            refresh_rates: vec![0],
+            supported_scales: vec![],
+        }],
         ..Default::default()
     };
     assert_eq!(
