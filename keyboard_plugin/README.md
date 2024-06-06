@@ -4,6 +4,18 @@ This plugin features the configuration of keyboard layouts. It offers both a DBu
 Note: This plugin uses the XDG standard for handling keyboard layouts, hence only 4 active keyboard layouts are currently allowed. Should a new standard be implemented, this plugin can be adapted for the new standard.
 
 ## Environment Support
+- Hyprland
+- GNOME
+- KDE
+
+## Usage
+
+For Hyprland, you would need to add the keyboard.conf file created by this plugin in order to include changes from ReSet into Hyprland.
+
+In your hypr.conf
+```hyprlang
+source $HOME/.config/reset/keyboard.conf
+```
 
 ## Configuration
 
@@ -14,3 +26,9 @@ It defines where the monitor file is located in which ReSet will write the keybo
 [Keyboard]
 path = "$HOME/.config/reset/keyboard.conf"
 ```
+## Screenshots
+
+<img alt="Keyboard Main Page Screenshot of ReSet" src="./assets/configured.png"  width="80%">
+</div>
+<img alt="Keyboard Main Page Screenshot of ReSet" src="./assets/list.png"  width="80%">
+</div>
