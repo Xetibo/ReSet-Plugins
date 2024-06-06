@@ -33,5 +33,5 @@ jobs:
           files: |
             ./keyboard_plugin/target/release/libreset_keyboard_plugin.so
             ./monitors/target/release/libreset_monitors.so
-            keyboard_plugin.deb
-            monitor_plugin.deb
+            ./keyboard_plugin/keyboard_plugin.deb
+            ./monitors/monitor_plugin.deb
