@@ -7,23 +7,25 @@ use gtk::{
     DrawingArea,
 };
 
-use crate::utils::{get_environment, Monitor, GNOME};
+use crate::utils::{get_environment, is_gnome, Monitor, GNOME};
 
-use super::handlers::{apply_monitor_clicked, scaling_update};
+use super::handlers::{apply_monitor_clicked, rearrange_monitors, scaling_update};
 
 pub fn arbitrary_add_scaling_adjustment(
     scale: f64,
     monitor_index: usize,
     monitors: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
+    drawing_area: DrawingArea,
 ) {
     let scaling_adjustment = gtk::Adjustment::new(scale, 0.1, 4.0, 0.05, 0.0, 0.0);
     let scaling = adw::SpinRow::new(Some(&scaling_adjustment), 0.000001, 2);
     scaling.set_tooltip_markup(Some("This allows you to set your own custom scale.\nPlease note, that the scale needs to result in a full number for both width and height of the resolution."));
     scaling.set_title("Scaling");
     scaling.connect_value_notify(move |state| {
-        scaling_update(state, monitors.clone(), monitor_index);
+        scaling_update(state, monitors.clone(), monitor_index, drawing_area.clone());
     });
+
     settings.add(&scaling);
 }
 
@@ -143,6 +145,7 @@ pub fn add_enabled_monitor_option(
     monitor_index: usize,
     monitors_ref: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
+    drawing_area: DrawingArea,
 ) {
     let monitors = monitors_ref.borrow();
     let monitor = monitors.get(monitor_index).unwrap();
@@ -163,11 +166,32 @@ pub fn add_enabled_monitor_option(
     enabled.set_tooltip_markup(Some("Disables or enables monitors"));
     let enabled_ref = monitors_ref.clone();
     enabled.connect_active_notify(move |state| {
-        enabled_ref
-            .borrow_mut()
-            .get_mut(monitor_index)
-            .unwrap()
-            .enabled = state.is_active();
+        let mut monitors = enabled_ref.borrow_mut();
+        let mut disabled_count = 0;
+        for monitor in monitors.iter() {
+            if !monitor.enabled {
+                disabled_count += 1;
+            }
+        }
+        let monitor = monitors.get_mut(monitor_index).unwrap();
+        let original_monitor = monitor.clone();
+        monitor.enabled = state.is_active();
+
+        if is_gnome() {
+            if monitor.enabled {
+                rearrange_monitors(original_monitor, monitors);
+            } else {
+                disabled_count += 1;
+                // move disabled to furthest left -> away from enabled ones
+                monitor.offset.0 = disabled_count * -500 + -50;
+                // reset the values to disabled base values
+                monitor.size.0 = 500;
+                monitor.size.1 = 500;
+                monitor.scale = 1.0;
+                monitor.transform = 0;
+            }
+        }
+        drawing_area.queue_draw();
         state
             .activate_action(
                 "monitor.reset_monitor_buttons",

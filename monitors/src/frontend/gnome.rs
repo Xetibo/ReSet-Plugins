@@ -5,15 +5,18 @@ use adw::{
     prelude::{PreferencesGroupExt, PreferencesRowExt},
     PreferencesGroup,
 };
-use gtk::{prelude::WidgetExt, StringList};
+use gtk::{prelude::WidgetExt, DrawingArea, StringList};
 
 use crate::utils::Monitor;
+
+use super::handlers::rearrange_monitors;
 
 pub fn g_add_scaling_adjustment(
     scale: f64,
     monitor_index: usize,
     scaling_ref: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
+    drawing_area: DrawingArea,
 ) {
     let mut selected_scale = 0;
     let mut model = StringList::new(&["100%"]);
@@ -45,12 +48,18 @@ pub fn g_add_scaling_adjustment(
         let index = dropdown.selected();
         let mut monitors = scaling_ref.borrow_mut();
         let monitor = monitors.get_mut(monitor_index).unwrap();
+        let mut original_monitor = None;
         for mode in monitor.available_modes.iter() {
             if mode.id == monitor.mode {
+                original_monitor = Some(monitor.clone());
                 monitor.scale = *mode.supported_scales.get(index as usize).unwrap();
                 break;
             }
         }
+        if let Some(original_monitor) = original_monitor {
+            rearrange_monitors(original_monitor, monitors);
+        }
+        drawing_area.queue_draw();
         dropdown
             .activate_action(
                 "monitor.reset_monitor_buttons",
