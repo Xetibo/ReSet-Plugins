@@ -201,10 +201,14 @@ impl Monitor {
 
     pub fn handle_scaled_transform(&self) -> (i32, i32) {
         let (width, height) = self.handle_transform();
-        let (scaled_width, scaled_height) = (
-            (width as f64 / self.scale).round(),
-            (height as f64 / self.scale).round(),
-        );
+        let (scaled_width, scaled_height) = if self.scale <= 0.0 {
+            (width as f64, height as f64)
+        } else {
+            (
+                (width as f64 / self.scale).round(),
+                (height as f64 / self.scale).round(),
+            )
+        };
         (scaled_width as i32, scaled_height as i32)
     }
 }
@@ -284,9 +288,7 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe {
-            Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbbb))\0")
-        }
+        unsafe { Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbbb))\0") }
     }
 }
 
