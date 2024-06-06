@@ -19,9 +19,9 @@ use wayland_protocols_plasma::output_management::v2::client::kde_output_configur
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::Event as OutputManagementEvent;
 use wayland_protocols_plasma::output_management::v2::client::kde_output_management_v2::KdeOutputManagementV2;
 
-use re_set_lib::{ERROR, LOG};
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
+use re_set_lib::{ERROR, LOG};
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 

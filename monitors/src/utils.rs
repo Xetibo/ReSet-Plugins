@@ -55,6 +55,8 @@ pub fn get_monitor_data() -> Vec<Monitor> {
 pub struct MonitorData {
     pub monitors: Vec<Monitor>,
     pub connection: Option<Arc<wayland_client::Connection>>,
+    // needed for gnome
+    pub serial: u32,
 }
 
 #[repr(C)]
@@ -73,6 +75,7 @@ pub struct DragInformation {
     pub clicked: bool,
     pub changed: bool,
     pub prev_scale: f64,
+    pub drag_allowed: bool,
 }
 
 #[repr(C)]
@@ -195,6 +198,15 @@ impl Monitor {
             }
         }
     }
+
+    pub fn handle_scaled_transform(&self) -> (i32, i32) {
+        let (width, height) = self.handle_transform();
+        let (scaled_width, scaled_height) = (
+            (width as f64 / self.scale).round(),
+            (height as f64 / self.scale).round(),
+        );
+        (scaled_width as i32, scaled_height as i32)
+    }
 }
 
 impl Append for Monitor {
@@ -259,8 +271,8 @@ impl<'a> Get<'a> for Monitor {
             transform,
             vrr,
             primary,
-            offset: Offset(offset.0, offset.1),
-            size: Size(size.0, size.1),
+            offset,
+            size,
             mode,
             drag_information: DragInformation::default(),
             available_modes,
@@ -272,7 +284,9 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbbb))\0") }
+        unsafe {
+            Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbbb))\0")
+        }
     }
 }
 
@@ -293,23 +307,31 @@ impl Monitor {
 
     /// Checks whether or not the currently dragged monitor has any overlap with existing monitors.
     /// If this is the case, then the monitor should be reset to original position on drop.
-    pub fn intersect_horizontal(&self, offset_x: i32, width: i32) -> bool {
+    pub fn intersect_horizontal(&self, offset_x: i32, other_width: i32) -> bool {
+        let (width, _) = self.handle_scaled_transform();
         // current monitor left side is right of other right
-        let left = self.drag_information.border_offset_x + self.offset.0 >= offset_x + width;
+        let left = self.drag_information.border_offset_x + self.offset.0 >= offset_x + other_width;
         // current monitor right is left of other left
-        let right =
-            self.drag_information.border_offset_x + self.offset.0 + self.drag_information.width
-                <= offset_x;
+        let right = self.drag_information.border_offset_x + self.offset.0 + width <= offset_x;
+        // println!(
+        //     "monitor: border: {}:{}  offset: {}:{}, width: {}",
+        //     self.drag_information.border_offset_x,
+        //     self.drag_information.border_offset_y,
+        //     self.offset.0,
+        //     self.offset.1,
+        //     self.drag_information.width
+        // );
+        // println!("other_monitor: offset_x: {} width:{}", offset_x, width);
         !left && !right
     }
 
-    pub fn intersect_vertical(&self, offset_y: i32, height: i32) -> bool {
+    pub fn intersect_vertical(&self, offset_y: i32, other_height: i32) -> bool {
+        let (_, height) = self.handle_scaled_transform();
         // current monitor bottom is higher than other top
-        let bottom = self.drag_information.border_offset_y + self.offset.1 >= offset_y + height;
+        let bottom =
+            self.drag_information.border_offset_y + self.offset.1 >= offset_y + other_height;
         // current monitor top is lower than other bottom
-        let top =
-            self.drag_information.border_offset_y + self.offset.1 + self.drag_information.height
-                <= offset_y;
+        let top = self.drag_information.border_offset_y + self.offset.1 + height <= offset_y;
         !bottom && !top
     }
 }
@@ -338,6 +360,14 @@ impl Arg for Offset {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
         unsafe { Signature::from_slice_unchecked("(ii)\0") }
+    }
+}
+
+impl Offset {
+    pub fn from_scale(x: i32, y: i32, scale: f64) -> Offset {
+        let scaled_x = x as f64 / scale;
+        let scaled_y = y as f64 / scale;
+        Offset(scaled_x as i32, scaled_y as i32)
     }
 }
 
