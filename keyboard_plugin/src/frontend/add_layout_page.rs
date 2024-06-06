@@ -149,23 +149,22 @@ fn add_keyboard_list_to_view(list: &ListBox, add_layout_button: &Button) {
             layout_row.add_suffix(&Image::from_icon_name("go-previous-symbolic-rtl"));
 
             layout_row.connect_activate(clone!(@strong keyboard_layouts, @weak list, @strong back_row => move |_| {
-                
+                // add variants to list
                 for keyboard_layout in keyboard_layouts.clone() {
                     let layout_row = create_layout_row(keyboard_layout.description.clone());
                     list.append(&layout_row);
                 }
                 
-                list.prepend(&back_row);
+                list.prepend(&back_row); // add back button at top
 
                 // remove all but first
                 let mut last_row = list.last_child();
                 let mut skip = keyboard_layouts.len();
                 
+                // remove all but first
                 while last_row != None {
                     if list.first_child() == last_row {
-                        let second_row = &last_row.unwrap().next_sibling().unwrap();
-                        let second_row = second_row.downcast_ref::<ActionRow>();
-                        list.select_row(second_row);
+                        list.grab_focus();
                         break;
                     }
                     if skip > 0 {
@@ -177,12 +176,10 @@ fn add_keyboard_list_to_view(list: &ListBox, add_layout_button: &Button) {
                     list.remove(&last_row.unwrap());
                     last_row = temp;
                 }
-                list.unselect_all();
-
             }));
         }
     }
-}
+
 
 fn has_suffix(action_row: &ActionRow) -> bool {
     let widget = action_row.first_child().unwrap();
