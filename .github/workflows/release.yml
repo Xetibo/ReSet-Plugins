@@ -19,12 +19,12 @@ jobs:
           cargo build --release --verbose
       - name: Build Ubuntu package
         run: |
-          cp ./keyboard_plugin/target/release/libreset_keyboard_plugin.so ./keyboard_plugin/debian/.
+          cp ./keyboard_plugin/target/release/libreset_keyboard_plugin.so ./keyboard_plugin/debian/usr/lib/.
           cd keyboard_plugin
           dpkg-deb --build debian
           mv debian.deb keyboard_plugin.deb
           cd ../monitors
-          cp ./target/release/libreset_monitors.so ./debian/.
+          cp ./target/release/libreset_monitors.so ./debian/usr/lib/.
           dpkg-deb --build debian
           mv debian.deb monitor_plugin.deb
       - name: Release
