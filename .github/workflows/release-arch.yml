@@ -13,9 +13,9 @@ jobs:
           toolchain: nightly
       - name: Build rust package
         run: |
-          cd keyboard_plugin
+          cd monitors
           makepkg PKGBUILD
-          cd ../monitors
+          cd ../keyboard_plugin
           makepkg PKGBUILD
       - name: Release
         uses: softprops/action-gh-release@v1
