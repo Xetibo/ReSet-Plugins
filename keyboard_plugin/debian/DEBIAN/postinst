@@ -1,1 +1,2 @@
-install -Dm755 target/release/libreset_keyboard_plugin.so $HOME/.config/reset/plugins/libreset_keyboard_plugin.so
+mkdir -p /usr/lib/reset
+install -Dm755 target/release/libreset_keyboard_plugin.so /usr/lib/reset/libreset_keyboard_plugin.so
