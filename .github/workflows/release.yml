@@ -21,14 +21,16 @@ jobs:
         run: |
           cd keyboard_plugin
           mkdir -p ./debian/usr
-          mkdir -p ./debian/usr/lib
-          cp ./target/release/libreset_keyboard_plugin.so ./debian/usr/lib/.
+          mkdir -p ./debian/usr/lib.
+          mkdir -p ./debian/usr/lib/reset
+          cp ./target/release/libreset_keyboard_plugin.so ./debian/usr/lib/reset/.
           dpkg-deb --build debian
           mv debian.deb keyboard_plugin.deb
           cd ../monitors
           mkdir -p ./debian/usr
           mkdir -p ./debian/usr/lib
-          cp ./target/release/libreset_monitors.so ./debian/usr/lib/.
+          mkdir -p ./debian/usr/lib/reset
+          cp ./target/release/libreset_monitors.so ./debian/usr/lib/reset/.
           dpkg-deb --build debian
           mv debian.deb monitor_plugin.deb
       - name: Release
