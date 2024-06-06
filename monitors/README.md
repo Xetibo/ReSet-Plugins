@@ -12,3 +12,15 @@ This plugin features the configuration of monitors. It offers both a DBus interf
 Note: various environments support specific features like VRR, primary monitor support and more. These features will be shown dynamically.
 For GNOME, please ensure that fractional scaling and VRR are enabled in the experimental settings if you would like to use them.
 
+## Configuration
+
+Currently, two configuration flags are supported:
+
+- path: the path for the Hyprland implementation file. This file will be used by Hyprland to offer persistent saving of monitor configurations.
+- save_warning: this handles whether the warning banner will be shown on incompatible configurations.
+
+```toml
+[Monitor]
+path = "$HOME/.config/reset/monitors.conf"
+save_warning = true
+```
