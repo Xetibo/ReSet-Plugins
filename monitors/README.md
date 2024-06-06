@@ -4,7 +4,7 @@ This plugin features the configuration of monitors. It offers both a DBus interf
 
 ## Environment Support
 
-- GOME
+- GNOME
 - KDE via kscreen / KWIN protocol
 - Hyprland via hyprctl parsing and WLR protocols
 - WLR -> sway, river, etc
