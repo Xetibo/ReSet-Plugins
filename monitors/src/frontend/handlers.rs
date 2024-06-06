@@ -692,8 +692,9 @@ pub fn drawing_callback(
             if monitor.drag_information.drag_active || monitor.drag_information.clicked {
                 context.set_source_color(&selected_text_color);
             }
-            // context.set_font_size((140 / factor) as f64);
-            context.set_font_size(20.0);
+            // define text to be scaled with monitor size
+            let size = (1.0 * (width / 10) as f64 ).clamp(10.0, 25.0);
+            context.set_font_size(size);
             context.move_to((offset_x + 10) as f64, (offset_y + 25) as f64);
             context
                 .show_text(&monitor.name.clone())
@@ -708,8 +709,9 @@ pub fn drawing_callback(
             }
             if monitor.scale != 1.0 {
                 context.move_to((offset_x + 10) as f64, (offset_y + 65) as f64);
+                let scale = (monitor.scale * 100.0).round() / 100.0;
                 context
-                    .show_text(&("scaled by: ".to_string() + &monitor.scale.to_string()))
+                    .show_text(&("scale: ".to_string() + &scale.to_string()))
                     .expect("Could not draw text");
             }
         }
