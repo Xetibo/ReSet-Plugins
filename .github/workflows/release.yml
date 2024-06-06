@@ -25,6 +25,7 @@ jobs:
           mv debian.deb keyboard_plugin.deb
           cd ../monitors
           cp ./target/release/libreset_monitors.so ./debian/.
+          dpkg-deb --build debian
           mv debian.deb monitor_plugin.deb
       - name: Release
         uses: softprops/action-gh-release@v1
