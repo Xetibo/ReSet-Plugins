@@ -10,7 +10,7 @@ Specific features and limitations can be found within the respective plugin dire
 
 ## Installation
 
-### Confirmation of plugins
+### Confirmation
 
 In order for your plugins to load, you have to define them in `$xdg_config_dir/reset/ReSet.toml`.
 This is done to avoid loading of arbitrary plugins that might be placed within this folder by accident.
@@ -38,4 +38,4 @@ Please visit [the ReSet main application](https://github.com/Xetibo/ReSet) for d
 
 ### Flatpak
 
-Flatpak does not allow ReSet to ship plugins directly, therefore, you would be required to download the compiled binaries within this repository and manually copy them to the plugin directory as defined in [Confirmation](#confirmation-of-plugins)
+Flatpak does not allow ReSet to ship plugins directly, therefore, you would be required to download the compiled binaries within this repository and manually copy them to the plugin directory as defined in [Confirmation](#confirmation)
