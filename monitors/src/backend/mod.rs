@@ -58,7 +58,7 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
         monitors: match env.as_str() {
             "Hyprland" => hy_get_monitor_information(),
             GNOME | "ubuntu:GNOME" => g_get_monitor_information(&mut serial),
-            "KDE" => kde_get_monitor_information(),
+            "KDE" => kde_get_monitor_information(conn.clone()),
             // fallback to protocol implementations
             _ => match get_wl_backend().as_str() {
                 "WLR" => wlr_get_monitor_information(conn.clone()),

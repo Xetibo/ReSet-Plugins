@@ -75,6 +75,7 @@ pub struct DragInformation {
     pub clicked: bool,
     pub changed: bool,
     pub prev_scale: f64,
+    pub drag_allowed: bool,
 }
 
 #[repr(C)]

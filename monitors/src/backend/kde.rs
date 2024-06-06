@@ -10,6 +10,8 @@ use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
+use super::kwin::{kwin_apply_monitor_configuration, kwin_get_monitor_information};
+
 pub const KDE_FEATURES: MonitorFeatures = MonitorFeatures {
     // KDE supports all the features!
     vrr: true,
@@ -18,10 +20,18 @@ pub const KDE_FEATURES: MonitorFeatures = MonitorFeatures {
     hdr: true,
 };
 
-pub fn kde_get_monitor_information() -> Vec<Monitor> {
+pub fn kde_get_monitor_information(
+    conn: Option<std::sync::Arc<wayland_client::Connection>>,
+) -> Vec<Monitor> {
     let mut monitors = Vec::new();
+    let json = get_json();
+    if json.is_none() {
+        // if kscreen is not installed fall back to protocol
+        return kwin_get_monitor_information(conn);
+    }
+    let json = json.unwrap();
     let kde_monitors: KDEMonitorConfiguration =
-        serde_json::from_str(&String::from_utf8(get_json()).expect("Could not parse json"))
+        serde_json::from_str(&String::from_utf8(json).expect("Could not parse json"))
             .expect("Could not parse json");
     for monitor in kde_monitors.outputs {
         if !monitor.modes.is_empty() {
@@ -32,28 +42,34 @@ pub fn kde_get_monitor_information() -> Vec<Monitor> {
     monitors
 }
 
-fn get_json() -> Vec<u8> {
+fn get_json() -> Option<Vec<u8>> {
     let command = Command::new("kscreen-doctor").args(["-j"]).output();
     if let Ok(command) = command {
-        return command.stdout;
+        return Some(command.stdout);
     }
     ERROR!(
         "Kscreen is not installed, please install kscreen for kde.",
         ErrorLevel::PartialBreakage
     );
-    Vec::new()
+    None
 }
 
-pub fn kde_apply_monitor_config(monitors: &Vec<Monitor>) {
-    kde_save_monitor_config(monitors);
+pub fn kde_apply_monitor_config(
+    conn: Option<std::sync::Arc<wayland_client::Connection>>,
+    monitors: &Vec<Monitor>,
+) {
+    kde_save_monitor_config(conn, monitors);
 }
 
-pub fn kde_save_monitor_config(monitors: &Vec<Monitor>) {
+pub fn kde_save_monitor_config(
+    conn: Option<std::sync::Arc<wayland_client::Connection>>,
+    monitors: &Vec<Monitor>,
+) {
     let args = convert_modes_to_kscreen_string(monitors);
-    Command::new("kscreen-doctor")
-        .args(args)
-        .spawn()
-        .expect("Could not retrieve monitor json");
+    let command = Command::new("kscreen-doctor").args(args).spawn();
+    if command.is_err() {
+        kwin_apply_monitor_configuration(conn, monitors);
+    }
 }
 
 #[allow(non_snake_case)]
@@ -220,6 +236,7 @@ fn convert_modes(
 
 fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
     let mut kscreen = Vec::new();
+    let mut count = 2;
 
     for monitor in monitors {
         let rotation = match monitor.transform {
@@ -235,8 +252,14 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
         };
         let start = format!("output.{}.", monitor.name);
         if !monitor.enabled {
-            kscreen.push(start.clone() + &format!("enable.{}", monitor.enabled));
+            kscreen.push(start.clone() + "disable");
         } else {
+            let mut priority = 1;
+            if !monitor.primary {
+                priority = count;
+                count += 1;
+            }
+            kscreen.push(start.clone() + "enable");
             kscreen.push(
                 start.clone()
                     + &format!(
@@ -245,6 +268,7 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
                     ),
             );
             kscreen.push(start.clone() + &format!("scale.{}", monitor.scale));
+            kscreen.push(start.clone() + &format!("priority.{}", priority));
             kscreen.push(
                 start.clone() + &format!("position.{},{}", monitor.offset.0, monitor.offset.1),
             );

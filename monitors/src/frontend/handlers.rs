@@ -213,7 +213,7 @@ pub fn get_monitor_settings_group(
     let monitor = monitors.get(monitor_index).unwrap();
 
     let enabled_ref = clicked_monitor.clone();
-    add_enabled_monitor_option(monitor_index, enabled_ref, &settings);
+    add_enabled_monitor_option(monitor_index, enabled_ref, &settings, drawing_area.clone());
 
     let primary_ref = clicked_monitor.clone();
     add_primary_monitor_option(monitor_index, primary_ref, &settings);
@@ -400,6 +400,12 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
     // check for the difference of x or y offset
     // and set the rightmost side for overlapped monitors
     for monitor in monitors.iter_mut() {
+        let is_original = monitor.id == original_monitor.id;
+        if is_gnome() && ((is_original && !original_monitor.enabled) || !monitor.enabled) {
+            // no need to check for monitors that are disabled on gnome -> they do not affect
+            // arrangement
+            continue;
+        }
         // right_most for monitors that overlap -> reset monitor to available space
         let (width, height) = monitor.handle_scaled_transform();
         let right_side = monitor.offset.0 + width;
@@ -415,7 +421,7 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
             top = top_side;
         }
 
-        if monitor.id == original_monitor.id {
+        if is_original {
             diff_x = width - original_width;
             diff_y = height - original_height;
         }
@@ -424,29 +430,34 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
     // add the difference to the rightmost side in order to not intersect
     furthest += diff_x;
 
-    // add the difference to the leftmost side in order to ensure > 0 start
-    left -= diff_x;
-
-    // add the difference to the top most side in order to ensure > 0 start
-    top -= diff_y;
+    //// add the difference to the leftmost side in order to ensure > 0 start
+    //left -= diff_x;
+    //
+    //// add the difference to the top most side in order to ensure > 0 start
+    //top -= diff_y;
 
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
-        // dbg!(&monitor.offset.0);
-        // dbg!(&monitor.offset.1);
-        // if is_gnome() {
-        //     if top < 0 {
-        //         monitor.offset.1 += top;
-        //     }
-        //     if left < 0 {
-        //         monitor.offset.0 += left;
-        //     }
-        // }
-        if monitor.id == original_monitor.id {
+        let is_original = monitor.id == original_monitor.id;
+        let (width, height) = monitor.handle_scaled_transform();
+        if is_gnome() {
+            if top < 0 {
+                monitor.offset.1 += top.abs();
+            }
+            if left < 0 {
+                monitor.offset.0 += left.abs();
+            }
+            if is_original && !original_monitor.enabled {
+                // move previously disabled monitor to the right
+                monitor.offset.0 = furthest;
+                furthest = monitor.offset.0 + width;
+                continue;
+            }
+        }
+        if is_original {
             continue;
         }
 
-        let (_, height) = monitor.handle_scaled_transform();
         if monitor.offset.0 >= original_monitor.offset.0 + original_width {
             monitor.offset.0 += diff_x;
         }
@@ -688,9 +699,13 @@ pub fn drawing_callback(
                 .show_text(&monitor.name.clone())
                 .expect("Could not draw text");
             context.move_to((offset_x + 10) as f64, (offset_y + 45) as f64);
-            context
-                .show_text(&(monitor.size.0.to_string() + ":" + &monitor.size.1.to_string()))
-                .expect("Could not draw text");
+            if monitor.enabled {
+                context
+                    .show_text(&(monitor.size.0.to_string() + ":" + &monitor.size.1.to_string()))
+                    .expect("Could not draw text");
+            } else {
+                context.show_text("disabled").expect("Could not draw text");
+            }
             if monitor.scale != 1.0 {
                 context.move_to((offset_x + 10) as f64, (offset_y + 65) as f64);
                 context
@@ -713,7 +728,9 @@ pub fn monitor_drag_start(
         let x = x as i32;
         let y = y as i32;
         if monitor.is_coordinate_within(x, y) {
-            monitor.drag_information.drag_active = true;
+            if monitor.enabled {
+                monitor.drag_information.drag_active = true;
+            }
             monitor.drag_information.clicked = true;
             monitor.drag_information.origin_x = monitor.offset.0;
             monitor.drag_information.origin_y = monitor.offset.1;
@@ -743,6 +760,9 @@ pub fn monitor_drag_update(
     for monitor in update_ref.borrow_mut().iter_mut() {
         let x = x as i32;
         let y = y as i32;
+        if is_gnome() && !monitor.enabled {
+            continue;
+        }
         if monitor.drag_information.drag_active {
             monitor.drag_information.drag_x = x * monitor.drag_information.factor;
             monitor.drag_information.drag_y = y * monitor.drag_information.factor;
