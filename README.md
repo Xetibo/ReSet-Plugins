@@ -22,20 +22,20 @@ After this, simply compile the plugin and move it to the ReSet plugins folder in
 
 ### Arch Linux
 
-ReSet provides prebuilt binaries for both the application, as well as the plugins.
+ReSet provides compiled binaries for both the application and the plugins.
 By installing these binaries, the library will automatically be placed within the correct place for a default installation.
 
 ### Ubuntu 24.04
 
-ReSet provides installation of binaries for the latest ubuntu release.
-Simply download the debian packages and install them locally with apt.
+ReSet provides installation of binaries for the latest Ubuntu release.
+Simply download the Debian packages and install them locally with apt.
 This places the chosen plugin within the standard installation path.
 
 ### NixOS
 
 ReSet offers a home manager module which can be used to define plugins declaratively.
-Please visit [the ReSet main appliation](https://github.com/Xetibo/ReSet) for documentation of the home manager module.
+Please visit [the ReSet main application](https://github.com/Xetibo/ReSet) for documentation of the home manager module.
 
 ### Flatpak
 
-Flatpak does not allow ReSet to ship plugins directly, therefore, you would be required to download the precompiled binaries within this repository and manually copy them to the plugin directory as defined in [Confirmation](### Confirmation of plugins)
+Flatpak does not allow ReSet to ship plugins directly, therefore, you would be required to download the compiled binaries within this repository and manually copy them to the plugin directory as defined in [Confirmation](### Confirmation of plugins)
