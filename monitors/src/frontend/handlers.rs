@@ -693,13 +693,15 @@ pub fn drawing_callback(
                 context.set_source_color(&selected_text_color);
             }
             // define text to be scaled with monitor size
-            let size = (1.0 * (width / 10) as f64 ).clamp(10.0, 25.0);
+            let size = (1.0 * (width / 10) as f64).clamp(12.0, 18.0);
+            let gap = size;
+            const TOP_GAP: f64 = 6.0;
             context.set_font_size(size);
-            context.move_to((offset_x + 10) as f64, (offset_y + 25) as f64);
+            context.move_to((offset_x + 10) as f64, offset_y as f64 + gap + TOP_GAP);
             context
                 .show_text(&monitor.name.clone())
                 .expect("Could not draw text");
-            context.move_to((offset_x + 10) as f64, (offset_y + 45) as f64);
+            context.move_to((offset_x + 10) as f64, offset_y as f64 + gap * 2.0 + TOP_GAP);
             if monitor.enabled {
                 context
                     .show_text(&(monitor.size.0.to_string() + ":" + &monitor.size.1.to_string()))
@@ -708,7 +710,7 @@ pub fn drawing_callback(
                 context.show_text("disabled").expect("Could not draw text");
             }
             if monitor.scale != 1.0 {
-                context.move_to((offset_x + 10) as f64, (offset_y + 65) as f64);
+                context.move_to((offset_x + 10) as f64, offset_y as f64 + gap * 3.0 + TOP_GAP);
                 let scale = (monitor.scale * 100.0).round() / 100.0;
                 context
                     .show_text(&("scale: ".to_string() + &scale.to_string()))
