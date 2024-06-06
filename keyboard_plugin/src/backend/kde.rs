@@ -1,9 +1,8 @@
-
-use std::process::{Command};
 use crate::keyboard_layout::KeyboardLayout;
-use crate::utils::{parse_setting};
+use crate::utils::parse_setting;
+use std::process::Command;
 
-pub fn get_saved_layouts_kde(all_keyboards: &Vec<KeyboardLayout>) -> Vec<KeyboardLayout> {
+pub fn get_saved_layouts_kde(all_keyboards: &[KeyboardLayout]) -> Vec<KeyboardLayout> {
     let output = Command::new("kreadconfig6")
         .arg("--file")
         .arg("kxkbrc")
@@ -28,9 +27,10 @@ pub fn get_saved_layouts_kde(all_keyboards: &Vec<KeyboardLayout>) -> Vec<Keyboar
 
     let mut kb = vec![];
     for (layout, variant) in kb_layout.into_iter().zip(kb_variant.into_iter()) {
-        let layouts: Vec<&KeyboardLayout> = all_keyboards.iter()
+        let layouts: Vec<&KeyboardLayout> = all_keyboards
+            .iter()
             .filter(|x| x.name == layout.trim())
-            .filter(|x| x.variant.as_ref().unwrap_or(&String::new()) == &variant.trim())
+            .filter(|x| x.variant.as_ref().unwrap_or(&String::new()) == variant.trim())
             .collect();
         if let Some(asdf) = layouts.first() {
             let option = (*asdf).clone();
@@ -47,10 +47,10 @@ pub fn write_to_config_kde(layouts: Vec<KeyboardLayout>) {
         layout_string += &x.name;
         layout_string += ", ";
         if let Some(var) = &x.variant {
-            variant_string += &var;
+            variant_string += var;
         }
         variant_string += ", ";
-    };
+    }
 
     Command::new("kwriteconfig6")
         .arg("--file")

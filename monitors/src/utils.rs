@@ -315,15 +315,6 @@ impl Monitor {
         let left = self.drag_information.border_offset_x + self.offset.0 >= offset_x + other_width;
         // current monitor right is left of other left
         let right = self.drag_information.border_offset_x + self.offset.0 + width <= offset_x;
-        // println!(
-        //     "monitor: border: {}:{}  offset: {}:{}, width: {}",
-        //     self.drag_information.border_offset_x,
-        //     self.drag_information.border_offset_y,
-        //     self.offset.0,
-        //     self.offset.1,
-        //     self.drag_information.width
-        // );
-        // println!("other_monitor: offset_x: {} width:{}", offset_x, width);
         !left && !right
     }
 

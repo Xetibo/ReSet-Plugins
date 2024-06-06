@@ -2,14 +2,14 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
 
-use adw::{ActionRow, NavigationPage, NavigationView, PreferencesGroup};
 use adw::gio::{ActionEntry, SimpleActionGroup};
 use adw::prelude::{ActionRowExt, PreferencesGroupExt};
+use adw::{ActionRow, NavigationPage, NavigationView, PreferencesGroup};
 use dbus::blocking::Connection;
 use dbus::Error;
 use glib::{clone, Variant, VariantTy};
-use gtk::{Align, Button, Image, ListBox, Orientation, Popover};
 use gtk::prelude::*;
+use gtk::{Align, Button, Image, ListBox, Orientation, Popover};
 
 use crate::frontend::{add_listener, get_keyboard_list_frontend, update_input};
 use crate::keyboard_layout::KeyboardLayout;
@@ -38,7 +38,7 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
 
     let action_group = SimpleActionGroup::new();
     let change_order_entry = ActionEntry::builder("changeorder")
-        .parameter_type(Some(&VariantTy::TUPLE))
+        .parameter_type(Some(VariantTy::TUPLE))
         .activate(clone!(@strong user_layouts => move |_, _, description| {
             let (from_index, to_index) = description.unwrap().get::<(i32, i32)>().unwrap();
             {
@@ -54,39 +54,43 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
 
     let add_layout_entry = ActionEntry::builder("addlayout")
         .parameter_type(Some(&String::static_variant_type()))
-        .activate(clone!(@weak keyboard_list, @strong user_layouts => move |_, _, description| {
-            let layout_description = description.unwrap().str().unwrap();
-            
-            let layout_row = create_action_row(layout_description.to_string());
-            {
-                let mut user_layout_borrow= user_layouts.borrow_mut();
-                let layout = all_keyboard_layouts.iter()
-                    .find(|x| x.description == layout_description)
-                    .unwrap();
-                
-                user_layout_borrow.push(layout.clone());
-                keyboard_list.add(&layout_row);
-                
-                if layout_row.index() < max_keyboards as i32 {
-                    layout_row.add_css_class("activeLanguage");
+        .activate(
+            clone!(@weak keyboard_list, @strong user_layouts => move |_, _, description| {
+                let layout_description = description.unwrap().str().unwrap();
+
+                let layout_row = create_action_row(layout_description.to_string());
+                {
+                    let mut user_layout_borrow= user_layouts.borrow_mut();
+                    let layout = all_keyboard_layouts.iter()
+                        .find(|x| x.description == layout_description)
+                        .unwrap();
+
+                    user_layout_borrow.push(layout.clone());
+                    keyboard_list.add(&layout_row);
+
+                    if layout_row.index() < max_keyboards as i32 {
+                        layout_row.add_css_class("activeLanguage");
+                    }
+
+                    add_listener(&keyboard_list, layout_row);
                 }
-                
-                add_listener(&keyboard_list, layout_row);
-            }
-            
-            update_input(&user_layouts);
-        }))
+
+                update_input(&user_layouts);
+            }),
+        )
         .build();
 
     let remove_layout = ActionEntry::builder("removeLayout")
         .parameter_type(Some(&String::static_variant_type()))
-        .activate(clone!(@weak keyboard_list, @strong user_layouts => move |_, _, description| {
-            let layout = description.unwrap().str().unwrap();
-            user_layouts.borrow_mut().retain(|x| x.description != layout);
-            update_input(&user_layouts);
-        }))
+        .activate(
+            clone!(@weak keyboard_list, @strong user_layouts => move |_, _, description| {
+                let layout = description.unwrap().str().unwrap();
+                user_layouts.borrow_mut().retain(|x| x.description != layout);
+                update_input(&user_layouts);
+            }),
+        )
         .build();
-    
+
     action_group.add_action_entries([add_layout_entry, change_order_entry, remove_layout]);
     nav_view.insert_action_group("keyboard", Some(&action_group));
 
@@ -111,7 +115,8 @@ pub fn create_keyboard_main_page(nav_view: &NavigationView) {
 fn get_saved_layouts_frontend() -> Vec<KeyboardLayout> {
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
-    let res: Result<(Vec<KeyboardLayout>, ), Error> = proxy.method_call(INTERFACE, "GetSavedLayouts", ());
+    let res: Result<(Vec<KeyboardLayout>,), Error> =
+        proxy.method_call(INTERFACE, "GetSavedLayouts", ());
     if res.is_err() {
         return Vec::new();
     }
@@ -119,9 +124,7 @@ fn get_saved_layouts_frontend() -> Vec<KeyboardLayout> {
 }
 
 fn create_action_row(title: String) -> ActionRow {
-    let action_row = ActionRow::builder()
-        .title(title.clone())
-        .build();
+    let action_row = ActionRow::builder().title(title.clone()).build();
 
     let drag_icon = Image::from_icon_name("list-drag-handle-symbolic");
     action_row.add_prefix(&drag_icon);
@@ -139,10 +142,8 @@ fn create_action_row(title: String) -> ActionRow {
         .can_focus(false)
         .build();
 
-    let layout_popover = Popover::builder()
-        .child(&remove_layout)
-        .build();
-    
+    let layout_popover = Popover::builder().child(&remove_layout).build();
+
     let suffix_box = gtk::Box::new(Orientation::Horizontal, 0);
     suffix_box.append(&menu);
     suffix_box.append(&layout_popover);
@@ -162,3 +163,4 @@ fn create_action_row(title: String) -> ActionRow {
 
     action_row
 }
+

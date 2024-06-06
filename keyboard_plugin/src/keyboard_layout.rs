@@ -1,5 +1,5 @@
-use dbus::{arg, Signature};
 use dbus::arg::{Append, Arg, ArgType, Get};
+use dbus::{arg, Signature};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -11,12 +11,11 @@ pub struct KeyboardLayout {
 
 impl Append for KeyboardLayout {
     fn append_by_ref(&self, iter: &mut arg::IterAppend) {
-        let variant;
-        if self.variant.is_none() {
-            variant = String::from("None");
+        let variant = if let Some(variant) = self.variant.clone() {
+            variant
         } else {
-            variant = self.variant.clone().unwrap();
-        }
+            String::from("None")
+        };
 
         iter.append_struct(|i| {
             i.append(self.description.clone());
@@ -28,7 +27,7 @@ impl Append for KeyboardLayout {
 
 impl<'a> Get<'a> for KeyboardLayout {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
-        let (description, name, variant, ) = <(String, String, String, )>::get(i)?;
+        let (description, name, variant) = <(String, String, String)>::get(i)?;
         Some(Self {
             description,
             name,
