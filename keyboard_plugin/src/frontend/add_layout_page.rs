@@ -179,6 +179,7 @@ fn add_keyboard_list_to_view(list: &ListBox, add_layout_button: &Button) {
             }));
         }
     }
+}
 
 
 fn has_suffix(action_row: &ActionRow) -> bool {

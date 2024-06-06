@@ -8,7 +8,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 dbus = "0.9.7"
-re_set-lib = "5.2.1"
+re_set-lib = "5.2.2"
 # re_set-lib = { git = "https://github.com/Xetibo/ReSet-Lib", branch = "dashie" }
 dbus-crossroads = "0.5.2"
 dbus-tokio = "0.7.6"
