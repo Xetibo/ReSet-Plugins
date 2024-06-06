@@ -4,7 +4,7 @@ pkgname=reset_keyboard
 pkgver=1.0.0
 pkgrel=0
 arch=('x86_64')
-pkgdir="$HOME/.config/reset/plugins"
+pkgdir="/usr/lib/${pkgname}"
 pkgdesc="A keyboard plugin for the ReSet settings application."
 depends=('rust' 'gtk4' 'dbus')
 
@@ -14,5 +14,6 @@ build() {
 
 package() {
 	cd ..
-	install -Dm755 target/release/lib"$pkgname"_plugin.so "$pkgdir"/lib"$pkgname"_plugin.so
+	mkdir -p "${pkgdir}/usr/lib/reset/"
+	install -Dm755 target/release/lib"$pkgname"_plugin.so "$pkgdir"/usr/lib/reset/lib"$pkgname"_plugin.so
 }
