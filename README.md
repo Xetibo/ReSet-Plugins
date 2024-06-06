@@ -38,4 +38,4 @@ Please visit [the ReSet main application](https://github.com/Xetibo/ReSet) for d
 
 ### Flatpak
 
-Flatpak does not allow ReSet to ship plugins directly, therefore, you would be required to download the compiled binaries within this repository and manually copy them to the plugin directory as defined in [Confirmation](### Confirmation of plugins)
+Flatpak does not allow ReSet to ship plugins directly, therefore, you would be required to download the compiled binaries within this repository and manually copy them to the plugin directory as defined in [Confirmation](#confirmation-of-plugins)
