@@ -18,7 +18,7 @@ This is done to avoid loading of arbitrary plugins that might be placed within t
 ### Manual compilation
 
 Compile the source for the chosen plugin by cloning the repository and building the plugin.
-After this, simply compile the plugin and move it to the ReSet plugins folder in your `.config/reset/plugins` directory.
+After this, simply compile the plugin and move it to the ReSet plugins folder in your `$xdg_config_dir/reset/plugins` directory.
 
 ### Arch Linux
 
@@ -39,3 +39,7 @@ Please visit [the ReSet main application](https://github.com/Xetibo/ReSet) for d
 ### Flatpak
 
 Flatpak does not allow ReSet to ship plugins directly, therefore, you would be required to download the compiled binaries within this repository and manually copy them to the plugin directory as defined in [Confirmation](#confirmation)
+
+## Configuration
+
+Configuration can be found in the respective plugin folders.
