@@ -28,7 +28,7 @@ path = "$HOME/.config/reset/keyboard.conf"
 ```
 ## Screenshots
 
+<div align = center>
 <img alt="Keyboard Main Page Screenshot of ReSet" src="./assets/configured.png"  width="80%">
-</div>
 <img alt="Keyboard Main Page Screenshot of ReSet" src="./assets/list.png"  width="80%">
 </div>

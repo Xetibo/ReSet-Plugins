@@ -38,5 +38,6 @@ save_warning = true
 
 ## Screenshots
 
+<div align = center>
 <img alt="Monitor Screenshot of ReSet" src="./assets/Screenshot.png"  width="80%">
 </div>
