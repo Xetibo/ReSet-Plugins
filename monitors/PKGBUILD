@@ -9,11 +9,13 @@ pkgdesc="A monitor plugin for the ReSet settings application."
 depends=('rust' 'gtk4' 'dbus')
 
 build() {
+	mkdir -p pkg
+  chmod 777 -R pkg
 	cargo build --release
 }
 
 package() {
 	cd ..
-	mkdir -p "${pkgdir}/usr/lib/reset/"
+	mkdir -p "${pkgdir}/usr/lib/reset"
 	install -Dm755 target/release/lib"$pkgname".so "$pkgdir"/usr/lib/reset/lib"$pkgname".so
 }
