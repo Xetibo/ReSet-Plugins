@@ -222,7 +222,7 @@ pub fn get_monitor_settings_group(
     add_vrr_monitor_option(monitor_index, vrr_ref, &settings);
 
     let scaling_ref = clicked_monitor.clone();
-    add_scale_adjustment(
+    let scaling = add_scale_adjustment(
         monitor.scale,
         monitor_index,
         scaling_ref,
@@ -336,6 +336,25 @@ pub fn get_monitor_settings_group(
         let refresh_rate_model = StringList::new(&refresh_rates);
         refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
         refresh_rate_combo_ref.set_selected(0);
+        if scaling.is_some() {
+            let width;
+            let height;
+            let scale;
+            {
+                let mut monitors = resolution_ref.borrow_mut();
+                let monitor = monitors.get_mut(monitor_index).unwrap();
+                monitor.drag_information.resolution_changed = true;
+                width = monitor.size.0;
+                height = monitor.size.1;
+                scale = monitor.scale;
+            }
+            let scaling_ref = scaling.clone().unwrap();
+            let value = scaling_ref.value();
+            if is_nonfunctional_scale(width, height, scale) {
+                // workaround to trigger a new scaling search
+                scaling_ref.set_value(value + 0.000001);
+            }
+        }
         dropdown
             .activate_action(
                 "monitor.reset_monitor_buttons",
@@ -511,38 +530,46 @@ pub fn add_scale_adjustment(
     scaling_ref: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
     drawing_area: DrawingArea,
-) {
+) -> Option<SpinRow> {
+    let mut scaling = None;
     // Different environments allow differing values
     // Hyprland allows arbitrary scales, Gnome offers a set of supported scales per monitor mode
     match get_environment().as_str() {
-        "Hyprland" => arbitrary_add_scaling_adjustment(
-            scale,
-            monitor_index,
-            scaling_ref,
-            settings,
-            drawing_area,
-        ),
-        GNOME | "ubuntu:GNOME" => {
-            g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings, drawing_area)
-        }
-        "KDE" => arbitrary_add_scaling_adjustment(
-            scale,
-            monitor_index,
-            scaling_ref,
-            settings,
-            drawing_area,
-        ),
-        _ => match get_wl_backend().as_str() {
-            "WLR" | "KWIN" => arbitrary_add_scaling_adjustment(
+        "Hyprland" => {
+            scaling = Some(arbitrary_add_scaling_adjustment(
                 scale,
                 monitor_index,
                 scaling_ref,
                 settings,
                 drawing_area,
-            ),
+            ))
+        }
+        GNOME | "ubuntu:GNOME" => {
+            g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings, drawing_area)
+        }
+        "KDE" => {
+            scaling = Some(arbitrary_add_scaling_adjustment(
+                scale,
+                monitor_index,
+                scaling_ref,
+                settings,
+                drawing_area,
+            ))
+        }
+        _ => match get_wl_backend().as_str() {
+            "WLR" | "KWIN" => {
+                scaling = Some(arbitrary_add_scaling_adjustment(
+                    scale,
+                    monitor_index,
+                    scaling_ref,
+                    settings,
+                    drawing_area,
+                ))
+            }
             _ => unreachable!(),
         },
     };
+    scaling
 }
 
 pub fn drawing_callback(
@@ -701,7 +728,10 @@ pub fn drawing_callback(
             context
                 .show_text(&monitor.name.clone())
                 .expect("Could not draw text");
-            context.move_to((offset_x + 10) as f64, offset_y as f64 + gap * 2.0 + TOP_GAP);
+            context.move_to(
+                (offset_x + 10) as f64,
+                offset_y as f64 + gap * 2.0 + TOP_GAP,
+            );
             if monitor.enabled {
                 context
                     .show_text(&(monitor.size.0.to_string() + ":" + &monitor.size.1.to_string()))
@@ -710,7 +740,10 @@ pub fn drawing_callback(
                 context.show_text("disabled").expect("Could not draw text");
             }
             if monitor.scale != 1.0 {
-                context.move_to((offset_x + 10) as f64, offset_y as f64 + gap * 3.0 + TOP_GAP);
+                context.move_to(
+                    (offset_x + 10) as f64,
+                    offset_y as f64 + gap * 3.0 + TOP_GAP,
+                );
                 let scale = (monitor.scale * 100.0).round() / 100.0;
                 context
                     .show_text(&("scale: ".to_string() + &scale.to_string()))
@@ -974,19 +1007,19 @@ pub fn scaling_update(
     let direction = scale > monitor.scale;
 
     // value is the same as before, no need to do antyhing
-    if (monitor.scale * 100.0).round() / 100.0 == scale {
+    // with the exception of resolution changes -> change to newly appropriate resolution
+    if (monitor.scale * 100.0).round() / 100.0 == scale
+        && !monitor.drag_information.resolution_changed
+    {
         return;
     }
+    monitor.drag_information.resolution_changed = false;
 
     // multiply scale to move at smaller increments
     let mut search_scale = (scale * 120.0).round();
     let mut found = false;
 
-    // fractional scaling can only be done when the scale divides the resolution to a whole
-    // number.
-    // Example: 1080 / 1.5 -> 720. E.g. the factor 1.5 will also resolve to a whole number.
-    if monitor.size.0 as f64 % scale != 0.0 && monitor.size.1 as f64 % scale != 0.0 && scale != 1.0
-    {
+    if is_nonfunctional_scale(monitor.size.0, monitor.size.1, scale) {
         // search the traveled distance for a possible match
         search_nearest_scale(6, &mut search_scale, monitor, direction, &mut found, true);
         // search additional distance if no match has been found
@@ -1039,6 +1072,13 @@ pub fn scaling_update(
             Some(&glib::Variant::from(true)),
         )
         .expect("Could not activate reset action");
+}
+
+// fractional scaling can only be done when the scale divides the resolution to a whole
+// number.
+// Example: 1080 / 1.5 -> 720. E.g. the factor 1.5 will also resolve to a whole number.
+fn is_nonfunctional_scale(width: i32, height: i32, scale: f64) -> bool {
+    width as f64 % scale != 0.0 && height as f64 % scale != 0.0 && scale != 1.0
 }
 
 fn search_nearest_scale(

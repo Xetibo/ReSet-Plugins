@@ -76,6 +76,7 @@ pub struct DragInformation {
     pub changed: bool,
     pub prev_scale: f64,
     pub drag_allowed: bool,
+    pub resolution_changed: bool,
 }
 
 #[repr(C)]
