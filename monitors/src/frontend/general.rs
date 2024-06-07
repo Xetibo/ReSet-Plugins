@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use adw::{prelude::PreferencesGroupExt, prelude::PreferencesRowExt, PreferencesGroup};
+use adw::{prelude::{PreferencesGroupExt, PreferencesRowExt}, PreferencesGroup, SpinRow};
 use gtk::{
     prelude::BoxExt,
     prelude::{ButtonExt, WidgetExt},
@@ -17,7 +17,7 @@ pub fn arbitrary_add_scaling_adjustment(
     monitors: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
     drawing_area: DrawingArea,
-) {
+) -> SpinRow {
     let scaling_adjustment = gtk::Adjustment::new(scale, 0.1, 4.0, 0.05, 0.0, 0.0);
     let scaling = adw::SpinRow::new(Some(&scaling_adjustment), 0.000001, 2);
     scaling.set_tooltip_markup(Some("This allows you to set your own custom scale.\nPlease note, that the scale needs to result in a full number for both width and height of the resolution."));
@@ -27,6 +27,7 @@ pub fn arbitrary_add_scaling_adjustment(
     });
 
     settings.add(&scaling);
+    scaling
 }
 
 pub fn add_save_button(
