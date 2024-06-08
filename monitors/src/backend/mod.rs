@@ -7,8 +7,9 @@ use re_set_lib::{
     utils::{plugin::PluginTestFunc, plugin_setup::CrossWrapper},
     ERROR,
 };
+use xrandr::XHandle;
 
-use crate::utils::{get_environment, is_gnome, Monitor, MonitorData, GNOME};
+use crate::utils::{get_environment, is_gnome, Monitor, MonitorData, XHandleWrapper, GNOME};
 
 use self::{
     general::{apply_monitor_configuration, save_monitor_configuration},
@@ -18,6 +19,7 @@ use self::{
     kwin::kwin_get_monitor_information,
     utils::get_wl_backend,
     wlr::wlr_get_monitor_information,
+    x11::x11_get_monitor_information,
 };
 
 pub mod general;
@@ -27,6 +29,7 @@ pub mod kde;
 pub mod kwin;
 pub mod utils;
 pub mod wlr;
+pub mod x11;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -56,16 +59,17 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
     let mut serial = 0;
     let data = MonitorData {
         monitors: match env.as_str() {
-            "Hyprland" => hy_get_monitor_information(),
+            // "Hyprland" => hy_get_monitor_information(),
             GNOME | "ubuntu:GNOME" => g_get_monitor_information(&mut serial),
             "KDE" => kde_get_monitor_information(conn.clone()),
             // fallback to protocol implementations
             _ => match get_wl_backend().as_str() {
-                "WLR" => wlr_get_monitor_information(conn.clone()),
+                // "WLR" => wlr_get_monitor_information(conn.clone()),
                 "KWIN" => kwin_get_monitor_information(conn.clone()),
                 _ => {
-                    ERROR!("Unsupported Environment", ErrorLevel::PartialBreakage);
-                    Vec::new()
+                     x11_get_monitor_information()
+                    // ERROR!("Unsupported Environment", ErrorLevel::PartialBreakage);
+                    // Vec::new()
                 }
             },
         },

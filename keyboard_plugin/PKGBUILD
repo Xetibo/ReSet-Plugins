@@ -16,6 +16,6 @@ build() {
 
 package() {
 	cd ..
-	mkdir -p "${pkgdir}/usr/lib/reset/"
+	mkdir -p "${pkgdir}/usr/lib/reset"
 	install -Dm755 target/release/lib"$pkgname"_plugin.so "$pkgdir"/usr/lib/reset/lib"$pkgname"_plugin.so
 }

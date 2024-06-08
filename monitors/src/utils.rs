@@ -15,6 +15,7 @@ use once_cell::sync::Lazy;
 use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
+use xrandr::XHandle;
 
 pub static ENV: Lazy<String> = Lazy::new(get_environment);
 pub const GNOME: &str = "GNOME";
@@ -50,13 +51,33 @@ pub fn get_monitor_data() -> Vec<Monitor> {
     res.unwrap().0
 }
 
+pub struct XHandleWrapper(pub XHandle);
+
+unsafe impl Send for XHandleWrapper {}
+unsafe impl Sync for XHandleWrapper {}
+
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MonitorData {
     pub monitors: Vec<Monitor>,
     pub connection: Option<Arc<wayland_client::Connection>>,
+    // pub x11_connection: Option<Arc<XHandleWrapper>>,
+    //     Arc<(
+    //         x11rb::rust_connection::RustConnection,
+    //         x11rb::protocol::xproto::Window,
+    //     )>,
+    // >,
     // needed for gnome
     pub serial: u32,
+}
+
+impl Display for MonitorData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!(
+            "monitors{:?}\n connection{:?}\n serial{:?}",
+            &self.monitors, &self.connection, &self.serial
+        ))
+    }
 }
 
 #[repr(C)]

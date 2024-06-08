@@ -45,6 +45,7 @@
               pkg-config
               xorg.setxkbmap
               libclang
+              xorg.libXrandr
             ];
             LD_LIBRARY_PATH = "${pkgs.glib}/lib";
             LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";

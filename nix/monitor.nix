@@ -7,6 +7,7 @@
 , libadwaita
 , dbus
 , pulseaudio
+, xorg
 , lib
 , ...
 }:
@@ -27,6 +28,7 @@ rustPlatform.buildRustPackage rec {
     libadwaita
     dbus
     pulseaudio
+    xorg.libXrandr
   ];
 
   cargoLock = {
