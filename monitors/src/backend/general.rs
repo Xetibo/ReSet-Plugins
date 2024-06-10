@@ -21,7 +21,7 @@ pub fn apply_monitor_configuration(
     monitors: &Vec<Monitor>,
 ) {
     match get_environment().as_str() {
-        "Hyprland" => hy_apply_monitor_information(monitors),
+        "Hyprland" => hy_apply_monitor_information(monitors, conn),
         GNOME | "ubuntu:GNOME" => g_apply_monitor_config(serial, 1, monitors),
         "KDE" => kde_apply_monitor_config(conn, monitors),
         // fallback to protocol implementations

@@ -76,7 +76,7 @@ fn convert_gnomemonitor() {
         size: Size(500, 500),
         offset: Offset(-1050, 0),
         scale: 1.0,
-        features: gnome_features(false),
+        features: gnome_features(),
         available_modes: vec![AvailableMode {
             id: "".into(),
             size: Size(0, 0),

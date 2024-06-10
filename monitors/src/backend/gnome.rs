@@ -2,6 +2,7 @@ use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
     hash::{DefaultHasher, Hash, Hasher},
+    process::Command,
     time::Duration,
 };
 
@@ -10,62 +11,63 @@ use dbus::{
     blocking::Connection,
     Error, Signature,
 };
-use gtk::prelude::SettingsExtManual;
 
 use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
-use crate::{
-    utils::{
-        get_environment, AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size,
-    },
-    GNOME_CHECK,
-};
+use crate::utils::{AvailableMode, DragInformation, Monitor, MonitorFeatures, Offset, Size};
 
 const BASE: &str = "org.gnome.Mutter.DisplayConfig";
 const DBUS_PATH: &str = "/org/gnome/Mutter/DisplayConfig";
 const INTERFACE: &str = "org.gnome.Mutter.DisplayConfig";
 
-pub fn gnome_features(vrr_enabled: bool) -> MonitorFeatures {
+pub fn gnome_features() -> MonitorFeatures {
+    let experimental_features = get_experimental_support();
     MonitorFeatures {
-        vrr: vrr_enabled,
+        vrr: experimental_features.1,
         // Gnome requires a primary monitor to be set
         primary: true,
-        fractional_scaling: get_fractional_scale_support(),
+        fractional_scaling: experimental_features.0,
         hdr: false,
     }
 }
 
-fn get_fractional_scale_support() -> bool {
-    // used in order to avoid this check within tests
-    GNOME_CHECK!();
-    if get_environment().as_str() == "ubuntu:GNOME" {
-        return false;
-    }
-    let settings = gtk::gio::Settings::new("org.gnome.mutter");
-    let features = settings.strv("experimental-features");
-    for value in features {
-        if value == "scale-monitor-framebuffer" {
-            return true;
+fn get_experimental_support() -> (bool, bool) {
+    let command = Command::new("gsettings")
+        .args(["get", "org.gnome.mutter", "experimental-features"])
+        .output();
+    match command {
+        Ok(_) => {
+            let command = command.unwrap();
+            let command = String::from_utf8(command.stdout).unwrap();
+            (
+                command.contains("scale-monitor-framebuffer"),
+                command.contains("variable-refresh-rate"),
+            )
         }
-    }
-    false
-}
+        Err(_) => {
+            let command = Command::new("flatpak-spawn")
+                .args([
+                    "--host",
+                    "gsettings",
+                    "get",
+                    "org.gnome.mutter",
+                    "experimental-features",
+                ])
+                .output();
 
-fn get_variable_refresh_rate_support() -> bool {
-    GNOME_CHECK!();
-    if get_environment().as_str() == "ubuntu:GNOME" {
-        return false;
-    }
-    let settings = gtk::gio::Settings::new("org.gnome.mutter");
-    let features = settings.strv("experimental-features");
-    for value in features {
-        if value == "variable-refresh-rate" {
-            return true;
+            if command.is_err() {
+                return (false, false);
+            }
+            let command = command.unwrap();
+            let command = String::from_utf8(command.stdout).unwrap();
+            (
+                command.contains("scale-monitor-framebuffer"),
+                command.contains("variable-refresh-rate"),
+            )
         }
     }
-    false
 }
 
 pub fn g_get_monitor_information(serial: &mut u32) -> Vec<Monitor> {
@@ -117,6 +119,7 @@ impl GnomeMonitorConfig {
         let mut monitor_iter = self.monitors.into_iter();
         let mut logical_iter = self.logical_monitors.into_iter().peekable();
         let mut count = 1;
+        let features = gnome_features();
         loop {
             let monitor = monitor_iter.next();
             if monitor.is_none() {
@@ -188,12 +191,11 @@ impl GnomeMonitorConfig {
                 current_mode = Some(&empty_mode);
             }
             let current_mode = current_mode.unwrap();
-            let vrr_enabled = get_variable_refresh_rate_support();
             let mut vrr = false;
             let refresh_rate_opt: Option<&String> =
                 prop_cast(&current_mode.properties, "refresh-rate-mode");
             if let Some(refresh_rate_mode) = refresh_rate_opt {
-                if refresh_rate_mode == "variable" && vrr_enabled {
+                if refresh_rate_mode == "variable" && features.vrr {
                     vrr = true;
                 }
             }
@@ -230,7 +232,7 @@ impl GnomeMonitorConfig {
                     mode: current_mode.id.clone(),
                     drag_information: DragInformation::default(),
                     available_modes: modes,
-                    features: gnome_features(vrr_enabled),
+                    features,
                 });
             } else {
                 count += 1;
@@ -251,7 +253,7 @@ impl GnomeMonitorConfig {
                     mode: current_mode.id.clone(),
                     drag_information: DragInformation::default(),
                     available_modes: modes,
-                    features: gnome_features(vrr_enabled),
+                    features,
                 });
             }
         }

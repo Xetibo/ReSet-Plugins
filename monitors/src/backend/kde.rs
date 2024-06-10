@@ -47,6 +47,12 @@ fn get_json() -> Option<Vec<u8>> {
     if let Ok(command) = command {
         return Some(command.stdout);
     }
+    let command = Command::new("flatpak-spawn")
+        .args(["--host", "kscreen-doctor", "-j"])
+        .output();
+    if let Ok(command) = command {
+        return Some(command.stdout);
+    }
     ERROR!(
         "Kscreen is not installed, please install kscreen for kde.",
         ErrorLevel::PartialBreakage
@@ -66,9 +72,21 @@ pub fn kde_save_monitor_config(
     monitors: &Vec<Monitor>,
 ) {
     let args = convert_modes_to_kscreen_string(monitors);
-    let command = Command::new("kscreen-doctor").args(args).spawn();
+    let command = Command::new("kscreen-doctor").args(&args).spawn();
     if command.is_err() {
-        kwin_apply_monitor_configuration(conn, monitors);
+        let concat_strings: Vec<String> = args
+            .into_iter()
+            .map(|mut val| {
+                val.push(' ');
+                val
+            })
+            .collect();
+        let command = Command::new("flatpak-spawn")
+            .args(["--host", "kscreen-doctor", &concat_strings.concat()])
+            .output();
+        if command.is_err() {
+            kwin_apply_monitor_configuration(conn, monitors);
+        }
     }
 }
 
