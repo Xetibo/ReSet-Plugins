@@ -14,6 +14,8 @@ use std::{
     process::{Command, Stdio},
 };
 
+use super::wlr::{wlr_apply_monitor_configuration, wlr_get_monitor_information};
+
 pub const HYPRFEATURES: MonitorFeatures = MonitorFeatures {
     vrr: true,
     // Hyprland has no primary monitor concept
@@ -24,9 +26,18 @@ pub const HYPRFEATURES: MonitorFeatures = MonitorFeatures {
 
 // Due to hyprland moving away from WLR, ReSet chose to fetch data via hyprctl instead.
 // The tool is also always installed for hyprland.
-pub fn hy_get_monitor_information() -> Vec<Monitor> {
+pub fn hy_get_monitor_information(
+    conn: Option<std::sync::Arc<wayland_client::Connection>>,
+) -> Vec<Monitor> {
     let mut monitors = Vec::new();
-    let json_string = String::from_utf8(get_json());
+    let json = get_json();
+
+    if json.is_err() {
+        return wlr_get_monitor_information(conn);
+    }
+
+    let json = json.expect("Could not retrieve monitor json").stdout;
+    let json_string = String::from_utf8(json);
     if let Ok(json_string) = json_string {
         let hypr_monitors: Result<Vec<HyprMonitor>, _> = serde_json::from_str(&json_string);
         if hypr_monitors.is_err() {
@@ -51,16 +62,28 @@ pub fn hy_get_monitor_information() -> Vec<Monitor> {
 }
 
 // The same applies to applying
-pub fn hy_apply_monitor_information(monitors: &Vec<Monitor>) {
+pub fn hy_apply_monitor_information(
+    monitors: &Vec<Monitor>,
+    conn: Option<std::sync::Arc<wayland_client::Connection>>,
+) {
+    let config_string = monitor_to_configstring(monitors);
     let command = Command::new("hyprctl")
-        .args(["--batch", &monitor_to_configstring(monitors)])
+        .args(["--batch", &config_string])
         .stdout(Stdio::null())
         .spawn();
     if command.is_err() {
-        ERROR!(
-            "The environment is hyprland, but hyprctl can't be spawned",
-            ErrorLevel::Critical
-        );
+        let command = Command::new("flatpak-spawn")
+            .args(["--host", "hyprctl", "--batch", &config_string])
+            .stdout(Stdio::null())
+            .spawn();
+        match command.is_err() {
+            true => {
+                wlr_apply_monitor_configuration(conn, monitors);
+            }
+            false => {
+                command.unwrap();
+            }
+        }
         return;
     }
     command.unwrap();
@@ -123,12 +146,15 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
     input_config.sync_all().expect("Failed to sync file");
 }
 
-fn get_json() -> Vec<u8> {
-    Command::new("hyprctl")
-        .args(["-j", "monitors"])
-        .output()
-        .expect("Could not retrieve monitor json")
-        .stdout
+fn get_json() -> Result<std::process::Output, std::io::Error> {
+    let json = Command::new("hyprctl").args(["-j", "monitors"]).output();
+    if json.is_err() {
+        return Command::new("flatpak-spawn")
+            .args(["--host", "hyprctl", "monitors", "-j"])
+            .output();
+    }
+    dbg!(&json);
+    json
 }
 
 #[allow(non_snake_case)]
