@@ -931,8 +931,10 @@ dependencies = [
  "glib",
  "gtk4",
  "libadwaita",
+ "once_cell",
  "re_set-lib",
  "toml",
+ "xdg",
  "xkbregistry",
 ]
 
