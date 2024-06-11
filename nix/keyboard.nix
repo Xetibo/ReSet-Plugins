@@ -56,6 +56,10 @@ rustPlatform.buildRustPackage rec {
 
   copyLibs = true;
 
+  # test is broken in nix due xdg support missing during build 
+  doInstallCheck = false;
+  doCheck = false;
+
   LIBCLANG_PATH = "${libclang.lib}/lib";
   LD_LIBRARY_PATH = "${glib}/lib";
 
