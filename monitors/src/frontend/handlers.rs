@@ -238,14 +238,14 @@ pub fn get_monitor_settings_group(
     );
 
     let model_list = StringList::new(&[
-        "0",
-        "90",
-        "180",
-        "270",
-        "0-flipped",
-        "90-flipped",
-        "180-flipped",
-        "270-flipped",
+        "0°",
+        "90°",
+        "180°",
+        "270°",
+        "0°-flipped",
+        "90°-flipped",
+        "180°-flipped",
+        "270°-flipped",
     ]);
     let transform = adw::ComboRow::new();
     transform.set_tooltip_markup(Some("Changes the orientation of the monitor"));
@@ -269,14 +269,14 @@ pub fn get_monitor_settings_group(
         let monitor = monitors.get_mut(monitor_index).unwrap();
         let original_monitor = monitor.clone();
         match model_list.string(dropdown.selected()).unwrap().as_str() {
-            "0" => monitor.transform = 0,
-            "90" => monitor.transform = 1,
-            "180" => monitor.transform = 2,
-            "270" => monitor.transform = 3,
-            "0-flipped" => monitor.transform = 4,
-            "90-flipped" => monitor.transform = 5,
-            "180-flipped" => monitor.transform = 6,
-            "270-flipped" => monitor.transform = 7,
+            "0°" => monitor.transform = 0,
+            "90°" => monitor.transform = 1,
+            "180°" => monitor.transform = 2,
+            "270°" => monitor.transform = 3,
+            "0°-flipped" => monitor.transform = 4,
+            "90°-flipped" => monitor.transform = 5,
+            "180°-flipped" => monitor.transform = 6,
+            "270°-flipped" => monitor.transform = 7,
             _ => ERROR!("Received unexpected transform", ErrorLevel::Recoverable),
         };
         rearrange_monitors(original_monitor, monitors);
@@ -338,7 +338,7 @@ pub fn get_monitor_settings_group(
             rearrange_monitors(original_monitor, monitors);
         }
 
-        let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.0.to_string()).collect();
+        let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.0.to_string() + "Hz").collect();
         let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
         let refresh_rate_model = StringList::new(&refresh_rates);
         refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
@@ -390,7 +390,7 @@ pub fn get_monitor_settings_group(
         }
     }
 
-    let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.0.to_string()).collect();
+    let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.0.to_string() + "Hz").collect();
     let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
     let refresh_rate_model = StringList::new(&refresh_rates);
     refresh_rate.set_model(Some(&refresh_rate_model));
@@ -407,6 +407,7 @@ pub fn get_monitor_settings_group(
             .unwrap()
             .string()
             .to_string()
+            .trim_end_matches("Hz")
             .parse()
             .unwrap();
         if monitor.uses_mode_id {
