@@ -6,7 +6,8 @@ pkgrel=0
 arch=('x86_64')
 pkgdir="/usr/lib/${pkgname}"
 pkgdesc="A monitor plugin for the ReSet settings application."
-depends=('rust' 'gtk4' 'dbus')
+depends=('gtk4' 'dbus' 'libadwaita')
+makedepends=('rust')
 
 build() {
 	mkdir -p pkg

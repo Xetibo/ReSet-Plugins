@@ -18,6 +18,8 @@ use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 pub static ENV: Lazy<String> = Lazy::new(get_environment);
 pub const GNOME: &str = "GNOME";
+pub const HYPRLAND: &str = "Hyprland";
+pub const KDE: &str = "KDE";
 
 pub fn get_environment() -> String {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP");
@@ -137,6 +139,7 @@ pub struct Monitor {
     pub drag_information: DragInformation,
     pub mode: String,
     pub available_modes: Vec<AvailableMode>,
+    pub uses_mode_id: bool,
     pub features: MonitorFeatures,
 }
 
@@ -160,6 +163,7 @@ impl Monitor {
         width: i32,
         height: i32,
         available_modes: Vec<AvailableMode>,
+        uses_mode_id: bool,
         features: MonitorFeatures,
     ) -> Self {
         Self {
@@ -179,6 +183,7 @@ impl Monitor {
             mode: "".into(),
             drag_information: DragInformation::default(),
             available_modes,
+            uses_mode_id,
             features,
         }
     }
@@ -232,6 +237,7 @@ impl Append for Monitor {
             i.append(self.size);
             i.append(self.mode.clone());
             i.append(self.available_modes.clone());
+            i.append(self.uses_mode_id);
             i.append(self.features);
         });
     }
@@ -250,6 +256,7 @@ impl<'a> Get<'a> for Monitor {
             size,
             mode,
             available_modes,
+            uses_mode_id,
             features,
         ) = <(
             u32,
@@ -262,6 +269,7 @@ impl<'a> Get<'a> for Monitor {
             Size,
             String,
             Vec<AvailableMode>,
+            bool,
             MonitorFeatures,
         )>::get(i)?;
         Some(Self {
@@ -281,6 +289,7 @@ impl<'a> Get<'a> for Monitor {
             mode,
             drag_information: DragInformation::default(),
             available_modes,
+            uses_mode_id,
             features,
         })
     }
@@ -289,7 +298,9 @@ impl<'a> Get<'a> for Monitor {
 impl Arg for Monitor {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)auad)(bbbb))\0") }
+        unsafe {
+            Signature::from_slice_unchecked("(ub(ssss)(udu)bb(ii)(ii)sa(s(ii)a(us)ad)b(bbbb))\0")
+        }
     }
 }
 
@@ -430,14 +441,14 @@ impl Display for Scale {
 pub struct AvailableMode {
     pub id: String,
     pub size: Size,
-    pub refresh_rates: Vec<u32>,
+    pub refresh_rates: Vec<(u32, String)>,
     pub supported_scales: Vec<f64>,
 }
 
 impl<'a> Get<'a> for AvailableMode {
     fn get(i: &mut arg::Iter<'a>) -> Option<Self> {
         let (id, size, refresh_rates, supported_scales) =
-            <(String, Size, Vec<u32>, Vec<f64>)>::get(i)?;
+            <(String, Size, Vec<(u32, String)>, Vec<f64>)>::get(i)?;
         Some(Self {
             id,
             size,
@@ -452,7 +463,7 @@ impl Append for AvailableMode {
         iter.append_struct(|i| {
             i.append(self.id.clone());
             i.append(self.size);
-            let sig = unsafe { Signature::from_slice_unchecked("u\0") };
+            let sig = unsafe { Signature::from_slice_unchecked("(us)\0") };
             i.append_array(&sig, |i| {
                 for refresh_rate in self.refresh_rates.iter() {
                     i.append(refresh_rate);
@@ -471,7 +482,7 @@ impl Append for AvailableMode {
 impl Arg for AvailableMode {
     const ARG_TYPE: arg::ArgType = ArgType::Struct;
     fn signature() -> Signature<'static> {
-        unsafe { Signature::from_slice_unchecked("(s(ii)auad)\0") }
+        unsafe { Signature::from_slice_unchecked("(s(ii)a(us)ad)\0") }
     }
 }
 
@@ -508,21 +519,4 @@ impl AlertWrapper {
 
 pub fn is_gnome() -> bool {
     ENV.contains(GNOME)
-}
-
-#[macro_export]
-#[cfg(not(test))]
-macro_rules! GNOME_CHECK {
-    () => {{}};
-}
-
-#[macro_export]
-#[cfg(test)]
-macro_rules! GNOME_CHECK {
-    () => {{
-        use $crate::utils::is_gnome;
-        if !is_gnome() {
-            return false;
-        }
-    }};
 }

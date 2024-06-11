@@ -115,7 +115,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    apply_monitor_configuration(d.serial, d.connection.clone(), &monitors);
+                    apply_monitor_configuration(d.connection.clone(), &monitors);
                     d.monitors = monitors;
                     Ok(())
                 },
@@ -125,7 +125,7 @@ pub fn setup_dbus_interface(
                 ("monitors",),
                 (),
                 move |_, d: &mut MonitorData, (monitors,): (Vec<Monitor>,)| {
-                    save_monitor_configuration(d.serial, d.connection.clone(), &monitors);
+                    save_monitor_configuration(d.connection.clone(), &monitors);
                     d.monitors = monitors;
                     Ok(())
                 },

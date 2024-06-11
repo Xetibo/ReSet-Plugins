@@ -27,8 +27,9 @@ use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
 const FEATURES: MonitorFeatures = MonitorFeatures {
-    vrr: true,
-    // Hyprland has no primary monitor concept
+    // NOTE: this function currently causes a crash on the wayland library
+    vrr: false,
+    // wlr has no primary monitor concept
     primary: false,
     fractional_scaling: true,
     hdr: false,
@@ -59,6 +60,7 @@ impl From<u32> for TransformWrapper {
 }
 
 struct CurrentMode {
+    pub id: Cell<u32>,
     pub refresh_rate: Cell<u32>,
     pub width: Cell<i32>,
     pub height: Cell<i32>,
@@ -72,7 +74,6 @@ struct AppData {
     heads: HashMap<u32, WlrMonitor>,
     current_monitor: u32,
     current_mode_key: (i32, i32),
-    current_mode_refresh_rate: u32,
 }
 
 #[derive(Debug)]
@@ -102,7 +103,7 @@ struct WlrMonitor {
 #[derive(Debug)]
 struct WlrMode {
     id: u32,
-    refresh_rate: HashSet<u32>,
+    refresh_rate: HashSet<(u32, String)>,
 }
 
 impl Dispatch<ZwlrOutputModeV1, CurrentMode> for AppData {
@@ -126,6 +127,7 @@ impl Dispatch<ZwlrOutputModeV1, CurrentMode> for AppData {
                 data.current_mode_key = (width, height);
                 current.width.replace(width);
                 current.height.replace(height);
+                current.id.replace(mode.id);
                 if !data
                     .heads
                     .get(&data.current_monitor)
@@ -141,34 +143,42 @@ impl Dispatch<ZwlrOutputModeV1, CurrentMode> for AppData {
             OutputModeEvent::Refresh { refresh } => {
                 let refresh = refresh / 1000;
                 let remainder = refresh % 10;
+                // set the refresh rate to be a multiple of 5
                 let refresh_rate = match remainder {
                     0..=4 => refresh - remainder,
                     5 => refresh,
                     6..=9 => refresh + 10 - remainder,
                     _ => unreachable!(),
                 };
-                let refresh_rate = refresh_rate as u32 - 1;
+                let refresh_rate = refresh_rate as u32;
                 current.refresh_rate.replace(refresh_rate);
-                let len = data.heads.get(&data.current_monitor).unwrap().next_mode;
-                let new = data
-                    .heads
-                    .get_mut(&data.current_monitor)
-                    .unwrap()
-                    .modes
-                    .get_mut(&data.current_mode_key)
-                    .unwrap()
-                    .refresh_rate
-                    .insert(refresh_rate);
-                if new && data.heads.get(&data.current_monitor).unwrap().modes.len() != 1 {
-                    data.heads
-                        .get_mut(&data.current_monitor)
-                        .unwrap()
-                        .hash_modes
-                        .insert(len, obj.id());
-                    data.heads.get_mut(&data.current_monitor).unwrap().next_mode = len + 1;
+                let len;
+                let new;
+                {
+                    let monitor = data.heads.get(&data.current_monitor).unwrap();
+                    len = monitor.next_mode;
+                    let refresh_rates = monitor.modes.get(&data.current_mode_key).unwrap();
+                    // check if the current or the previous entry already has this refresh rate and
+                    // id
+                    new = !refresh_rates
+                        .refresh_rate
+                        .contains(&(refresh_rate, (len).to_string()))
+                        && !refresh_rates.refresh_rate.contains(&(
+                            refresh_rate,
+                            (if len == 0 { 0 } else { len - 1 }).to_string(),
+                        ));
                 }
-                if refresh_rate > data.current_mode_refresh_rate {
-                    data.current_mode_refresh_rate = refresh_rate;
+                if new {
+                    // insert refresh rate and the id
+                    let monitor = data.heads.get_mut(&data.current_monitor).unwrap();
+                    monitor.hash_modes.insert(len, obj.id());
+                    monitor
+                        .modes
+                        .get_mut(&data.current_mode_key)
+                        .unwrap()
+                        .refresh_rate
+                        .insert((refresh_rate, len.to_string()));
+                    data.heads.get_mut(&data.current_monitor).unwrap().next_mode = len + 1;
                 }
             }
             _ => (),
@@ -267,7 +277,7 @@ impl Dispatch<ZwlrOutputHeadV1, ()> for AppData {
                 monitor.width = data.width.take();
                 monitor.height = data.height.take();
                 monitor.refresh_rate = data.refresh_rate.take();
-                monitor.current_mode = monitor.next_mode - 1;
+                monitor.current_mode = data.id.take();
                 monitor.current_mode_object = Some(mode.id());
             }
             _ => (),
@@ -276,6 +286,7 @@ impl Dispatch<ZwlrOutputHeadV1, ()> for AppData {
 
     fn event_created_child(_: u16, _qhandle: &QueueHandle<Self>) -> Arc<dyn ObjectData> {
         _qhandle.make_data::<ZwlrOutputModeV1, CurrentMode>(CurrentMode {
+            id: Cell::new(0),
             refresh_rate: Cell::new(0),
             width: Cell::new(0),
             height: Cell::new(0),
@@ -357,15 +368,14 @@ pub fn wlr_get_monitor_information(conn: Option<Arc<wayland_client::Connection>>
         heads: HashMap::new(),
         current_monitor: 0,
         current_mode_key: (0, 0),
-        current_mode_refresh_rate: 0,
     };
     queue.blocking_dispatch(&mut data).unwrap();
     for (index, wlr_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
         for ((width, height), mode) in wlr_monitor.modes.into_iter() {
-            let mut refresh_rates: Vec<u32> = mode.refresh_rate.into_iter().collect();
+            let mut refresh_rates: Vec<(u32, String)> = mode.refresh_rate.into_iter().collect();
             refresh_rates.sort_unstable_by(|a, b| {
-                if a > b {
+                if a < b {
                     Ordering::Greater
                 } else {
                     Ordering::Less
@@ -379,7 +389,7 @@ pub fn wlr_get_monitor_information(conn: Option<Arc<wayland_client::Connection>>
             });
         }
         modes.sort_unstable_by(|a, b| {
-            if a.size > b.size {
+            if a.size < b.size {
                 Ordering::Greater
             } else {
                 Ordering::Less
@@ -402,6 +412,7 @@ pub fn wlr_get_monitor_information(conn: Option<Arc<wayland_client::Connection>>
             drag_information: Default::default(),
             mode: wlr_monitor.current_mode.to_string(),
             available_modes: modes,
+            uses_mode_id: true,
             features: FEATURES,
         };
         monitors.push(monitor);
@@ -430,7 +441,6 @@ pub fn wlr_apply_monitor_configuration(
         heads: HashMap::new(),
         current_monitor: 0,
         current_mode_key: (0, 0),
-        current_mode_refresh_rate: 0,
     };
     queue.blocking_dispatch(&mut data).unwrap();
     for monitor in monitors.iter() {
@@ -438,18 +448,21 @@ pub fn wlr_apply_monitor_configuration(
             if monitor.id == *id {
                 let current_head =
                     ZwlrOutputHeadV1::from_id(&conn, head.original_object.clone()).unwrap();
+                // enable or disable monitors
                 if !monitor.enabled {
                     configuration.disable_head(&current_head);
                     continue;
                 }
                 let head_configuration = configuration.enable_head(&current_head, &handle, ());
-                let transform: TransformWrapper = monitor.transform.into();
 
+                // get the mode id back, and apply the mode
+                // mode is size and refresh rate
                 let current_mode = monitor.mode.parse::<u32>().unwrap();
                 let mode_id = head.hash_modes.get(&current_mode).unwrap();
                 head_configuration
                     .set_mode(&ZwlrOutputModeV1::from_id(&conn, mode_id.clone()).unwrap());
 
+                let transform: TransformWrapper = monitor.transform.into();
                 head_configuration.set_transform(transform.value());
                 head_configuration.set_scale(monitor.scale);
                 head_configuration.set_position(monitor.offset.0, monitor.offset.1);
@@ -457,11 +470,11 @@ pub fn wlr_apply_monitor_configuration(
                 // This causes an error on hyprland as of now
                 // enabling or disabling vrr for monitors that do not offer vrr doesn't work
                 // if monitor.features.vrr {
-                //     if monitor.vrr {
-                //         head_configuration.set_adaptive_sync(AdaptiveSyncState::Enabled);
-                //     } else {
-                //         head_configuration.set_adaptive_sync(AdaptiveSyncState::Disabled);
-                //     }
+                // if monitor.vrr {
+                //     head_configuration.set_adaptive_sync(AdaptiveSyncState::Enabled);
+                // } else {
+                //     head_configuration.set_adaptive_sync(AdaptiveSyncState::Disabled);
+                // }
                 // }
             }
         }
