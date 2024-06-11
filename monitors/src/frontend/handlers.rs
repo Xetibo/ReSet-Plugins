@@ -319,7 +319,7 @@ pub fn get_monitor_settings_group(
             refresh_rates = mode.refresh_rates.clone();
             let highest = refresh_rates.first().unwrap();
             monitor.mode = String::from(&mode.id);
-            monitor.refresh_rate = *highest;
+            monitor.refresh_rate = highest.0;
             let new_size_x: i32 = x.parse().unwrap();
             let new_size_y: i32 = y.parse().unwrap();
             let original_monitor = monitor.clone();
@@ -331,7 +331,7 @@ pub fn get_monitor_settings_group(
             rearrange_monitors(original_monitor, monitors);
         }
 
-        let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.to_string()).collect();
+        let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.0.to_string()).collect();
         let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
         let refresh_rate_model = StringList::new(&refresh_rates);
         refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
@@ -370,12 +370,12 @@ pub fn get_monitor_settings_group(
 
     let mut index = 0;
     for (i, refresh_rate) in refresh_rates.iter().enumerate() {
-        if *refresh_rate == monitor.refresh_rate {
+        if refresh_rate.0 == monitor.refresh_rate {
             index = i;
         }
     }
 
-    let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.to_string()).collect();
+    let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.0.to_string()).collect();
     let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
     let refresh_rate_model = StringList::new(&refresh_rates);
     refresh_rate.set_model(Some(&refresh_rate_model));
@@ -384,11 +384,9 @@ pub fn get_monitor_settings_group(
     refresh_rate.set_selected(index as u32);
     let refresh_rate_ref = clicked_monitor.clone();
     refresh_rate.connect_selected_item_notify(move |dropdown| {
-        refresh_rate_ref
-            .borrow_mut()
-            .get_mut(monitor_index)
-            .unwrap()
-            .refresh_rate = dropdown
+        let mut monitors = refresh_rate_ref.borrow_mut();
+        let monitor = monitors.get_mut(monitor_index).unwrap();
+        let selected = dropdown
             .selected_item()
             .and_downcast_ref::<StringObject>()
             .unwrap()
@@ -396,6 +394,20 @@ pub fn get_monitor_settings_group(
             .to_string()
             .parse()
             .unwrap();
+        if monitor.uses_mode_id {
+            for mode in monitor.available_modes.iter() {
+                if mode.size.0 == monitor.size.0 && mode.size.1 == monitor.size.1 {
+                    for refresh_rate in mode.refresh_rates.iter() {
+                        if refresh_rate.0 == selected {
+                            monitor.mode = String::from(&refresh_rate.1);
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        monitor.refresh_rate = selected;
         dropdown
             .activate_action(
                 "monitor.reset_monitor_buttons",
@@ -449,23 +461,13 @@ pub fn rearrange_monitors(original_monitor: Monitor, mut monitors: RefMut<'_, Ve
     // add the difference to the rightmost side in order to not intersect
     furthest += diff_x;
 
-    //// add the difference to the leftmost side in order to ensure > 0 start
-    //left -= diff_x;
-    //
-    //// add the difference to the top most side in order to ensure > 0 start
-    //top -= diff_y;
-
     // apply offset to all affected monitors by the change
     for monitor in monitors.iter_mut() {
         let is_original = monitor.id == original_monitor.id;
         let (width, height) = monitor.handle_scaled_transform();
         if is_gnome() {
-            if top < 0 {
-                monitor.offset.1 += top.abs();
-            }
-            if left < 0 {
-                monitor.offset.0 += left.abs();
-            }
+            monitor.offset.1 -= top;
+            monitor.offset.0 -= left;
             if is_original && !original_monitor.enabled {
                 // move previously disabled monitor to the right
                 monitor.offset.0 = furthest;
@@ -617,8 +619,10 @@ pub fn drawing_callback(
         }
 
         // bigger factor will be used in order to not break ratio
-        let width_factor = (max_monitor_width - min_monitor_width) / max_width + 2;
-        let height_factor = (max_monitor_height - min_monitor_height) / max_height + 2;
+        let width_factor =
+            (max_monitor_width - min_monitor_width) / max_width.clamp(0, i32::MAX) + 2;
+        let height_factor =
+            (max_monitor_height - min_monitor_height) / max_height.clamp(0, i32::MAX) + 2;
         let factor = if width_factor > height_factor {
             width_factor
         } else {
@@ -815,6 +819,7 @@ pub fn monitor_drag_end(
     main_box_ref: &gtk::Box,
     disallow_gaps: bool,
 ) {
+    const SNAP_DISTANCE: u32 = 200;
     let mut changed = false;
     let mut endpoint_left: i32 = 0;
     let mut endpoint_left_intersect: i32 = 0;
@@ -840,7 +845,7 @@ pub fn monitor_drag_end(
             endpoint_left = monitor.offset.0 + monitor.drag_information.drag_x;
             endpoint_left_intersect = endpoint_left + monitor.drag_information.border_offset_x;
             endpoint_right = endpoint_left + monitor.drag_information.width;
-            endpoint_top = endpoint_bottom - monitor.drag_information.height;
+            endpoint_top = endpoint_bottom + monitor.drag_information.height;
             previous_width = monitor.drag_information.width;
             previous_height = monitor.drag_information.height;
             iter = i as i32;
@@ -859,25 +864,25 @@ pub fn monitor_drag_end(
         let endpoint_other_left = monitor.offset.0;
         let endpoint_other_bottom = monitor.offset.1;
         let endpoint_other_right = endpoint_other_left + monitor.drag_information.width;
-        let endpoint_other_top = endpoint_other_bottom - monitor.drag_information.height;
+        let endpoint_other_top = endpoint_other_bottom + monitor.drag_information.height;
 
-        if endpoint_right.abs_diff(endpoint_other_left) < 100 {
+        if endpoint_right.abs_diff(endpoint_other_left) < SNAP_DISTANCE {
             snap_horizontal = SnapDirectionHorizontal::RightLeft(endpoint_other_left);
-        } else if endpoint_left.abs_diff(endpoint_other_right) < 100 {
+        } else if endpoint_left.abs_diff(endpoint_other_right) < SNAP_DISTANCE {
             snap_horizontal = SnapDirectionHorizontal::LeftRight(endpoint_other_right);
-        } else if endpoint_right.abs_diff(endpoint_other_right) < 100 {
+        } else if endpoint_right.abs_diff(endpoint_other_right) < SNAP_DISTANCE {
             snap_horizontal = SnapDirectionHorizontal::RightRight(endpoint_other_right);
-        } else if endpoint_left.abs_diff(endpoint_other_left) < 100 {
+        } else if endpoint_left.abs_diff(endpoint_other_left) < SNAP_DISTANCE {
             snap_horizontal = SnapDirectionHorizontal::LeftLeft(endpoint_other_left);
         }
 
-        if endpoint_top.abs_diff(endpoint_other_top) < 100 {
+        if endpoint_top.abs_diff(endpoint_other_top) < SNAP_DISTANCE {
             snap_vertical = SnapDirectionVertical::TopTop(endpoint_other_top);
-        } else if endpoint_bottom.abs_diff(endpoint_other_bottom) < 100 {
+        } else if endpoint_bottom.abs_diff(endpoint_other_bottom) < SNAP_DISTANCE {
             snap_vertical = SnapDirectionVertical::BottomBottom(endpoint_other_bottom);
-        } else if endpoint_top.abs_diff(endpoint_other_bottom) < 100 {
+        } else if endpoint_top.abs_diff(endpoint_other_bottom) < SNAP_DISTANCE {
             snap_vertical = SnapDirectionVertical::TopBottom(endpoint_other_bottom);
-        } else if endpoint_bottom.abs_diff(endpoint_other_top) < 100 {
+        } else if endpoint_bottom.abs_diff(endpoint_other_top) < SNAP_DISTANCE {
             snap_vertical = SnapDirectionVertical::BottomTop(endpoint_other_top);
         }
 
@@ -913,8 +918,8 @@ pub fn monitor_drag_end(
             break;
         }
     }
-    let mut monitor = monitor_data.borrow_mut();
-    let monitor = monitor.get_mut(iter).unwrap();
+    let mut monitors = monitor_data.borrow_mut();
+    let monitor = monitors.get_mut(iter).unwrap();
     if intersected {
         monitor.drag_information.drag_x = 0;
         monitor.drag_information.drag_y = 0;
@@ -953,7 +958,7 @@ pub fn monitor_drag_end(
         }
         match snap_vertical {
             SnapDirectionVertical::TopTop(snap) | SnapDirectionVertical::TopBottom(snap) => {
-                monitor.offset.1 = snap + monitor.drag_information.height;
+                monitor.offset.1 = snap - monitor.drag_information.height;
             }
             SnapDirectionVertical::BottomTop(snap) | SnapDirectionVertical::BottomBottom(snap) => {
                 monitor.offset.1 = snap;
@@ -981,6 +986,23 @@ pub fn monitor_drag_end(
     }
     monitor.drag_information.drag_x = 0;
     monitor.drag_information.drag_y = 0;
+
+    if is_gnome() {
+        let mut left_side = 0;
+        let mut top_side = 0;
+        for monitor in monitors.iter_mut() {
+            if monitor.offset.0 < left_side {
+                left_side = monitor.offset.0;
+            }
+            if monitor.offset.1 < top_side {
+                top_side = monitor.offset.1;
+            }
+        }
+        for monitor in monitors.iter_mut() {
+            monitor.offset.0 -= left_side;
+            monitor.offset.1 -= top_side;
+        }
+    }
 
     drawing_ref_end.queue_draw();
     if changed {

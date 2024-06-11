@@ -80,9 +80,10 @@ fn convert_gnomemonitor() {
         available_modes: vec![AvailableMode {
             id: "".into(),
             size: Size(0, 0),
-            refresh_rates: vec![0],
+            refresh_rates: vec![(0, "".into())],
             supported_scales: vec![],
         }],
+        uses_mode_id: true,
         ..Default::default()
     };
     assert_eq!(
@@ -109,7 +110,7 @@ fn convert_kde_monitor() {
         available_modes: vec![AvailableMode {
             id: String::from(""),
             size: Size(0, 0),
-            refresh_rates: vec![0],
+            refresh_rates: vec![(0, "".into())],
             supported_scales: Vec::new(),
         }],
         features: KDE_FEATURES,

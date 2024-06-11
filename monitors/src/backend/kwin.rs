@@ -79,7 +79,7 @@ struct KWinMonitor {
 #[derive(Debug)]
 struct KWinMode {
     id: u32,
-    refresh_rate: HashSet<u32>,
+    refresh_rate: HashSet<(u32, String)>,
 }
 
 impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
@@ -135,7 +135,7 @@ impl Dispatch<KdeOutputDeviceModeV2, CurrentMode> for AppData {
                     .get_mut(&data.current_mode_key)
                     .unwrap()
                     .refresh_rate
-                    .insert(refresh_rate);
+                    .insert((refresh_rate, "".into()));
                 if new && data.heads.get(&data.current_monitor).unwrap().modes.len() != 1 {
                     data.heads
                         .get_mut(&data.current_monitor)
@@ -339,9 +339,9 @@ pub fn kwin_get_monitor_information(conn: Option<Arc<wayland_client::Connection>
     for (index, kwin_monitor) in data.heads.into_iter() {
         let mut modes = Vec::new();
         for ((width, height), mode) in kwin_monitor.modes.into_iter() {
-            let mut refresh_rates: Vec<u32> = mode.refresh_rate.into_iter().collect();
+            let mut refresh_rates: Vec<(u32, String)> = mode.refresh_rate.into_iter().collect();
             refresh_rates.sort_unstable_by(|a, b| {
-                if a > b {
+                if a < b {
                     Ordering::Greater
                 } else {
                     Ordering::Less
@@ -355,7 +355,7 @@ pub fn kwin_get_monitor_information(conn: Option<Arc<wayland_client::Connection>
             });
         }
         modes.sort_unstable_by(|a, b| {
-            if a.size > b.size {
+            if a.size < b.size {
                 Ordering::Greater
             } else {
                 Ordering::Less
@@ -378,6 +378,7 @@ pub fn kwin_get_monitor_information(conn: Option<Arc<wayland_client::Connection>
             drag_information: Default::default(),
             mode: kwin_monitor.current_mode.to_string(),
             available_modes: modes,
+            uses_mode_id: false,
             features: FEATURES,
         };
         monitors.push(monitor);

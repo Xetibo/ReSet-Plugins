@@ -153,7 +153,6 @@ fn get_json() -> Result<std::process::Output, std::io::Error> {
             .args(["--host", "hyprctl", "monitors", "-j"])
             .output();
     }
-    dbg!(&json);
     json
 }
 
@@ -198,6 +197,7 @@ impl HyprMonitor {
             self.width as i32,
             self.height as i32,
             string_to_modes(self.availableModes),
+            false,
             HYPRFEATURES,
         )
     }
@@ -231,25 +231,25 @@ fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
 
 fn string_to_modes(available_modes: Vec<String>) -> Vec<AvailableMode> {
     let mut converted_modes = Vec::new();
-    let mut resolutions: HashMap<&str, HashSet<u32>> = HashMap::new();
+    let mut resolutions: HashMap<&str, HashSet<(u32, String)>> = HashMap::new();
     for mode in available_modes.iter() {
         let (resolution, refresh_rate) = mode.split_once('@').unwrap();
         let entry = resolutions.get_mut(resolution);
         if let Some(entry) = entry {
             let float_hz: f64 = refresh_rate.strip_suffix("Hz").unwrap().parse().unwrap();
-            let refresh_rates: u32 = float_hz.round() as u32;
-            entry.insert(refresh_rates);
+            let refresh_rate: u32 = float_hz.round() as u32;
+            entry.insert((refresh_rate, "".into()));
             continue;
         }
         resolutions.insert(resolution, HashSet::new());
         let entry = resolutions.get_mut(resolution).unwrap();
         let float_hz: f64 = refresh_rate.strip_suffix("Hz").unwrap().parse().unwrap();
         let refresh_rates: u32 = float_hz.round() as u32;
-        entry.insert(refresh_rates);
+        entry.insert((refresh_rates, "".into()));
     }
     for (resolution, refresh_rates) in resolutions {
         let (resolution_x, resolution_y) = resolution.split_once('x').unwrap();
-        let mut refresh_rates: Vec<u32> = refresh_rates.into_iter().collect();
+        let mut refresh_rates: Vec<(u32, String)> = refresh_rates.into_iter().collect();
         refresh_rates.sort_unstable();
         refresh_rates.reverse();
         converted_modes.push(AvailableMode {
@@ -261,7 +261,7 @@ fn string_to_modes(available_modes: Vec<String>) -> Vec<AvailableMode> {
         });
     }
     converted_modes.sort_unstable_by(|a, b| {
-        if a.size > b.size {
+        if a.size < b.size {
             Ordering::Greater
         } else {
             Ordering::Less

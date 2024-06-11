@@ -144,6 +144,7 @@ impl KDEMonitor {
             drag_information: Default::default(),
             mode: self.currentModeId,
             available_modes: modes.0,
+            uses_mode_id: false,
             features: KDE_FEATURES,
         }
     }
@@ -203,19 +204,22 @@ fn convert_modes(
     current_mode_id: &String,
     kde_modes: Vec<KDEMode>,
 ) -> (Vec<AvailableMode>, KDEMode) {
+    type HashModes = HashMap<(i32, i32), (HashSet<(u32, String)>, String)>;
     let mut modes = Vec::new();
     let mut current_mode: Option<KDEMode> = None;
-    let mut hash_modes: HashMap<(i32, i32), (HashSet<u32>, String)> = HashMap::new();
+    let mut hash_modes: HashModes = HashMap::new();
 
     for mode in kde_modes {
         if &mode.id == current_mode_id {
             current_mode = Some(mode.clone());
         }
         if let Some(hash_mode) = hash_modes.get_mut(&(mode.size.width, mode.size.height)) {
-            hash_mode.0.insert(mode.refreshRate.round() as u32);
+            hash_mode
+                .0
+                .insert((mode.refreshRate.round() as u32, mode.id.clone()));
         } else {
             let mut refresh_rates = HashSet::new();
-            refresh_rates.insert(mode.refreshRate.round() as u32);
+            refresh_rates.insert((mode.refreshRate.round() as u32, mode.id.clone()));
             hash_modes.insert(
                 (mode.size.width, mode.size.height),
                 (refresh_rates, mode.id),
@@ -224,9 +228,9 @@ fn convert_modes(
     }
 
     for ((width, height), (refresh_rates, id)) in hash_modes {
-        let mut refresh_rates: Vec<u32> = refresh_rates.into_iter().collect();
+        let mut refresh_rates: Vec<(u32, String)> = refresh_rates.into_iter().collect();
         refresh_rates.sort_unstable_by(|a, b| {
-            if a > b {
+            if a < b {
                 Ordering::Greater
             } else {
                 Ordering::Less
@@ -242,7 +246,7 @@ fn convert_modes(
     }
 
     modes.sort_unstable_by(|a, b| {
-        if a.size > b.size {
+        if a.size < b.size {
             Ordering::Greater
         } else {
             Ordering::Less

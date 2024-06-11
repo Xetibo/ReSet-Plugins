@@ -32,7 +32,7 @@ pub fn g_add_scaling_adjustment(
                     }
                     // NOTE: GTK doesn't allow to display the number 1 as text, workaround by
                     // showing scaling for Gnome in percentages
-                    scales.push((val * 100.0).to_string() + "%");
+                    scales.push(((val * 100.0) as i32).to_string() + "%");
                 }
                 let scales: Vec<&str> = scales.iter().map(|val| val.as_str()).collect();
                 model = gtk::StringList::new(&scales);

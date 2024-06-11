@@ -89,9 +89,16 @@ pub fn g_get_monitor_information(serial: &mut u32) -> Vec<Monitor> {
     gnome_monitors.inplace_to_regular_monitor()
 }
 
-pub fn g_apply_monitor_config(serial: u32, apply_mode: u32, monitors: &Vec<Monitor>) {
+pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
     let conn = Connection::new_session().unwrap();
     let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
+    let res: Result<(u32, Vec<GnomeMonitor>, Vec<GnomeLogicalMonitor>, PropMap), Error> =
+        proxy.method_call(INTERFACE, "GetCurrentState", ());
+    if res.is_err() {
+        ERROR!("Could fetch monitor configuration", ErrorLevel::Recoverable);
+        return;
+    }
+    let serial = res.unwrap().0;
     let res: Result<(), Error> = proxy.method_call(
         INTERFACE,
         "ApplyMonitorsConfig",
@@ -115,10 +122,11 @@ pub struct GnomeMonitorConfig {
 
 impl GnomeMonitorConfig {
     pub fn inplace_to_regular_monitor(self) -> Vec<Monitor> {
+        type HashModes = HashMap<Size, (String, HashSet<(u32, String)>, Vec<f64>)>;
         let mut monitors = Vec::new();
         let mut monitor_iter = self.monitors.into_iter();
         let mut logical_iter = self.logical_monitors.into_iter().peekable();
-        let mut count = 1;
+        let mut count = 0;
         let features = gnome_features();
         loop {
             let monitor = monitor_iter.next();
@@ -139,7 +147,7 @@ impl GnomeMonitorConfig {
                 supported_scales: Vec::new(),
                 properties: PropMap::new(),
             };
-            let mut hash_modes: HashMap<Size, (String, HashSet<u32>, Vec<f64>)> = HashMap::new();
+            let mut hash_modes: HashModes = HashMap::new();
             let mut modes = Vec::new();
             let mut current_mode: Option<&GnomeMode> = None;
             for mode in monitor.modes.iter() {
@@ -150,10 +158,12 @@ impl GnomeMonitorConfig {
                     }
                 }
                 if let Some(saved_mode) = hash_modes.get_mut(&Size(mode.width, mode.height)) {
-                    saved_mode.1.insert(mode.refresh_rate.round() as u32);
+                    saved_mode
+                        .1
+                        .insert((mode.refresh_rate.round() as u32, mode.id.clone()));
                 } else {
                     let mut refresh_rates = HashSet::new();
-                    refresh_rates.insert(mode.refresh_rate.round() as u32);
+                    refresh_rates.insert((mode.refresh_rate.round() as u32, mode.id.clone()));
                     hash_modes.insert(
                         Size(mode.width, mode.height),
                         (
@@ -165,9 +175,9 @@ impl GnomeMonitorConfig {
                 }
             }
             for (size, (id, refresh_rates, supported_scales)) in hash_modes {
-                let mut refresh_rates: Vec<u32> = refresh_rates.into_iter().collect();
+                let mut refresh_rates: Vec<(u32, String)> = refresh_rates.into_iter().collect();
                 refresh_rates.sort_unstable_by(|a, b| {
-                    if a > b {
+                    if a.0 < b.0 {
                         Ordering::Greater
                     } else {
                         Ordering::Less
@@ -181,7 +191,7 @@ impl GnomeMonitorConfig {
                 });
             }
             modes.sort_unstable_by(|a, b| {
-                if a.size > b.size {
+                if a.size < b.size {
                     Ordering::Greater
                 } else {
                     Ordering::Less
@@ -232,6 +242,7 @@ impl GnomeMonitorConfig {
                     mode: current_mode.id.clone(),
                     drag_information: DragInformation::default(),
                     available_modes: modes,
+                    uses_mode_id: true,
                     features,
                 });
             } else {
@@ -253,6 +264,7 @@ impl GnomeMonitorConfig {
                     mode: current_mode.id.clone(),
                     drag_information: DragInformation::default(),
                     available_modes: modes,
+                    uses_mode_id: true,
                     features,
                 });
             }

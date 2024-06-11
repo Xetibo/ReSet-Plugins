@@ -1,6 +1,6 @@
-use std::process::Command;
 use glib::{Variant, VariantTy};
-use gtk::prelude::{SettingsExtManual};
+use gtk::prelude::SettingsExtManual;
+use std::process::Command;
 
 use crate::keyboard_layout::KeyboardLayout;
 
@@ -8,17 +8,23 @@ pub fn get_saved_layouts_gnome(all_keyboards: &[KeyboardLayout]) -> Vec<Keyboard
     let mut kb = vec![];
 
     let mut result = Command::new("gsettings")
-        .args(&["get", "org.gnome.desktop.input-sources", "sources"])
+        .args(["get", "org.gnome.desktop.input-sources", "sources"])
         .output();
     if result.is_err() {
         return kb;
     }
     let mut output = result.unwrap();
     let mut layout_variant = String::from_utf8(output.stdout).unwrap();
-    
+
     if layout_variant.contains("@a(ss)") {
         result = Command::new("flatpak-spawn")
-            .args(&["--host", "gsettings", "get", "org.gnome.desktop.input-sources", "sources"])
+            .args([
+                "--host",
+                "gsettings",
+                "get",
+                "org.gnome.desktop.input-sources",
+                "sources",
+            ])
             .output();
         if result.is_err() {
             return kb;
@@ -27,7 +33,7 @@ pub fn get_saved_layouts_gnome(all_keyboards: &[KeyboardLayout]) -> Vec<Keyboard
         layout_variant = String::from_utf8(output.stdout).unwrap();
     }
 
-    let layout_variant = Variant::parse(Some(&VariantTy::new("a(ss)").unwrap()), &layout_variant);
+    let layout_variant = Variant::parse(Some(VariantTy::new("a(ss)").unwrap()), &layout_variant);
     if layout_variant.is_err() {
         return kb;
     }
