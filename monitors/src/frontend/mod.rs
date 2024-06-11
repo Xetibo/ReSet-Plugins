@@ -234,7 +234,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
     gesture.connect_drag_end(move |_drag, _x, _y| {
         monitor_drag_end(
             monitor_data.clone(),
-            &drawing_ref_end,
+            Some(&drawing_ref_end),
             disallow_gaps,
         );
     });

@@ -524,3 +524,4 @@ pub fn is_gnome() -> bool {
 pub fn is_flatpak() -> bool {
     ENV.contains("container")
 }
+
