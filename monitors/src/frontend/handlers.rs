@@ -1,5 +1,6 @@
 use std::{
     cell::{RefCell, RefMut},
+    cmp,
     f64::consts,
     rc::Rc,
     sync::{
@@ -44,8 +45,14 @@ use super::{
         add_enabled_monitor_option, add_primary_monitor_option, add_vrr_monitor_option,
         arbitrary_add_scaling_adjustment,
     },
-    gnome::g_add_scaling_adjustment,
+    gnome::{g_add_scaling_adjustment, reload_scale},
 };
+
+#[derive(Clone)]
+pub enum Scale {
+    Arbitrary(adw::SpinRow),
+    Defined(adw::ComboRow),
+}
 
 pub fn apply_monitor_clicked(
     monitor_ref: Rc<RefCell<Vec<Monitor>>>,
@@ -336,23 +343,31 @@ pub fn get_monitor_settings_group(
         let refresh_rate_model = StringList::new(&refresh_rates);
         refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
         refresh_rate_combo_ref.set_selected(0);
-        if scaling.is_some() {
-            let width;
-            let height;
-            let scale;
-            {
-                let mut monitors = resolution_ref.borrow_mut();
-                let monitor = monitors.get_mut(monitor_index).unwrap();
-                monitor.drag_information.resolution_changed = true;
-                width = monitor.size.0;
-                height = monitor.size.1;
-                scale = monitor.scale;
+        match scaling.clone() {
+            Scale::Arbitrary(spinrow) => {
+                let width;
+                let height;
+                let scale;
+                {
+                    let mut monitors = resolution_ref.borrow_mut();
+                    let monitor = monitors.get_mut(monitor_index).unwrap();
+                    monitor.drag_information.resolution_changed = true;
+                    width = monitor.size.0;
+                    height = monitor.size.1;
+                    scale = monitor.scale;
+                }
+                let value = spinrow.value();
+                if is_nonfunctional_scale(width, height, scale) {
+                    // workaround to trigger a new scaling search
+                    spinrow.set_value(value + 0.000001);
+                }
             }
-            let scaling_ref = scaling.clone().unwrap();
-            let value = scaling_ref.value();
-            if is_nonfunctional_scale(width, height, scale) {
-                // workaround to trigger a new scaling search
-                scaling_ref.set_value(value + 0.000001);
+            Scale::Defined(comborow) => {
+                let monitors = resolution_ref.borrow();
+                let scale = monitors.get(monitor_index).unwrap().scale;
+                let (model, selected_scale) = reload_scale(monitors, monitor_index, scale);
+                comborow.set_selected(selected_scale);
+                comborow.set_model(Some(&model));
             }
         }
         dropdown
@@ -532,46 +547,42 @@ pub fn add_scale_adjustment(
     scaling_ref: Rc<RefCell<Vec<Monitor>>>,
     settings: &PreferencesGroup,
     drawing_area: DrawingArea,
-) -> Option<SpinRow> {
-    let mut scaling = None;
+) -> Scale {
     // Different environments allow differing values
     // Hyprland allows arbitrary scales, Gnome offers a set of supported scales per monitor mode
     match get_environment().as_str() {
-        "Hyprland" => {
-            scaling = Some(arbitrary_add_scaling_adjustment(
-                scale,
-                monitor_index,
-                scaling_ref,
-                settings,
-                drawing_area,
-            ))
-        }
-        GNOME | "ubuntu:GNOME" => {
-            g_add_scaling_adjustment(scale, monitor_index, scaling_ref, settings, drawing_area)
-        }
-        "KDE" => {
-            scaling = Some(arbitrary_add_scaling_adjustment(
-                scale,
-                monitor_index,
-                scaling_ref,
-                settings,
-                drawing_area,
-            ))
-        }
+        "Hyprland" => Scale::Arbitrary(arbitrary_add_scaling_adjustment(
+            scale,
+            monitor_index,
+            scaling_ref,
+            settings,
+            drawing_area,
+        )),
+        GNOME | "ubuntu:GNOME" => Scale::Defined(g_add_scaling_adjustment(
+            scale,
+            monitor_index,
+            scaling_ref,
+            settings,
+            drawing_area,
+        )),
+        "KDE" => Scale::Arbitrary(arbitrary_add_scaling_adjustment(
+            scale,
+            monitor_index,
+            scaling_ref,
+            settings,
+            drawing_area,
+        )),
         _ => match get_wl_backend().as_str() {
-            "WLR" | "KWIN" => {
-                scaling = Some(arbitrary_add_scaling_adjustment(
-                    scale,
-                    monitor_index,
-                    scaling_ref,
-                    settings,
-                    drawing_area,
-                ))
-            }
+            "WLR" | "KWIN" => Scale::Arbitrary(arbitrary_add_scaling_adjustment(
+                scale,
+                monitor_index,
+                scaling_ref,
+                settings,
+                drawing_area,
+            )),
             _ => unreachable!(),
         },
-    };
-    scaling
+    }
 }
 
 pub fn drawing_callback(
@@ -819,7 +830,7 @@ pub fn monitor_drag_end(
     main_box_ref: &gtk::Box,
     disallow_gaps: bool,
 ) {
-    const SNAP_DISTANCE: u32 = 200;
+    const SNAP_DISTANCE: u32 = 150;
     let mut changed = false;
     let mut endpoint_left: i32 = 0;
     let mut endpoint_left_intersect: i32 = 0;
@@ -833,6 +844,7 @@ pub fn monitor_drag_end(
     let mut snap_vertical = SnapDirectionVertical::None;
     let mut iter = -1;
     for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
+        // define values from current monitor to be compared against others
         if monitor.drag_information.drag_active {
             if monitor.drag_information.drag_x != monitor.drag_information.origin_x
                 && monitor.drag_information.drag_y != monitor.drag_information.origin_y
@@ -854,36 +866,77 @@ pub fn monitor_drag_end(
     }
     let mut intersected = false;
     if iter == -1 {
+        // clicked monitor not found, escaping 
         return;
     }
     let iter = iter as usize;
     for (i, monitor) in monitor_data.borrow_mut().iter_mut().enumerate() {
         if i == iter {
+            // continue if the same monitor is used -> no point in calculating
             continue;
         }
+        // define other monitor endpoints
         let endpoint_other_left = monitor.offset.0;
         let endpoint_other_bottom = monitor.offset.1;
         let endpoint_other_right = endpoint_other_left + monitor.drag_information.width;
         let endpoint_other_top = endpoint_other_bottom + monitor.drag_information.height;
 
-        if endpoint_right.abs_diff(endpoint_other_left) < SNAP_DISTANCE {
-            snap_horizontal = SnapDirectionHorizontal::RightLeft(endpoint_other_left);
-        } else if endpoint_left.abs_diff(endpoint_other_right) < SNAP_DISTANCE {
-            snap_horizontal = SnapDirectionHorizontal::LeftRight(endpoint_other_right);
-        } else if endpoint_right.abs_diff(endpoint_other_right) < SNAP_DISTANCE {
-            snap_horizontal = SnapDirectionHorizontal::RightRight(endpoint_other_right);
-        } else if endpoint_left.abs_diff(endpoint_other_left) < SNAP_DISTANCE {
-            snap_horizontal = SnapDirectionHorizontal::LeftLeft(endpoint_other_left);
+        // find smallest difference
+        let right_to_left = endpoint_right.abs_diff(endpoint_other_left);
+        let left_to_right = endpoint_left.abs_diff(endpoint_other_right);
+        let right_to_right = endpoint_right.abs_diff(endpoint_other_right);
+        let left_to_left = endpoint_left.abs_diff(endpoint_other_left);
+        let min = cmp::min(
+            cmp::min(right_to_left, left_to_right),
+            cmp::min(right_to_right, left_to_left),
+        );
+
+        // snap to the smallest distance if smaller than SNAP_DISTANCE
+        if min < SNAP_DISTANCE {
+            match min {
+                x if x == right_to_left => {
+                    snap_horizontal = SnapDirectionHorizontal::RightLeft(endpoint_other_left)
+                }
+                x if x == left_to_right => {
+                    snap_horizontal = SnapDirectionHorizontal::LeftRight(endpoint_other_right)
+                }
+                x if x == right_to_right => {
+                    snap_horizontal = SnapDirectionHorizontal::RightRight(endpoint_other_right)
+                }
+                x if x == left_to_left => {
+                    snap_horizontal = SnapDirectionHorizontal::LeftLeft(endpoint_other_left)
+                }
+                _ => unreachable!(),
+            }
         }
 
-        if endpoint_top.abs_diff(endpoint_other_top) < SNAP_DISTANCE {
-            snap_vertical = SnapDirectionVertical::TopTop(endpoint_other_top);
-        } else if endpoint_bottom.abs_diff(endpoint_other_bottom) < SNAP_DISTANCE {
-            snap_vertical = SnapDirectionVertical::BottomBottom(endpoint_other_bottom);
-        } else if endpoint_top.abs_diff(endpoint_other_bottom) < SNAP_DISTANCE {
-            snap_vertical = SnapDirectionVertical::TopBottom(endpoint_other_bottom);
-        } else if endpoint_bottom.abs_diff(endpoint_other_top) < SNAP_DISTANCE {
-            snap_vertical = SnapDirectionVertical::BottomTop(endpoint_other_top);
+        // find smallest difference
+        let top_to_bottom = endpoint_other_top.abs_diff(endpoint_other_bottom);
+        let bottom_to_top = endpoint_bottom.abs_diff(endpoint_other_top);
+        let top_to_top = endpoint_top.abs_diff(endpoint_other_top);
+        let bottom_to_bottom = endpoint_bottom.abs_diff(endpoint_other_bottom);
+        let min = cmp::min(
+            cmp::min(top_to_bottom, bottom_to_top),
+            cmp::min(top_to_top, bottom_to_bottom),
+        );
+
+        // snap to the smallest distance if smaller than SNAP_DISTANCE
+        if min < SNAP_DISTANCE {
+            match min {
+                x if x == top_to_bottom => {
+                    snap_vertical = SnapDirectionVertical::TopBottom(endpoint_other_bottom);
+                }
+                x if x == bottom_to_top => {
+                    snap_vertical = SnapDirectionVertical::BottomTop(endpoint_other_top);
+                }
+                x if x == top_to_top => {
+                    snap_vertical = SnapDirectionVertical::TopTop(endpoint_other_top);
+                }
+                x if x == bottom_to_bottom => {
+                    snap_vertical = SnapDirectionVertical::BottomBottom(endpoint_other_bottom);
+                }
+                _ => unreachable!(),
+            }
         }
 
         // both required for a real intersect
@@ -988,8 +1041,8 @@ pub fn monitor_drag_end(
     monitor.drag_information.drag_y = 0;
 
     if is_gnome() {
-        let mut left_side = 0;
-        let mut top_side = 0;
+        let mut left_side = i32::MAX;
+        let mut top_side = i32::MAX;
         for monitor in monitors.iter_mut() {
             if monitor.offset.0 < left_side {
                 left_side = monitor.offset.0;
@@ -1015,17 +1068,17 @@ pub fn monitor_drag_end(
     }
 }
 
-// derived from the Hyprland implementation, copyright Hyprwm/vaxry
+// derived from the Hyprland implementation
 pub fn scaling_update(
     state: &SpinRow,
     monitors: Rc<RefCell<Vec<Monitor>>>,
     monitor_index: usize,
     drawing_area: DrawingArea,
 ) {
+    let scale = state.value();
     let mut monitors = monitors.borrow_mut();
     let monitor = monitors.get_mut(monitor_index).unwrap();
     let original_monitor = monitor.clone();
-    let scale = state.value();
     let direction = scale > monitor.scale;
 
     // value is the same as before, no need to do antyhing

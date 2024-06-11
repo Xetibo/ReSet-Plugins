@@ -1,4 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Ref, RefCell},
+    rc::Rc,
+};
 
 use adw::{
     prelude::ComboRowExt,
@@ -11,17 +14,14 @@ use crate::utils::Monitor;
 
 use super::handlers::rearrange_monitors;
 
-pub fn g_add_scaling_adjustment(
-    scale: f64,
+pub fn reload_scale(
+    monitors: Ref<Vec<Monitor>>,
     monitor_index: usize,
-    scaling_ref: Rc<RefCell<Vec<Monitor>>>,
-    settings: &PreferencesGroup,
-    drawing_area: DrawingArea,
-) {
+    scale: f64,
+) -> (gtk::StringList, u32) {
     let mut selected_scale = 0;
     let mut model = StringList::new(&["100%"]);
     {
-        let monitors = scaling_ref.borrow();
         let monitor = monitors.get(monitor_index).unwrap();
         for mode in monitor.available_modes.iter() {
             if mode.id == monitor.mode {
@@ -40,10 +40,22 @@ pub fn g_add_scaling_adjustment(
             }
         }
     }
+    (model, selected_scale as u32)
+}
+
+pub fn g_add_scaling_adjustment(
+    scale: f64,
+    monitor_index: usize,
+    scaling_ref: Rc<RefCell<Vec<Monitor>>>,
+    settings: &PreferencesGroup,
+    drawing_area: DrawingArea,
+) -> adw::ComboRow {
+    let monitors = scaling_ref.borrow();
+    let (model, selected_scale) = reload_scale(monitors, monitor_index, scale);
     let scaling = adw::ComboRow::new();
     scaling.set_model(Some(&model));
     scaling.set_title("Scaling");
-    scaling.set_selected(selected_scale as u32);
+    scaling.set_selected(selected_scale);
     scaling.connect_selected_item_notify(move |dropdown| {
         let index = dropdown.selected();
         let mut monitors = scaling_ref.borrow_mut();
@@ -68,4 +80,5 @@ pub fn g_add_scaling_adjustment(
             .expect("Could not activate reset action");
     });
     settings.add(&scaling);
+    scaling
 }

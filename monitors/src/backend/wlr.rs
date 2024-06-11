@@ -20,7 +20,7 @@ use wayland_protocols_wlr::output_management::v1::client::zwlr_output_manager_v1
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_mode_v1::Event as OutputModeEvent;
 use wayland_protocols_wlr::output_management::v1::client::zwlr_output_mode_v1::ZwlrOutputModeV1;
 
-use re_set_lib::ERROR;
+use re_set_lib::{ERROR, LOG};
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
@@ -272,7 +272,9 @@ impl Dispatch<ZwlrOutputHeadV1, ()> for AppData {
                     .serial_number = serial_number;
             }
             Event::CurrentMode { mode } => {
+                // data passed to each mode
                 let data: &CurrentMode = mode.data().unwrap();
+                // if the mode is the current mode, apply needed info to monitor
                 let monitor = _state.heads.get_mut(&_state.current_monitor).unwrap();
                 monitor.width = data.width.take();
                 monitor.height = data.height.take();
@@ -353,6 +355,7 @@ impl Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
 
 pub fn wlr_get_monitor_information(conn: Option<Arc<wayland_client::Connection>>) -> Vec<Monitor> {
     if conn.is_none() {
+        LOG!("WLR: No wayland information without wayland connection");
         return Vec::new();
     }
     let mut monitors = Vec::new();
