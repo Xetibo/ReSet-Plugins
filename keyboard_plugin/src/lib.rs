@@ -2,14 +2,14 @@ use adw::NavigationView;
 use gtk::prelude::*;
 use gtk::{Box, Orientation};
 use re_set_lib::utils::plugin::{
-    PluginCapabilities, PluginImplementation, PluginTestError, PluginTestFunc, SidebarInfo,
+    PluginCapabilities, PluginImplementation, PluginTestFunc, SidebarInfo,
 };
-use tests::check_layouts_in_ui;
+use tests::test_check_layouts_in_ui;
 
-use crate::backend::get_saved_layouts;
 use crate::frontend::add_layout_page::create_add_keyboard_page;
 use crate::frontend::create_title;
 use crate::frontend::main_page::create_keyboard_main_page;
+use crate::tests::test_can_get_layouts;
 
 mod backend;
 mod r#const;
@@ -73,8 +73,8 @@ pub extern "C" fn backend_shutdown() {}
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn frontend_tests() -> Vec<PluginTestFunc> {
-    let check_layouts = PluginTestFunc::new(can_get_layouts, "Get layouts");
-    let move_ui = PluginTestFunc::new(check_layouts_in_ui, "Check layouts in UI");
+    let check_layouts = PluginTestFunc::new(test_can_get_layouts, "Get layouts");
+    let move_ui = PluginTestFunc::new(test_check_layouts_in_ui, "Check layouts in UI");
     let vec1 = vec![check_layouts, move_ui];
     vec1
 }
@@ -83,12 +83,4 @@ pub extern "C" fn frontend_tests() -> Vec<PluginTestFunc> {
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn backend_tests() -> Vec<PluginTestFunc> {
     vec![]
-}
-
-fn can_get_layouts() -> Result<(), PluginTestError> {
-    let layouts = get_saved_layouts();
-    if layouts.is_empty() {
-        return Err(PluginTestError::new("No layouts found"));
-    }
-    Ok(())
 }
