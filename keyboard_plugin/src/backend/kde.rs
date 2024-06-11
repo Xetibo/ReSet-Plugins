@@ -40,7 +40,7 @@ pub fn get_saved_layouts_kde(all_keyboards: &[KeyboardLayout]) -> Vec<KeyboardLa
     kb
 }
 
-pub fn write_to_config_kde(layouts: Vec<KeyboardLayout>) {
+pub fn write_to_config_kde(layouts: &Vec<KeyboardLayout>) {
     let mut layout_string = String::new();
     let mut variant_string = String::new();
     for x in layouts.iter() {

@@ -27,7 +27,12 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
 pub fn get_saved_layouts() -> Vec<KeyboardLayout> {
     let all_keyboards = get_keyboard_list_backend();
 
-    match get_environment().as_str() {
+    let env = get_environment();
+    if env.contains(GNOME) {
+        return get_saved_layouts_gnome(&all_keyboards);
+    }
+    
+    match env.as_str() {
         HYPRLAND => {
             get_saved_layouts_hyprland(&all_keyboards)
         }
@@ -45,15 +50,20 @@ pub fn get_saved_layouts() -> Vec<KeyboardLayout> {
 }
 
 fn write_to_config(layouts: Vec<KeyboardLayout>) {
-    match get_environment().as_str() {
+    let env = get_environment();
+    if env.contains(GNOME) {
+        return write_to_config_gnome(&layouts);
+    }
+    
+    match env.as_str() {
         HYPRLAND => {
-            write_to_config_hyprland(layouts);
+            write_to_config_hyprland(&layouts);
         }
         GNOME => {
-            write_to_config_gnome(layouts);
+            write_to_config_gnome(&layouts);
         }
         KDE => {
-            write_to_config_kde(layouts);
+            write_to_config_kde(&layouts);
         }
         _ => {}
     }
