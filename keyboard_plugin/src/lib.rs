@@ -1,9 +1,10 @@
-use adw::{NavigationPage, NavigationView};
+use adw::NavigationView;
 use gtk::prelude::*;
-use gtk::{Box, ListBox, Orientation};
+use gtk::{Box, Orientation};
 use re_set_lib::utils::plugin::{
     PluginCapabilities, PluginImplementation, PluginTestError, PluginTestFunc, SidebarInfo,
 };
+use tests::check_layouts_in_ui;
 
 use crate::backend::get_saved_layouts;
 use crate::frontend::add_layout_page::create_add_keyboard_page;
@@ -14,8 +15,8 @@ mod backend;
 mod r#const;
 mod frontend;
 mod keyboard_layout;
-mod utils;
 mod tests;
+mod utils;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -89,38 +90,5 @@ fn can_get_layouts() -> Result<(), PluginTestError> {
     if layouts.is_empty() {
         return Err(PluginTestError::new("No layouts found"));
     }
-    Ok(())
-}
-
-fn check_layouts_in_ui() -> Result<(), PluginTestError> {
-    adw::init().expect("Adw failed to initialize");
-    let (_, layout_boxes) = frontend_data();
-    let layouts_length = get_saved_layouts().len();
-    let result = layout_boxes
-        .first()
-        .ok_or_else(|| PluginTestError::new("No layout boxes found"));
-    let nav_view = result?.last_child().unwrap();
-    let mut nav_view_child = nav_view.first_child().unwrap();
-
-    while nav_view_child.type_() != NavigationPage::static_type() {
-        nav_view_child = nav_view_child.next_sibling().unwrap();
-    }
-
-    let nav_page = nav_view_child.downcast_ref::<NavigationPage>().unwrap();
-    let temp = nav_page.first_child().unwrap();
-    let temp = temp.first_child().unwrap();
-    let temp = temp.first_child().unwrap();
-    let temp = temp.last_child().unwrap();
-    let temp = temp.first_child().unwrap();
-    let list_box = temp.downcast_ref::<ListBox>().unwrap();
-
-    if layouts_length > 0 {
-        let last_layout = list_box.row_at_index((layouts_length - 1) as i32);
-
-        if last_layout.is_none() {
-            return Err(PluginTestError::new("Not all layouts selected"));
-        }
-    }
-
     Ok(())
 }
