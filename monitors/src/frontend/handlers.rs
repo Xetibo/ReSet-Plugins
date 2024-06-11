@@ -827,7 +827,6 @@ pub fn monitor_drag_update(
 pub fn monitor_drag_end(
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
     drawing_ref_end: &DrawingArea,
-    main_box_ref: &gtk::Box,
     disallow_gaps: bool,
 ) {
     const SNAP_DISTANCE: u32 = 150;
@@ -866,7 +865,7 @@ pub fn monitor_drag_end(
     }
     let mut intersected = false;
     if iter == -1 {
-        // clicked monitor not found, escaping 
+        // clicked monitor not found, escaping
         return;
     }
     let iter = iter as usize;
@@ -911,7 +910,7 @@ pub fn monitor_drag_end(
         }
 
         // find smallest difference
-        let top_to_bottom = endpoint_other_top.abs_diff(endpoint_other_bottom);
+        let top_to_bottom = endpoint_top.abs_diff(endpoint_other_bottom);
         let bottom_to_top = endpoint_bottom.abs_diff(endpoint_other_top);
         let top_to_top = endpoint_top.abs_diff(endpoint_other_top);
         let bottom_to_bottom = endpoint_bottom.abs_diff(endpoint_other_bottom);
@@ -1059,7 +1058,7 @@ pub fn monitor_drag_end(
 
     drawing_ref_end.queue_draw();
     if changed {
-        main_box_ref
+        drawing_ref_end
             .activate_action(
                 "monitor.reset_monitor_buttons",
                 Some(&glib::Variant::from(true)),
