@@ -54,7 +54,7 @@ pub fn get_saved_layouts_hyprland(all_keyboards: &[KeyboardLayout]) -> Vec<Keybo
     kb
 }
 
-pub fn write_to_config_hyprland(layouts: &Vec<KeyboardLayout>) {
+pub fn write_to_config_hyprland(layouts: &[KeyboardLayout]) {
     let path;
     #[allow(clippy::borrow_interior_mutable_const)]
     if let Some(test) = CONFIG.get("Keyboard").unwrap().get("path") {

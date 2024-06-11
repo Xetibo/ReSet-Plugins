@@ -520,3 +520,7 @@ impl AlertWrapper {
 pub fn is_gnome() -> bool {
     ENV.contains(GNOME)
 }
+
+pub fn is_flatpak() -> bool {
+    ENV.contains("container")
+}

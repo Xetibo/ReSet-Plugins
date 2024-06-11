@@ -1,41 +1,40 @@
 use std::process::Command;
 
 use glib::{getenv, Variant, VariantTy};
+use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
-use re_set_lib::ERROR;
 
 use crate::keyboard_layout::KeyboardLayout;
 
 pub fn get_saved_layouts_gnome(all_keyboards: &[KeyboardLayout]) -> Vec<KeyboardLayout> {
     let mut kb = vec![];
 
-    let result;
-    if getenv("container").is_none() {
-        dbg!("not flatpak");
-        result = Command::new("dconf")
-            .args(&["read", "/org/gnome/desktop/input-sources/sources"])
-            .output();
+    let result = if getenv("container").is_none() {
+        Command::new("dconf")
+            .args(["read", "/org/gnome/desktop/input-sources/sources"])
+            .output()
     } else {
-        dbg!("flatpak");
-        result = Command::new("flatpak-spawn")
-            .args(&["--host", "dconf", "read", "/org/gnome/desktop/input-sources/sources"])
-            .output();
-    }
+        Command::new("flatpak-spawn")
+            .args([
+                "--host",
+                "dconf",
+                "read",
+                "/org/gnome/desktop/input-sources/sources",
+            ])
+            .output()
+    };
     if result.is_err() {
-        dbg!("result error");
         return kb;
     }
     let output = result.unwrap();
     let layout_variant = String::from_utf8(output.stdout).unwrap();
 
-    let layout_variant = Variant::parse(Some(&VariantTy::new("a(ss)").unwrap()), &layout_variant);
+    let layout_variant = Variant::parse(Some(VariantTy::new("a(ss)").unwrap()), &layout_variant);
     if layout_variant.is_err() {
-        dbg!("couldnt parse layout variant");
         return kb;
     }
     let layout_variant = layout_variant.unwrap();
-    dbg!(&layout_variant);
     let layouts = layout_variant.get::<Vec<(String, String)>>().unwrap();
     for layout in layouts {
         let kb_layout: Vec<&KeyboardLayout> = if layout.1.contains("+") {
@@ -71,24 +70,31 @@ pub fn write_to_config_gnome(layouts: &Vec<KeyboardLayout>) {
     }
 
     let mut all_layouts = all_layouts.join(", ");
-    all_layouts.insert_str(0, "[");
-    all_layouts.push_str("]");
+    all_layouts.insert(0, '[');
+    all_layouts.push(']');
 
     if getenv("container").is_none() {
-        dbg!("not flatpak");
         let result = Command::new("dconf")
-            .args(&["write", "/org/gnome/desktop/input-sources/sources", all_layouts.as_str()])
+            .args([
+                "write",
+                "/org/gnome/desktop/input-sources/sources",
+                all_layouts.as_str(),
+            ])
             .output();
         if result.is_err() {
             ERROR!("Failed to write layouts", ErrorLevel::PartialBreakage);
         }
     } else {
-        dbg!("flatpak");
         let result = Command::new("flatpak-spawn")
-            .args(&["--host", "dconf", "write", "/org/gnome/desktop/input-sources/sources", all_layouts.as_str()])
+            .args([
+                "--host",
+                "dconf",
+                "write",
+                "/org/gnome/desktop/input-sources/sources",
+                all_layouts.as_str(),
+            ])
             .output();
         if result.is_err() {
-            dbg!("Failed to write with flatpak");
             ERROR!("Failed to write layouts", ErrorLevel::PartialBreakage);
         }
     }
