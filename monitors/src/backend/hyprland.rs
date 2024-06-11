@@ -17,7 +17,8 @@ use std::{
 use super::wlr::{wlr_apply_monitor_configuration, wlr_get_monitor_information};
 
 pub const HYPRFEATURES: MonitorFeatures = MonitorFeatures {
-    vrr: true,
+    // Hyprland supports vrr, but can't be changed on the fly -> reload required
+    vrr: false,
     // Hyprland has no primary monitor concept
     primary: false,
     fractional_scaling: true,
@@ -121,12 +122,13 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
     let mut monitor_string = String::new();
 
     for monitor in monitors {
-        let vrr = if monitor.vrr { 1 } else { 0 };
+        // re-enabled when switching is supported on the fly
+        // let vrr = if monitor.vrr { 1 } else { 0 };
         if !monitor.enabled {
             monitor_string += &format!("keyword monitor {},disabled;", monitor.name);
         } else {
             monitor_string += &format!(
-                "monitor={},{}x{}@{},{}x{},{:.6},transform,{},vrr,{}\n",
+                "monitor={},{}x{}@{},{}x{},{:.6},transform,{}\n",
                 monitor.name,
                 monitor.size.0,
                 monitor.size.1,
@@ -135,7 +137,7 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
                 monitor.offset.1,
                 monitor.scale,
                 monitor.transform,
-                vrr
+                // vrr
             );
         }
     }
@@ -207,12 +209,13 @@ fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
     let mut strings = Vec::new();
 
     for monitor in monitors {
-        let vrr = if monitor.vrr { 1 } else { 0 };
+        // re-enabled when switching is supported on the fly
+        // let vrr = if monitor.vrr { 1 } else { 0 };
         if !monitor.enabled {
             strings.push(format!("keyword monitor {},disabled;", monitor.name));
         } else {
             strings.push(format!(
-                "keyword monitor {},{}x{}@{},{}x{},{:.6},transform,{},vrr,{};",
+                "keyword monitor {},{}x{}@{},{}x{},{:.6},transform,{};",
                 monitor.name,
                 &monitor.size.0,
                 &monitor.size.1,
@@ -221,7 +224,7 @@ fn monitor_to_configstring(monitors: &Vec<Monitor>) -> String {
                 &monitor.offset.1,
                 &monitor.scale,
                 &monitor.transform,
-                vrr
+                // vrr
             ));
         }
     }
