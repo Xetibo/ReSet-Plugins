@@ -15,16 +15,22 @@ Specific features and limitations can be found within the respective plugin dire
 In order for your plugins to load, you have to define them in `$xdg_config_dir/reset/ReSet.toml`.
 This is done to avoid loading of arbitrary plugins that might be placed within this folder by accident.
 
+```toml
+plugins = ["libreset_monitors.so", "libreset_keyboard_plugin.so"]
+```
+
 ### Manual compilation
 
 Compile the source for the chosen plugin by cloning the repository and building the plugin.
 After this, simply compile the plugin and move it to the ReSet plugins folder in your `$xdg_config_dir/reset/plugins` directory.
 You can define a custom directory like this:
+
 ```toml
 plugin_path = "/your/path"
 ```
-Note, alternatively, you can specify a custom path within the configuration file mentioned in [Confirmation](#confirmation). 
-Or you can use the path ```/usr/lib/reset``` which is used by the arch and debian installations respectively.
+
+Note, alternatively, you can specify a custom path within the configuration file mentioned in [Confirmation](#confirmation).
+Or you can use the path `/usr/lib/reset` which is used by the arch and debian installations respectively.
 
 ### Arch Linux
 
