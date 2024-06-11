@@ -521,6 +521,10 @@ pub fn is_gnome() -> bool {
     ENV.contains(GNOME)
 }
 
+pub fn is_hyprland() -> bool {
+    ENV.contains(HYPRLAND)
+}
+
 pub fn is_flatpak() -> bool {
     ENV.contains("container")
 }

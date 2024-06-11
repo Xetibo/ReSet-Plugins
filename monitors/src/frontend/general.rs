@@ -1,13 +1,16 @@
 use std::{cell::RefCell, rc::Rc};
 
-use adw::{prelude::{PreferencesGroupExt, PreferencesRowExt}, PreferencesGroup, SpinRow};
+use adw::{
+    prelude::{PreferencesGroupExt, PreferencesRowExt},
+    PreferencesGroup, SpinRow,
+};
 use gtk::{
     prelude::BoxExt,
     prelude::{ButtonExt, WidgetExt},
     DrawingArea,
 };
 
-use crate::utils::{get_environment, is_gnome, Monitor, GNOME, HYPRLAND};
+use crate::utils::{get_environment, is_gnome, is_hyprland, Monitor, GNOME, HYPRLAND};
 
 use super::handlers::{apply_monitor_clicked, rearrange_monitors, scaling_update};
 
@@ -138,6 +141,12 @@ pub fn add_vrr_monitor_option(
                 Some(&glib::Variant::from(true)),
             )
             .expect("Could not activate reset action");
+        if is_hyprland() { 
+            state.activate_action(
+                "win.banner",
+                Some(&glib::Variant::from("Note, VRR only works with hyprland when saving and reloading the configuration. Temporary application of VRR will not work on Hyprland as of now." ))
+            ).expect("Could not show banner");
+        }
     });
     settings.add(&vrr);
 }
