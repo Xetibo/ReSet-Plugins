@@ -8,6 +8,7 @@ use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
+use crate::r#const::HYPRLAND_DEFAULT_FILE;
 use crate::keyboard_layout::KeyboardLayout;
 use crate::utils::{get_default_path, parse_setting};
 
@@ -55,19 +56,30 @@ pub fn get_saved_layouts_hyprland(all_keyboards: &[KeyboardLayout]) -> Vec<Keybo
 }
 
 pub fn write_to_config_hyprland(layouts: &[KeyboardLayout]) {
-    let path;
+    let mut path: Option<String> = None;
     #[allow(clippy::borrow_interior_mutable_const)]
-    if let Some(test) = CONFIG.get("Keyboard").unwrap().get("path") {
-        path = test.as_str().unwrap().to_string();
-    } else {
-        path = get_default_path();
-    }
+    if let Some(entry) = CONFIG.get("Keyboard") {
+        path = Some(if let Some(path) = entry.get("path") {
+            path.as_str().unwrap().to_string()
+        } else {
+            get_default_path()
+        })
+    } 
 
-    let mut input_config = OpenOptions::new()
+    let mut input_config = if let Some(path) = path {
+    OpenOptions::new()
         .write(true)
         .read(true)
         .open(PathBuf::from(path))
-        .expect("Failed to open file");
+        .expect("Failed to open file")
+    } else {
+    OpenOptions::new()
+        .write(true)
+        .read(true)
+        .open(HYPRLAND_DEFAULT_FILE.clone())
+        .expect("Failed to open file")
+
+    };
 
     let mut layout_string = String::new();
     let mut variant_string = String::new();

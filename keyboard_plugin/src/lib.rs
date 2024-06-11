@@ -15,6 +15,7 @@ mod r#const;
 mod frontend;
 mod keyboard_layout;
 mod utils;
+mod tests;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
