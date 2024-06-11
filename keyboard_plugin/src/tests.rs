@@ -18,7 +18,7 @@ fn test_hyprland_default_file() {
     assert!(HYPRLAND_DEFAULT_FILE.is_file());
 }
 
-pub fn check_layouts_in_ui() -> Result<(), PluginTestError> {
+pub fn test_check_layouts_in_ui() -> Result<(), PluginTestError> {
     adw::init().expect("Adw failed to initialize");
     let (_, layout_boxes) = frontend_data();
     let layouts_length = get_saved_layouts().len();
@@ -47,6 +47,13 @@ pub fn check_layouts_in_ui() -> Result<(), PluginTestError> {
             return Err(PluginTestError::new("Not all layouts selected"));
         }
     }
+    Ok(())
+}
 
+pub fn test_can_get_layouts() -> Result<(), PluginTestError> {
+    let layouts = get_saved_layouts();
+    if layouts.is_empty() {
+        return Err(PluginTestError::new("No layouts found"));
+    }
     Ok(())
 }
