@@ -6,7 +6,7 @@ use crate::{
         hyprland::{HyprMonitor, HYPRFEATURES},
         kde::{KDEMode, KDEMonitor, KDE_FEATURES},
     },
-    frontend::handlers::monitor_drag_end,
+    frontend::handlers::{monitor_drag_end, search_nearest_scale},
     utils::{AvailableMode, DragInformation, Monitor, Offset, Size},
 };
 
@@ -173,6 +173,37 @@ fn snap_right_to_right() {
     assert_eq!(monitors.get(1).unwrap().offset.1, -500);
 }
 
+#[test]
+fn snap_intersect() {
+    // detect intersect and move to origin
+    let monitors = create_monitor_pair(Offset(400, 0));
+    let monitors = monitors.borrow();
+    assert_eq!(monitors.get(1).unwrap().offset.0, 1000);
+    assert_eq!(monitors.get(1).unwrap().offset.1, 1000);
+}
+
+#[test]
+fn search_upper_scale() {
+    let monitor = Monitor {
+        size: Size(1920, 1200),
+        scale: 1.0,
+        ..Default::default()
+    };
+    let scale: f64 = 1.08;
+    // 1920 * 1.08 -> 2073.60000... 
+    // not a valid resolution
+    let mut search_scale = (scale * 120.0).round();
+    let mut found = false;
+    search_nearest_scale(6, &mut search_scale, &monitor, true, &mut found, true);
+    if !found {
+        search_nearest_scale(100, &mut search_scale, &monitor, true, &mut found, false);
+    }
+    assert!(found);
+    assert_eq!((search_scale * 100.0).round() / 100.0, 1.07);
+    // 1920 * 1.0666666667 -> 2048
+    // Ok
+}
+
 fn create_monitor_pair(offset: Offset) -> Rc<RefCell<Vec<Monitor>>> {
     let mut dragging_monitor = Monitor {
         id: 2,
@@ -183,6 +214,8 @@ fn create_monitor_pair(offset: Offset) -> Rc<RefCell<Vec<Monitor>>> {
         drag_information: DragInformation {
             width: 500,
             height: 500,
+            origin_x: 1000,
+            origin_y: 1000,
             ..Default::default()
         },
         ..Default::default()
