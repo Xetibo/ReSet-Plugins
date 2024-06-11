@@ -60,7 +60,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         .hexpand(true)
         .vexpand(true)
         .build();
-    let main_box_ref = main_box.clone();
 
     let top_row = gtk::Box::new(Orientation::Horizontal, 5);
     top_row.set_homogeneous(true);
@@ -236,7 +235,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         monitor_drag_end(
             monitor_data.clone(),
             &drawing_ref_end,
-            &main_box_ref,
             disallow_gaps,
         );
     });
