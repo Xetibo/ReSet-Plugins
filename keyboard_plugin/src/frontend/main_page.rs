@@ -163,4 +163,3 @@ fn create_action_row(title: String) -> ActionRow {
 
     action_row
 }
-

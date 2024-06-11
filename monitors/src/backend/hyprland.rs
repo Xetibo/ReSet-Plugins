@@ -4,7 +4,7 @@ use re_set_lib::{utils::config::CONFIG, ERROR};
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
-use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Size};
+use crate::utils::{is_flatpak, AvailableMode, Monitor, MonitorFeatures, Size};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -67,26 +67,26 @@ pub fn hy_apply_monitor_information(
     conn: Option<std::sync::Arc<wayland_client::Connection>>,
 ) {
     let config_string = monitor_to_configstring(monitors);
-    let command = Command::new("hyprctl")
-        .args(["--batch", &config_string])
-        .stdout(Stdio::null())
-        .spawn();
-    if command.is_err() {
-        let command = Command::new("flatpak-spawn")
+
+    let command = if is_flatpak() {
+        Command::new("flatpak-spawn")
             .args(["--host", "hyprctl", "--batch", &config_string])
             .stdout(Stdio::null())
-            .spawn();
-        match command.is_err() {
-            true => {
-                wlr_apply_monitor_configuration(conn, monitors);
-            }
-            false => {
-                command.unwrap();
-            }
+            .spawn()
+    } else {
+        Command::new("hyprctl")
+            .args(["--batch", &config_string])
+            .stdout(Stdio::null())
+            .spawn()
+    };
+    match command.is_err() {
+        true => {
+            wlr_apply_monitor_configuration(conn, monitors);
         }
-        return;
+        false => {
+            command.unwrap();
+        }
     }
-    command.unwrap();
 }
 
 fn get_default_path() -> String {
@@ -147,13 +147,13 @@ pub fn hy_save_monitor_configuration(monitors: &Vec<Monitor>) {
 }
 
 fn get_json() -> Result<std::process::Output, std::io::Error> {
-    let json = Command::new("hyprctl").args(["-j", "monitors"]).output();
-    if json.is_err() {
-        return Command::new("flatpak-spawn")
+    if is_flatpak() {
+        Command::new("flatpak-spawn")
             .args(["--host", "hyprctl", "monitors", "-j"])
-            .output();
+            .output()
+    } else {
+        Command::new("hyprctl").args(["-j", "monitors"]).output()
     }
-    json
 }
 
 #[allow(non_snake_case)]

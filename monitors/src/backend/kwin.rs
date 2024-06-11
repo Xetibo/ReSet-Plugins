@@ -471,8 +471,6 @@ pub fn kwin_apply_monitor_configuration(
                     &current_head,
                     &KdeOutputDeviceModeV2::from_id(&conn, mode_id.clone()).unwrap(),
                 );
-                // TODO:
-                // test more
 
                 configuration.transform(&current_head, monitor.transform as i32);
                 configuration.position(&current_head, monitor.offset.0, monitor.offset.1);

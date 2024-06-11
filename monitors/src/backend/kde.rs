@@ -8,7 +8,7 @@ use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
-use crate::utils::{AvailableMode, Monitor, MonitorFeatures, Offset, Size};
+use crate::utils::{is_flatpak, AvailableMode, Monitor, MonitorFeatures, Offset, Size};
 
 use super::kwin::{kwin_apply_monitor_configuration, kwin_get_monitor_information};
 
@@ -43,13 +43,13 @@ pub fn kde_get_monitor_information(
 }
 
 fn get_json() -> Option<Vec<u8>> {
-    let command = Command::new("kscreen-doctor").args(["-j"]).output();
-    if let Ok(command) = command {
-        return Some(command.stdout);
-    }
-    let command = Command::new("flatpak-spawn")
-        .args(["--host", "kscreen-doctor", "-j"])
-        .output();
+    let command = if is_flatpak() {
+        Command::new("flatpak-spawn")
+            .args(["--host", "kscreen-doctor", "-j"])
+            .output()
+    } else {
+        Command::new("kscreen-doctor").args(["-j"]).output()
+    };
     if let Ok(command) = command {
         return Some(command.stdout);
     }
@@ -72,8 +72,8 @@ pub fn kde_save_monitor_config(
     monitors: &Vec<Monitor>,
 ) {
     let args = convert_modes_to_kscreen_string(monitors);
-    let command = Command::new("kscreen-doctor").args(&args).spawn();
-    if command.is_err() {
+
+    let command = if is_flatpak() {
         let concat_strings: Vec<String> = args
             .into_iter()
             .map(|mut val| {
@@ -81,12 +81,14 @@ pub fn kde_save_monitor_config(
                 val
             })
             .collect();
-        let command = Command::new("flatpak-spawn")
+        Command::new("flatpak-spawn")
             .args(["--host", "kscreen-doctor", &concat_strings.concat()])
-            .output();
-        if command.is_err() {
-            kwin_apply_monitor_configuration(conn, monitors);
-        }
+            .spawn()
+    } else {
+        Command::new("kscreen-doctor").args(&args).spawn()
+    };
+    if command.is_err() {
+        kwin_apply_monitor_configuration(conn, monitors);
     }
 }
 
