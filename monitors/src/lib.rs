@@ -1,12 +1,13 @@
-use re_set_lib::utils::plugin::{PluginCapabilities, PluginImplementation};
-use utils::check_environment_support;
-
+#[macro_use]
+mod utils;
 pub mod backend;
 pub mod r#const;
 pub mod frontend;
-pub mod utils;
 #[cfg(test)]
 mod tests;
+
+use re_set_lib::utils::plugin::{PluginCapabilities, PluginImplementation};
+use utils::check_environment_support;
 
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]

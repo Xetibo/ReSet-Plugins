@@ -7,7 +7,7 @@ use gtk::{
     DrawingArea,
 };
 
-use crate::utils::{get_environment, is_gnome, Monitor, GNOME};
+use crate::utils::{get_environment, is_gnome, Monitor, GNOME, HYPRLAND};
 
 use super::handlers::{apply_monitor_clicked, rearrange_monitors, scaling_update};
 
@@ -39,7 +39,7 @@ pub fn add_save_button(
 ) -> Option<gtk::Button> {
     let mut save = None;
     match get_environment().as_str() {
-        GNOME | "ubuntu:GNOME" | "Hyprland" => {
+        GNOME | "ubuntu:GNOME" | HYPRLAND => {
             let button = gtk::Button::builder()
                 .label("Save")
                 .hexpand_set(false)
@@ -125,7 +125,7 @@ pub fn add_vrr_monitor_option(
     let vrr = adw::SwitchRow::new();
     vrr.set_title("Variable Refresh-Rate");
     vrr.set_active(vrr_value);
-    if get_environment().as_str() == "Hyprland" {
+    if get_environment().as_str() == HYPRLAND {
         vrr.set_tooltip_markup(Some("Please note that this option will set the configuration for this monitor, however, if your monitor does not offer VRR, this setting will fail to make a change."));
     } else {
         vrr.set_tooltip_markup(Some("Enable or disable Variable Refresh Rate"));

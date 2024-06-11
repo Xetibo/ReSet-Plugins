@@ -1,10 +1,13 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     backend::{
         gnome::{gnome_features, GnomeLogicalMonitor, GnomeMode, GnomeMonitor, GnomeMonitorConfig},
         hyprland::{HyprMonitor, HYPRFEATURES},
         kde::{KDEMode, KDEMonitor, KDE_FEATURES},
     },
-    utils::{AvailableMode, Monitor, Offset, Size},
+    frontend::handlers::monitor_drag_end,
+    utils::{AvailableMode, DragInformation, Monitor, Offset, Size},
 };
 
 #[test]
@@ -102,6 +105,7 @@ fn convert_kde_monitor() {
     };
     let kde_monitor = KDEMonitor {
         modes: vec![mode],
+        rotation: 1,
         ..Default::default()
     };
     let monitor = Monitor {
@@ -117,4 +121,90 @@ fn convert_kde_monitor() {
         ..Default::default()
     };
     assert_eq!(monitor, kde_monitor.convert_to_regular_monitor());
+}
+
+#[test]
+fn snap_left_to_right() {
+    let monitors = create_monitor_pair(Offset(600, 0));
+    let monitors = monitors.borrow();
+    assert_eq!(monitors.get(1).unwrap().offset.0, 500);
+    assert_eq!(monitors.get(1).unwrap().offset.1, 0);
+}
+
+#[test]
+fn snap_right_to_left() {
+    let monitors = create_monitor_pair(Offset(-600, 0));
+    let monitors = monitors.borrow();
+    assert_eq!(monitors.get(1).unwrap().offset.0, -500);
+    assert_eq!(monitors.get(1).unwrap().offset.1, 0);
+}
+
+#[test]
+fn snap_bottom_to_top() {
+    let monitors = create_monitor_pair(Offset(200, 550));
+    let monitors = monitors.borrow();
+    assert_eq!(monitors.get(1).unwrap().offset.0, 200);
+    assert_eq!(monitors.get(1).unwrap().offset.1, 500);
+}
+
+#[test]
+fn snap_top_to_bottom() {
+    let monitors = create_monitor_pair(Offset(200, -550));
+    let monitors = monitors.borrow();
+    assert_eq!(monitors.get(1).unwrap().offset.0, 200);
+    assert_eq!(monitors.get(1).unwrap().offset.1, -500);
+}
+
+#[test]
+fn snap_top_to_top() {
+    // since the monitor have the same size, bottom to bottom is implied as well
+    let monitors = create_monitor_pair(Offset(500, -50));
+    let monitors = monitors.borrow();
+    assert_eq!(monitors.get(1).unwrap().offset.0, 500);
+    assert_eq!(monitors.get(1).unwrap().offset.1, 0);
+}
+
+#[test]
+fn snap_right_to_right() {
+    // since the monitor have the same size, left to left is implied as well
+    let monitors = create_monitor_pair(Offset(50, -500));
+    let monitors = monitors.borrow();
+    assert_eq!(monitors.get(1).unwrap().offset.0, 0);
+    assert_eq!(monitors.get(1).unwrap().offset.1, -500);
+}
+
+fn create_monitor_pair(offset: Offset) -> Rc<RefCell<Vec<Monitor>>> {
+    let mut dragging_monitor = Monitor {
+        id: 2,
+        enabled: true,
+        size: Size(500, 500),
+        offset,
+        scale: 1.0,
+        drag_information: DragInformation {
+            width: 500,
+            height: 500,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    dragging_monitor.drag_information.drag_active = true;
+    dragging_monitor.drag_information.clicked = true;
+    let monitors = Rc::new(RefCell::new(vec![
+        Monitor {
+            id: 1,
+            enabled: true,
+            size: Size(500, 500),
+            offset: Offset(0, 0),
+            scale: 1.0,
+            drag_information: DragInformation {
+                width: 500,
+                height: 500,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        dragging_monitor,
+    ]));
+    monitor_drag_end(monitors.clone(), None, false);
+    monitors
 }

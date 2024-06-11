@@ -118,8 +118,8 @@ impl KDEMonitor {
     pub fn convert_to_regular_monitor(self) -> Monitor {
         let modes = convert_modes(&self.currentModeId, self.modes);
         let vrr = if let Some(_vrr) = self.vrrPolicy {
-            // TODO: apparently KDE offers 2 vrr versions -> automatic and always
-            // todo is to handle both states instead of a bool right now
+            // NOTE: KDE offers more than 2 options, to make them compatible with ReSet
+            // only offer on or off
             true
         } else {
             // NOTE: KDE does not even show the VRR option within the json fetching if no the
@@ -130,15 +130,13 @@ impl KDEMonitor {
             id: self.id,
             enabled: self.enabled,
             name: self.name,
-            // TODO: check if KDE has some other method to retrieve this
-            // from the regular kscreen-doctor, there is no fetching for this
+            // KDE doesn't provide more data
             make: "".into(),
             model: "".into(),
             serial: "".into(),
             refresh_rate: modes.1.refreshRate.round() as u32,
             scale: self.scale,
             transform: convert_to_regular_transform(self.rotation),
-            // TODO: how to get this?
             vrr,
             primary: self.priority == 1,
             offset: self.pos.convert_to_regular_offset(),
@@ -156,8 +154,12 @@ fn convert_to_regular_transform(rotation: u32) -> u32 {
     match rotation {
         1 => 0,
         2 => 1,
-        3 => 2,
-        4 => 3,
+        4 => 2,
+        8 => 3,
+        16 => 4,
+        32 => 5,
+        64 => 6,
+        128 => 7,
         _ => {
             ERROR!(
                 "Passed invalid transform value for KDE.",
@@ -265,9 +267,9 @@ fn convert_modes_to_kscreen_string(monitors: &Vec<Monitor>) -> Vec<String> {
     for monitor in monitors {
         let rotation = match monitor.transform {
             0 => "none",
-            1 => "right",
+            1 => "left",
             2 => "inverted",
-            3 => "left",
+            3 => "right",
             4 => "flipped",
             5 => "flipped90",
             6 => "flipped180",

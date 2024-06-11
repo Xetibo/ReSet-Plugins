@@ -213,7 +213,8 @@ impl Dispatch<KdeOutputDeviceV2, ()> for AppData {
             Event::VrrPolicy { vrr_policy } => {
                 // 0 is disabled, 1 enabled
                 let value: u32 = vrr_policy.into();
-                // TODO: make this a proper field -> automatic and always
+                // NOTE: KDE offers more than 2 options, to make them compatible with ReSet
+                // only offer on or off
                 _state.heads.get_mut(&_state.current_monitor).unwrap().vrr = value >= 1;
             }
             Event::SerialNumber { serialNumber } => {
@@ -342,7 +343,7 @@ pub fn kwin_get_monitor_information(conn: Option<Arc<wayland_client::Connection>
             data.heads.insert(len, monitor);
 
             queue.blocking_dispatch(&mut data).unwrap();
-        } 
+        }
     }
 
     for (index, kwin_monitor) in data.heads.into_iter() {
@@ -451,7 +452,7 @@ pub fn kwin_apply_monitor_configuration(
             data.heads.insert(len, monitor);
 
             queue.blocking_dispatch(&mut data).unwrap();
-        } 
+        }
     }
 
     for monitor in monitors.iter() {

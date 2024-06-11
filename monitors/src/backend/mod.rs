@@ -8,7 +8,7 @@ use re_set_lib::{
     ERROR,
 };
 
-use crate::utils::{get_environment, is_gnome, Monitor, MonitorData, GNOME};
+use crate::utils::{get_environment, is_gnome, Monitor, MonitorData, GNOME, HYPRLAND, KDE};
 
 use self::{
     general::{apply_monitor_configuration, save_monitor_configuration},
@@ -56,9 +56,9 @@ pub extern "C" fn dbus_interface(cross: Arc<RwLock<CrossWrapper>>) {
     let mut serial = 0;
     let data = MonitorData {
         monitors: match env.as_str() {
-            "Hyprland" => hy_get_monitor_information(conn.clone()),
+            HYPRLAND => hy_get_monitor_information(conn.clone()),
             GNOME | "ubuntu:GNOME" => g_get_monitor_information(&mut serial),
-            "KDE" => kde_get_monitor_information(conn.clone()),
+            KDE => kde_get_monitor_information(conn.clone()),
             // fallback to protocol implementations
             _ => match get_wl_backend().as_str() {
                 "WLR" => wlr_get_monitor_information(conn.clone()),

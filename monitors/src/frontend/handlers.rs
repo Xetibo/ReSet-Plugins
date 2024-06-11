@@ -26,7 +26,7 @@ use gtk::{
     prelude::{BoxExt, DrawingAreaExtManual, GdkCairoContextExt, NativeExt, WidgetExt},
     DrawingArea, StringList, StringObject,
 };
-use re_set_lib::{utils::config::get_config_value, ERROR};
+use re_set_lib::{utils::config::get_config_value, ERROR, LOG};
 
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
@@ -36,7 +36,7 @@ use crate::{
     r#const::{BASE, DBUS_PATH, INTERFACE},
     utils::{
         get_environment, get_monitor_data, is_gnome, AlertWrapper, Monitor,
-        SnapDirectionHorizontal, SnapDirectionVertical, GNOME,
+        SnapDirectionHorizontal, SnapDirectionVertical, GNOME, HYPRLAND, KDE,
     },
 };
 
@@ -551,7 +551,7 @@ pub fn add_scale_adjustment(
     // Different environments allow differing values
     // Hyprland allows arbitrary scales, Gnome offers a set of supported scales per monitor mode
     match get_environment().as_str() {
-        "Hyprland" => Scale::Arbitrary(arbitrary_add_scaling_adjustment(
+        HYPRLAND => Scale::Arbitrary(arbitrary_add_scaling_adjustment(
             scale,
             monitor_index,
             scaling_ref,
@@ -565,7 +565,7 @@ pub fn add_scale_adjustment(
             settings,
             drawing_area,
         )),
-        "KDE" => Scale::Arbitrary(arbitrary_add_scaling_adjustment(
+        KDE => Scale::Arbitrary(arbitrary_add_scaling_adjustment(
             scale,
             monitor_index,
             scaling_ref,
@@ -826,7 +826,7 @@ pub fn monitor_drag_update(
 
 pub fn monitor_drag_end(
     monitor_data: Rc<RefCell<Vec<Monitor>>>,
-    drawing_ref_end: &DrawingArea,
+    drawing_opt: Option<&DrawingArea>,
     disallow_gaps: bool,
 ) {
     const SNAP_DISTANCE: u32 = 150;
@@ -977,7 +977,9 @@ pub fn monitor_drag_end(
         monitor.drag_information.drag_y = 0;
         monitor.offset.0 = monitor.drag_information.origin_x;
         monitor.offset.1 = monitor.drag_information.origin_y;
-        drawing_ref_end.queue_draw();
+        if let Some(drawing_area) = drawing_opt {
+            drawing_area.queue_draw();
+        }
         return;
     } else {
         match snap_horizontal {
@@ -1002,7 +1004,9 @@ pub fn monitor_drag_end(
                     monitor.drag_information.drag_y = 0;
                     monitor.offset.0 = monitor.drag_information.origin_x;
                     monitor.offset.1 = monitor.drag_information.origin_y;
-                    drawing_ref_end.queue_draw();
+                    if let Some(drawing_area) = drawing_opt {
+                        drawing_area.queue_draw();
+                    }
                     return;
                 }
                 monitor.offset.0 += monitor.drag_information.drag_x;
@@ -1029,7 +1033,9 @@ pub fn monitor_drag_end(
                     monitor.drag_information.drag_y = 0;
                     monitor.offset.0 = monitor.drag_information.origin_x;
                     monitor.offset.1 = monitor.drag_information.origin_y;
-                    drawing_ref_end.queue_draw();
+                    if let Some(drawing_area) = drawing_opt {
+                        drawing_area.queue_draw();
+                    }
                     return;
                 }
                 monitor.offset.1 += monitor.drag_information.drag_y
@@ -1055,15 +1061,16 @@ pub fn monitor_drag_end(
             monitor.offset.1 -= top_side;
         }
     }
-
-    drawing_ref_end.queue_draw();
-    if changed {
-        drawing_ref_end
-            .activate_action(
-                "monitor.reset_monitor_buttons",
-                Some(&glib::Variant::from(true)),
-            )
-            .expect("Could not execute reset action");
+    if let Some(drawing_area) = drawing_opt {
+        drawing_area.queue_draw();
+        if changed {
+            drawing_area
+                .activate_action(
+                    "monitor.reset_monitor_buttons",
+                    Some(&glib::Variant::from(true)),
+                )
+                .unwrap_or(LOG!("Could not find action"))
+        }
     }
 }
 
