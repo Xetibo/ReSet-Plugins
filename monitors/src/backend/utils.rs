@@ -14,6 +14,9 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
             if let "zwlr_output_manager_v1" = &interface[..] {
                 data.0 = String::from("WLR");
             }
+            if let "kde_output_device_v2" = &interface[..] {
+                data.0 = String::from("KWIN");
+            }
         }
     }
 }

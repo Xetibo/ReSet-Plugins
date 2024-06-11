@@ -39,7 +39,7 @@ pub fn save_monitor_configuration(
 ) {
     match get_environment().as_str() {
         "Hyprland" => hy_save_monitor_configuration(monitors),
-        GNOME | "ubuntu:GNOME" => g_apply_monitor_config( 2, monitors),
+        GNOME | "ubuntu:GNOME" => g_apply_monitor_config(2, monitors),
         "KDE" => kde_save_monitor_config(conn, monitors),
         _ => match get_wl_backend().as_str() {
             "KWIN" => kwin_apply_monitor_configuration(conn, monitors),
