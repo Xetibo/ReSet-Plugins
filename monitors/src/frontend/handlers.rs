@@ -1162,7 +1162,7 @@ fn is_nonfunctional_scale(width: i32, height: i32, scale: f64) -> bool {
     width as f64 % scale != 0.0 && height as f64 % scale != 0.0 && scale != 1.0
 }
 
-fn search_nearest_scale(
+pub fn search_nearest_scale(
     amount: usize,
     search_scale: &mut f64,
     monitor: &Monitor,
