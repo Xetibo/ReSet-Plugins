@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use once_cell::sync::Lazy;
-use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file, ERROR};
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
 pub const BASE: &str = "org.Xetibo.ReSet.Daemon";
 pub const DBUS_PATH: &str = "/org/Xebito/ReSet/Plugins/Keyboard";
@@ -13,9 +15,9 @@ pub const KDE: &str = "KDE";
 
 pub static HYPRLAND_DEFAULT_FILE: Lazy<PathBuf> = Lazy::new(|| {
     let base = xdg::BaseDirectories::new();
-    if let Err(error) = base {
+    if let Err(_error) = base {
         ERROR!(
-            format!("Could not get xdg_config_home: {}", error),
+            format!("Could not get xdg_config_home: {}", _error),
             ErrorLevel::Critical
         );
         return PathBuf::from("");
