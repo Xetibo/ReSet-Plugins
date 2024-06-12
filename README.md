@@ -12,7 +12,7 @@ Specific features and limitations can be found within the respective plugin dire
 
 ### Confirmation
 
-In order for your plugins to load, you have to define them in `$xdg_config_dir/reset/ReSet.toml`.
+In order for your plugins to load, you have to define them in `.config/reset/ReSet.toml`.
 This is done to avoid loading of arbitrary plugins that might be placed within this folder by accident.
 
 ```toml
@@ -22,7 +22,7 @@ plugins = ["libreset_monitors.so", "libreset_keyboard_plugin.so"]
 ### Manual compilation
 
 Compile the source for the chosen plugin by cloning the repository and building the plugin.
-After this, simply compile the plugin and move it to the ReSet plugins folder in your `$xdg_config_dir/reset/plugins` directory.
+After this, simply compile the plugin and move it to the ReSet plugins folder in your `.config/reset/plugins` directory.
 You can define a custom directory like this:
 
 ```toml
@@ -57,5 +57,5 @@ The binaries can be found in the releases tab: plugin.so
 
 ## Configuration
 
-By default, the configuration file is the ReSet.toml found in `$xdg_config_dir/reset/ReSet.toml` as defined by [ReSet](https://github.com/Xetibo/ReSet).
+By default, the configuration file is the ReSet.toml found in `.config/reset/ReSet.toml` as defined by [ReSet](https://github.com/Xetibo/ReSet).
 Configuration can be found in the respective plugin folders.
