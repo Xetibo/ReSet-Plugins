@@ -1,6 +1,14 @@
+use dbus::blocking::Connection;
+use dbus::channel::Sender;
+use dbus::{Error, Message};
+use re_set_lib::ERROR;
+#[cfg(debug_assertions)]
+use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
+
 use crate::keyboard_layout::KeyboardLayout;
 use crate::utils::parse_setting;
 use std::process::Command;
+use std::time::Duration;
 
 pub fn get_saved_layouts_kde(all_keyboards: &[KeyboardLayout]) -> Vec<KeyboardLayout> {
     let output = Command::new("kreadconfig6")
@@ -72,4 +80,10 @@ pub fn write_to_config_kde(layouts: &[KeyboardLayout]) {
         .arg(variant_string)
         .output()
         .expect("Could not save variants");
+    let conn = Connection::new_session().unwrap();
+    let res =
+        conn.send(Message::new_signal("/Layouts", "org.kde.keyboard", "reloadConfig").unwrap());
+    if res.is_err() {
+        ERROR!("Could not apply config", ErrorLevel::PartialBreakage);
+    }
 }

@@ -220,10 +220,10 @@ fn convert_modes(
         if let Some(hash_mode) = hash_modes.get_mut(&(mode.size.width, mode.size.height)) {
             hash_mode
                 .0
-                .insert((mode.refreshRate.round() as u32, mode.id.clone()));
+                .insert((mode.refreshRate.round() as u32, "".into()));
         } else {
             let mut refresh_rates = HashSet::new();
-            refresh_rates.insert((mode.refreshRate.round() as u32, mode.id.clone()));
+            refresh_rates.insert((mode.refreshRate.round() as u32, "".into()));
             hash_modes.insert(
                 (mode.size.width, mode.size.height),
                 (refresh_rates, mode.id),
