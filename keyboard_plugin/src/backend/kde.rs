@@ -1,6 +1,6 @@
 use dbus::blocking::Connection;
 use dbus::channel::Sender;
-use dbus::{Error, Message};
+use dbus::Message;
 use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
@@ -8,7 +8,6 @@ use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 use crate::keyboard_layout::KeyboardLayout;
 use crate::utils::parse_setting;
 use std::process::Command;
-use std::time::Duration;
 
 pub fn get_saved_layouts_kde(all_keyboards: &[KeyboardLayout]) -> Vec<KeyboardLayout> {
     let output = Command::new("kreadconfig6")
