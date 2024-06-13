@@ -319,6 +319,7 @@ pub fn get_monitor_settings_group(
         let selected = selected.string().to_string();
         let (x, y) = selected.split_once('x').unwrap();
         let refresh_rates;
+        let uses_ids;
         {
             let mut monitors = resolution_ref.borrow_mut();
             let monitor = monitors.get_mut(monitor_index).unwrap();
@@ -335,13 +336,14 @@ pub fn get_monitor_settings_group(
             let (width, height) = monitor.handle_scaled_transform();
             monitor.drag_information.width = width;
             monitor.drag_information.height = height;
+            uses_ids = monitor.uses_mode_id;
             rearrange_monitors(original_monitor, monitors);
         }
 
         let mut converted_rates = Vec::new();
         for rate in refresh_rates.into_iter() {
             let string_rate = rate.0.to_string() + "Hz";
-            if is_gnome() {
+            if uses_ids {
                 if !converted_rates.contains(&string_rate) {
                     converted_rates.push(string_rate);
                 }
@@ -399,8 +401,8 @@ pub fn get_monitor_settings_group(
     let mut iter = 0;
     for refresh_rate in refresh_rates.into_iter() {
         let rate = refresh_rate.0.to_string() + "Hz";
-        if is_gnome() && converted_rates.contains(&rate) {
-            // gnome requires ids
+        if monitor.uses_mode_id && converted_rates.contains(&rate) {
+            // id users might see duplicate entries otherwise 
             continue;
         }
         converted_rates.push(rate);
