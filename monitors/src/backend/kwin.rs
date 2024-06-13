@@ -388,7 +388,7 @@ pub fn kwin_get_monitor_information(conn: Option<Arc<wayland_client::Connection>
             drag_information: Default::default(),
             mode: kwin_monitor.current_mode.to_string(),
             available_modes: modes,
-            uses_mode_id: false,
+            uses_mode_id: true,
             features: FEATURES,
         };
         monitors.push(monitor);
