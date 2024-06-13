@@ -489,18 +489,18 @@ impl Arg for AvailableMode {
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
 pub enum SnapDirectionHorizontal {
     RightRight(i32),
-    RightLeft(i32),
+    RightLeft(i32, i32, i32),
     LeftLeft(i32),
-    LeftRight(i32),
+    LeftRight(i32, i32, i32),
     None,
 }
 
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
 pub enum SnapDirectionVertical {
     TopTop(i32),
-    TopBottom(i32),
+    TopBottom(i32, i32, i32),
     BottomBottom(i32),
-    BottomTop(i32),
+    BottomTop(i32, i32, i32),
     None,
 }
 
