@@ -8,7 +8,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 dbus = "0.9.7"
-re_set-lib = "5.2.4"
+re_set-lib = "5.2.5"
 dbus-crossroads = "0.5.2"
 dbus-tokio = "0.7.6"
 gtk = { version = "0.8.1", package = "gtk4", features = ["v4_12"] }

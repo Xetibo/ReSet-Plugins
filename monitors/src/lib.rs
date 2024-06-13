@@ -3,8 +3,7 @@ mod utils;
 pub mod backend;
 pub mod r#const;
 pub mod frontend;
-#[cfg(test)]
-mod tests;
+pub mod tests;
 
 use re_set_lib::utils::plugin::{PluginCapabilities, PluginImplementation};
 use utils::check_environment_support;

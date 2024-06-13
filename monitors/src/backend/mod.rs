@@ -8,7 +8,7 @@ use re_set_lib::{
     ERROR,
 };
 
-use crate::utils::{get_environment, is_gnome, Monitor, MonitorData, GNOME, HYPRLAND, KDE};
+use crate::{tests::dbus_end_point, utils::{get_environment, is_gnome, Monitor, MonitorData, GNOME, HYPRLAND, KDE}};
 
 use self::{
     general::{apply_monitor_configuration, save_monitor_configuration},
@@ -89,7 +89,7 @@ pub extern "C" fn backend_shutdown() {}
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn backend_tests() -> Vec<PluginTestFunc> {
-    Vec::new()
+    vec![PluginTestFunc::new(dbus_end_point, "Test DBus endpoint")]
 }
 
 pub fn setup_dbus_interface(

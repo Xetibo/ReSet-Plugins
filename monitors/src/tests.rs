@@ -1,13 +1,22 @@
+use std::time::Duration;
+#[cfg(test)]
 use std::{cell::RefCell, rc::Rc};
 
+use dbus::{blocking::Connection, Error};
+use re_set_lib::utils::plugin::PluginTestError;
+
+use crate::utils::{is_gnome, Monitor};
+#[cfg(test)]
 use crate::{
     backend::{
         gnome::{gnome_features, GnomeLogicalMonitor, GnomeMode, GnomeMonitor, GnomeMonitorConfig},
         hyprland::{HyprMonitor, HYPRFEATURES},
         kde::{KDEMode, KDEMonitor, KDE_FEATURES},
     },
-    frontend::handlers::{monitor_drag_end, search_nearest_scale},
-    utils::{AvailableMode, DragInformation, Monitor, Offset, Size},
+    frontend::handlers::monitor_drag_end,
+    frontend::handlers::search_nearest_scale,
+    utils::AvailableMode,
+    utils::{DragInformation, Offset, Size},
 };
 
 #[test]
@@ -190,7 +199,7 @@ fn search_upper_scale() {
         ..Default::default()
     };
     let scale: f64 = 1.08;
-    // 1920 * 1.08 -> 2073.60000... 
+    // 1920 * 1.08 -> 2073.60000...
     // not a valid resolution
     let mut search_scale = (scale * 120.0).round();
     let mut found = false;
@@ -204,6 +213,57 @@ fn search_upper_scale() {
     // Ok
 }
 
+pub fn dbus_end_point() -> Result<(), PluginTestError> {
+    let conn = Connection::new_session().unwrap();
+    let proxy = conn.with_proxy(
+        "org.Xetibo.ReSet.Daemon",
+        "/org/Xetibo/ReSet/Plugins/Monitors",
+        Duration::from_millis(100),
+    );
+    if is_gnome() {
+        // will be unsafe soon, according to rust
+        #[allow(unused_unsafe)]
+        unsafe {
+            std::env::set_var("XDG_CURRENT_DESKTOP)", "Hyprland");
+        }
+    }
+    let monitors = vec![
+        Monitor {
+            id: 1,
+            ..Default::default()
+        },
+        Monitor {
+            id: 2,
+            ..Default::default()
+        },
+    ];
+    let res: Result<(), Error> =
+        proxy.method_call("org.Xetibo.ReSet.Monitors", "SetMonitors", (monitors,));
+    if let Err(error) = res {
+        return Err(PluginTestError::new(format!(
+            "DBus call returned error: {}",
+            error
+        )));
+    }
+    let res: Result<(Vec<Monitor>,), Error> =
+        proxy.method_call("org.Xetibo.ReSet.Monitors", "GetMonitors", ());
+    if let Err(error) = res {
+        return Err(PluginTestError::new(format!(
+            "DBus call returned error: {}",
+            error
+        )));
+    }
+    let len = res.unwrap().0.len();
+    if len != 2 {
+        return Err(PluginTestError::new(format!(
+            "Result was not filled with 2 mock monitors instead got: {}",
+            len
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
 fn create_monitor_pair(offset: Offset) -> Rc<RefCell<Vec<Monitor>>> {
     let mut dragging_monitor = Monitor {
         id: 2,
