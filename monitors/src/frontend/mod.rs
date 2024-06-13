@@ -232,11 +232,7 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
         monitor_drag_update(x, y, update_ref.clone(), &drawing_ref);
     });
     gesture.connect_drag_end(move |_drag, _x, _y| {
-        monitor_drag_end(
-            monitor_data.clone(),
-            Some(&drawing_ref_end),
-            disallow_gaps,
-        );
+        monitor_drag_end(monitor_data.clone(), Some(&drawing_ref_end), disallow_gaps);
     });
 
     drawing_area.add_controller(gesture);
