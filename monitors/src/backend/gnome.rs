@@ -72,11 +72,12 @@ fn get_experimental_support() -> (bool, bool) {
 
 pub fn g_get_monitor_information(serial: &mut u32) -> Vec<Monitor> {
     let conn = Connection::new_session().unwrap();
-    let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
+    let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(5000));
     let res: Result<(u32, Vec<GnomeMonitor>, Vec<GnomeLogicalMonitor>, PropMap), Error> =
         proxy.method_call(INTERFACE, "GetCurrentState", ());
     if res.is_err() {
         ERROR!("Could fetch monitor configuration", ErrorLevel::Recoverable);
+        return Vec::new();
     }
     let (fetched_serial, monitors, logical_monitors, _properties) = res.unwrap();
     *serial = fetched_serial;
@@ -91,7 +92,7 @@ pub fn g_get_monitor_information(serial: &mut u32) -> Vec<Monitor> {
 
 pub fn g_apply_monitor_config(apply_mode: u32, monitors: &Vec<Monitor>) {
     let conn = Connection::new_session().unwrap();
-    let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(1000));
+    let proxy = conn.with_proxy(BASE, DBUS_PATH, Duration::from_millis(5000));
     let res: Result<(u32, Vec<GnomeMonitor>, Vec<GnomeLogicalMonitor>, PropMap), Error> =
         proxy.method_call(INTERFACE, "GetCurrentState", ());
     if res.is_err() {
