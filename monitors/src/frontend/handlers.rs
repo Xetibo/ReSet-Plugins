@@ -882,6 +882,7 @@ pub fn monitor_drag_end(
             continue;
         }
         // define other monitor endpoints
+        let (other_width, other_height) = monitor.handle_scaled_transform();
         let endpoint_other_left = monitor.offset.0;
         let endpoint_other_bottom = monitor.offset.1;
         let endpoint_other_right = endpoint_other_left + monitor.drag_information.width;
@@ -901,16 +902,24 @@ pub fn monitor_drag_end(
         if min < SNAP_DISTANCE {
             match min {
                 x if x == right_to_left => {
-                    snap_horizontal = SnapDirectionHorizontal::RightLeft(endpoint_other_left)
+                    snap_horizontal = SnapDirectionHorizontal::RightLeft(
+                        endpoint_other_left,
+                        endpoint_other_top,
+                        other_height,
+                    );
                 }
                 x if x == left_to_right => {
-                    snap_horizontal = SnapDirectionHorizontal::LeftRight(endpoint_other_right)
+                    snap_horizontal = SnapDirectionHorizontal::LeftRight(
+                        endpoint_other_right,
+                        endpoint_other_top,
+                        other_height,
+                    );
                 }
                 x if x == right_to_right => {
-                    snap_horizontal = SnapDirectionHorizontal::RightRight(endpoint_other_right)
+                    snap_horizontal = SnapDirectionHorizontal::RightRight(endpoint_other_right);
                 }
                 x if x == left_to_left => {
-                    snap_horizontal = SnapDirectionHorizontal::LeftLeft(endpoint_other_left)
+                    snap_horizontal = SnapDirectionHorizontal::LeftLeft(endpoint_other_left);
                 }
                 _ => unreachable!(),
             }
@@ -930,10 +939,18 @@ pub fn monitor_drag_end(
         if min < SNAP_DISTANCE {
             match min {
                 x if x == top_to_bottom => {
-                    snap_vertical = SnapDirectionVertical::TopBottom(endpoint_other_bottom);
+                    snap_vertical = SnapDirectionVertical::TopBottom(
+                        endpoint_other_bottom,
+                        endpoint_other_left,
+                        other_width,
+                    );
                 }
                 x if x == bottom_to_top => {
-                    snap_vertical = SnapDirectionVertical::BottomTop(endpoint_other_top);
+                    snap_vertical = SnapDirectionVertical::BottomTop(
+                        endpoint_other_top,
+                        endpoint_other_left,
+                        other_width,
+                    );
                 }
                 x if x == top_to_top => {
                     snap_vertical = SnapDirectionVertical::TopTop(endpoint_other_top);
@@ -954,17 +971,17 @@ pub fn monitor_drag_end(
         // in case of an intersect, right to right/left to left snapping not allowed -> snap into intersect
         let allow_snap_horizontal = match snap_horizontal {
             SnapDirectionHorizontal::RightRight(_) => false,
-            SnapDirectionHorizontal::RightLeft(_) => true,
+            SnapDirectionHorizontal::RightLeft(_, _, _) => true,
             SnapDirectionHorizontal::LeftLeft(_) => false,
-            SnapDirectionHorizontal::LeftRight(_) => true,
+            SnapDirectionHorizontal::LeftRight(_, _, _) => true,
             SnapDirectionHorizontal::None => false,
         };
         // same here with top to top and bottom to bottom
         let allow_snap_vertical = match snap_vertical {
             SnapDirectionVertical::TopTop(_) => false,
-            SnapDirectionVertical::TopBottom(_) => true,
+            SnapDirectionVertical::TopBottom(_, _, _) => true,
             SnapDirectionVertical::BottomBottom(_) => false,
-            SnapDirectionVertical::BottomTop(_) => true,
+            SnapDirectionVertical::BottomTop(_, _, _) => true,
             SnapDirectionVertical::None => false,
         };
 
@@ -991,21 +1008,27 @@ pub fn monitor_drag_end(
     } else {
         match snap_horizontal {
             SnapDirectionHorizontal::RightRight(snap)
-            | SnapDirectionHorizontal::RightLeft(snap) => {
+            | SnapDirectionHorizontal::RightLeft(snap, _, _) => {
                 monitor.offset.0 = snap - monitor.drag_information.width;
             }
-            SnapDirectionHorizontal::LeftRight(snap) | SnapDirectionHorizontal::LeftLeft(snap) => {
+            SnapDirectionHorizontal::LeftRight(snap, _, _)
+            | SnapDirectionHorizontal::LeftLeft(snap) => {
                 monitor.offset.0 = snap;
             }
             SnapDirectionHorizontal::None => {
                 // GNOME doesn't allow spacing between monitors.... why...
                 if disallow_gaps
-                    && matches!(
-                        snap_vertical,
-                        SnapDirectionVertical::None
-                            | SnapDirectionVertical::TopTop(_)
-                            | SnapDirectionVertical::BottomBottom(_)
-                    )
+                    && match snap_vertical {
+                        SnapDirectionVertical::None => true,
+                        SnapDirectionVertical::TopTop(_) => true,
+                        SnapDirectionVertical::BottomBottom(_) => true,
+                        SnapDirectionVertical::TopBottom(_, left, width) => {
+                            endpoint_left > left + width || endpoint_right < left
+                        }
+                        SnapDirectionVertical::BottomTop(_, left, width) => {
+                            endpoint_left > left + width || endpoint_right < left
+                        }
+                    }
                 {
                     monitor.drag_information.drag_x = 0;
                     monitor.drag_information.drag_y = 0;
@@ -1020,21 +1043,27 @@ pub fn monitor_drag_end(
             }
         }
         match snap_vertical {
-            SnapDirectionVertical::TopTop(snap) | SnapDirectionVertical::TopBottom(snap) => {
+            SnapDirectionVertical::TopTop(snap) | SnapDirectionVertical::TopBottom(snap, _, _) => {
                 monitor.offset.1 = snap - monitor.drag_information.height;
             }
-            SnapDirectionVertical::BottomTop(snap) | SnapDirectionVertical::BottomBottom(snap) => {
+            SnapDirectionVertical::BottomTop(snap, _, _)
+            | SnapDirectionVertical::BottomBottom(snap) => {
                 monitor.offset.1 = snap;
             }
             SnapDirectionVertical::None => {
                 // GNOME doesn't allow spacing between monitors.... why...
                 if disallow_gaps
-                    && matches!(
-                        snap_horizontal,
-                        SnapDirectionHorizontal::None
-                            | SnapDirectionHorizontal::LeftLeft(_)
-                            | SnapDirectionHorizontal::RightRight(_)
-                    )
+                    && match snap_horizontal {
+                        SnapDirectionHorizontal::None => true,
+                        SnapDirectionHorizontal::LeftLeft(_) => true,
+                        SnapDirectionHorizontal::RightRight(_) => true,
+                        SnapDirectionHorizontal::RightLeft(_, top, height) => {
+                            endpoint_bottom > top || endpoint_top < top - height
+                        }
+                        SnapDirectionHorizontal::LeftRight(_, top, height) => {
+                            endpoint_bottom > top || endpoint_top < top - height
+                        }
+                    }
                 {
                     monitor.drag_information.drag_x = 0;
                     monitor.drag_information.drag_y = 0;
