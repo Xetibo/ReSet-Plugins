@@ -402,7 +402,7 @@ pub fn get_monitor_settings_group(
     for refresh_rate in refresh_rates.into_iter() {
         let rate = refresh_rate.0.to_string() + "Hz";
         if monitor.uses_mode_id && converted_rates.contains(&rate) {
-            // id users might see duplicate entries otherwise 
+            // id users might see duplicate entries otherwise
             continue;
         }
         converted_rates.push(rate);
@@ -798,25 +798,37 @@ pub fn monitor_drag_start(
     drawing_area: &DrawingArea,
 ) {
     let mut iter = -1;
-    for (index, monitor) in start_ref.borrow_mut().iter_mut().enumerate() {
-        let x = x as i32;
-        let y = y as i32;
-        if monitor.is_coordinate_within(x, y) {
-            if monitor.enabled {
-                monitor.drag_information.drag_active = true;
+    let mut previous = -1;
+    {
+        let mut monitors = start_ref.borrow_mut();
+        for (index, monitor) in monitors.iter_mut().enumerate() {
+            let x = x as i32;
+            let y = y as i32;
+            if monitor.is_coordinate_within(x, y) {
+                if monitor.enabled {
+                    monitor.drag_information.drag_active = true;
+                }
+                monitor.drag_information.clicked = true;
+                monitor.drag_information.origin_x = monitor.offset.0;
+                monitor.drag_information.origin_y = monitor.offset.1;
+                if let Some(child) = settings_box_ref.first_child() {
+                    settings_box_ref.remove(&child);
+                }
+                iter = index as i32;
+            } else if monitor.drag_information.clicked {
+                previous = index as i32;
             }
-            monitor.drag_information.clicked = true;
-            monitor.drag_information.origin_x = monitor.offset.0;
-            monitor.drag_information.origin_y = monitor.offset.1;
-            if let Some(child) = settings_box_ref.first_child() {
-                settings_box_ref.remove(&child);
-            }
-            iter = index as i32;
-            break;
         }
-    }
-    if iter == -1 {
-        return;
+        if iter == -1 {
+            return;
+        }
+        if previous != -1 {
+            monitors
+                .get_mut(previous as usize)
+                .unwrap()
+                .drag_information
+                .clicked = false;
+        }
     }
     settings_box_ref.append(&get_monitor_settings_group(
         start_ref.clone(),
