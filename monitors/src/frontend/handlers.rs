@@ -26,7 +26,7 @@ use gtk::{
     prelude::{BoxExt, DrawingAreaExtManual, GdkCairoContextExt, NativeExt, WidgetExt},
     DrawingArea, StringList, StringObject,
 };
-use re_set_lib::{utils::config::get_config_value, ERROR, LOG};
+use re_set_lib::{utils::config::get_config_value, ERROR};
 
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
@@ -338,7 +338,10 @@ pub fn get_monitor_settings_group(
             rearrange_monitors(original_monitor, monitors);
         }
 
-        let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.0.to_string() + "Hz").collect();
+        let refresh_rates: Vec<String> = refresh_rates
+            .iter()
+            .map(|x| x.0.to_string() + "Hz")
+            .collect();
         let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
         let refresh_rate_model = StringList::new(&refresh_rates);
         refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
@@ -390,7 +393,10 @@ pub fn get_monitor_settings_group(
         }
     }
 
-    let refresh_rates: Vec<String> = refresh_rates.iter().map(|x| x.0.to_string() + "Hz").collect();
+    let refresh_rates: Vec<String> = refresh_rates
+        .iter()
+        .map(|x| x.0.to_string() + "Hz")
+        .collect();
     let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
     let refresh_rate_model = StringList::new(&refresh_rates);
     refresh_rate.set_model(Some(&refresh_rate_model));
@@ -1070,7 +1076,7 @@ pub fn monitor_drag_end(
                     "monitor.reset_monitor_buttons",
                     Some(&glib::Variant::from(true)),
                 )
-                .unwrap_or(LOG!("Could not find action"))
+                .expect("Could not find action");
         }
     }
 }
