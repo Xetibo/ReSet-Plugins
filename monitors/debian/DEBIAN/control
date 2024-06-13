@@ -3,3 +3,4 @@ Version: 0.1
 Maintainer: DashieTM
 Architecture: all
 Description: A monitor plugin for the ReSet settings application.
+Depends: libadwaita-1-0, libgtk-4-1, dbus
