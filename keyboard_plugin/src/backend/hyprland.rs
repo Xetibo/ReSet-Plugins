@@ -8,8 +8,8 @@ use re_set_lib::ERROR;
 #[cfg(debug_assertions)]
 use re_set_lib::{utils::macros::ErrorLevel, write_log_to_file};
 
-use crate::r#const::HYPRLAND_DEFAULT_FILE;
 use crate::keyboard_layout::KeyboardLayout;
+use crate::r#const::HYPRLAND_DEFAULT_FILE;
 use crate::utils::{get_default_path, parse_setting};
 
 pub fn get_saved_layouts_hyprland(all_keyboards: &[KeyboardLayout]) -> Vec<KeyboardLayout> {
@@ -64,21 +64,24 @@ pub fn write_to_config_hyprland(layouts: &[KeyboardLayout]) {
         } else {
             get_default_path()
         })
-    } 
+    }
 
     let mut input_config = if let Some(path) = path {
-    OpenOptions::new()
-        .write(true)
-        .read(true)
-        .open(PathBuf::from(path))
-        .expect("Failed to open file")
+        OpenOptions::new()
+            .write(true)
+            .read(true)
+            .create(true)
+            .truncate(true)
+            .open(PathBuf::from(path))
+            .expect("Failed to open file")
     } else {
-    OpenOptions::new()
-        .write(true)
-        .read(true)
-        .open(HYPRLAND_DEFAULT_FILE.clone())
-        .expect("Failed to open file")
-
+        OpenOptions::new()
+            .write(true)
+            .read(true)
+            .create(true)
+            .truncate(true)
+            .open(HYPRLAND_DEFAULT_FILE.clone())
+            .expect("Failed to open file")
     };
 
     let mut layout_string = String::new();
