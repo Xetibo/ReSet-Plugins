@@ -338,11 +338,19 @@ pub fn get_monitor_settings_group(
             rearrange_monitors(original_monitor, monitors);
         }
 
-        let refresh_rates: Vec<String> = refresh_rates
-            .iter()
-            .map(|x| x.0.to_string() + "Hz")
-            .collect();
-        let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
+        let mut converted_rates = Vec::new();
+        for rate in refresh_rates.into_iter() {
+            let string_rate = rate.0.to_string() + "Hz";
+            if is_gnome() {
+                if !converted_rates.contains(&string_rate) {
+                    converted_rates.push(string_rate);
+                }
+            } else {
+                converted_rates.push(string_rate);
+            }
+        }
+
+        let refresh_rates: Vec<&str> = converted_rates.iter().map(|x| x.as_str()).collect();
         let refresh_rate_model = StringList::new(&refresh_rates);
         refresh_rate_combo_ref.set_model(Some(&refresh_rate_model));
         refresh_rate_combo_ref.set_selected(0);
@@ -385,19 +393,26 @@ pub fn get_monitor_settings_group(
 
     let mode = monitor.available_modes.get(index).unwrap();
     let refresh_rates = mode.refresh_rates.clone();
+    let mut converted_rates: Vec<String> = Vec::new();
 
     let mut index = 0;
     for (i, refresh_rate) in refresh_rates.iter().enumerate() {
         if refresh_rate.0 == monitor.refresh_rate {
-            index = i;
+            let rate = monitor.refresh_rate.to_string() + "Hz";
+            if is_gnome() {
+                // gnome requires ids
+                if !converted_rates.contains(&rate) {
+                    converted_rates.push(rate);
+                    index = i;
+                }
+            } else {
+                converted_rates.push(rate);
+                index = i;
+            }
         }
     }
 
-    let refresh_rates: Vec<String> = refresh_rates
-        .iter()
-        .map(|x| x.0.to_string() + "Hz")
-        .collect();
-    let refresh_rates: Vec<&str> = refresh_rates.iter().map(|x| x.as_str()).collect();
+    let refresh_rates: Vec<&str> = converted_rates.iter().map(|x| x.as_str()).collect();
     let refresh_rate_model = StringList::new(&refresh_rates);
     refresh_rate.set_model(Some(&refresh_rate_model));
     refresh_rate.set_title("Refresh-Rate");
