@@ -398,7 +398,7 @@ pub fn get_monitor_settings_group(
     let mut index = 0;
     let mut iter = 0;
     for refresh_rate in refresh_rates.into_iter() {
-        let rate = monitor.refresh_rate.to_string() + "Hz";
+        let rate = refresh_rate.0.to_string() + "Hz";
         if is_gnome() && converted_rates.contains(&rate) {
             // gnome requires ids
             continue;
