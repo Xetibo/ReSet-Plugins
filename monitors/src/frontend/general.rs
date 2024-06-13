@@ -10,7 +10,7 @@ use gtk::{
     DrawingArea,
 };
 
-use crate::utils::{get_environment, is_gnome, is_hyprland, Monitor, GNOME, HYPRLAND};
+use crate::utils::{get_environment, is_gnome, is_hyprland, is_kde, Monitor, GNOME, HYPRLAND};
 
 use super::handlers::{apply_monitor_clicked, rearrange_monitors, scaling_update};
 
@@ -141,10 +141,10 @@ pub fn add_vrr_monitor_option(
                 Some(&glib::Variant::from(true)),
             )
             .expect("Could not activate reset action");
-        if is_hyprland() { 
+        if is_hyprland() || is_kde() { 
             state.activate_action(
                 "win.banner",
-                Some(&glib::Variant::from("Note, VRR only works with hyprland when saving and reloading the configuration. Temporary application of VRR will not work on Hyprland as of now." ))
+                Some(&glib::Variant::from("Note, VRR is a non reported feature and is therefore shown by default despite possible incompatibility. Additionally, VRR might require a reload or persistent saving instead of temporary application." ))
             ).expect("Could not show banner");
         }
     });

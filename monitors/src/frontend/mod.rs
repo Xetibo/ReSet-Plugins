@@ -208,8 +208,6 @@ pub extern "C" fn frontend_data() -> (SidebarInfo, Vec<gtk::Box>) {
             let y = y as i32;
             if monitor.is_coordinate_within(x, y) {
                 monitor.drag_information.clicked = true;
-            } else if monitor.drag_information.clicked {
-                monitor.drag_information.clicked = false;
             }
         }
     });
