@@ -396,20 +396,18 @@ pub fn get_monitor_settings_group(
     let mut converted_rates: Vec<String> = Vec::new();
 
     let mut index = 0;
-    for (i, refresh_rate) in refresh_rates.iter().enumerate() {
-        if refresh_rate.0 == monitor.refresh_rate {
-            let rate = monitor.refresh_rate.to_string() + "Hz";
-            if is_gnome() {
-                // gnome requires ids
-                if !converted_rates.contains(&rate) {
-                    converted_rates.push(rate);
-                    index = i;
-                }
-            } else {
-                converted_rates.push(rate);
-                index = i;
-            }
+    let mut iter = 0;
+    for refresh_rate in refresh_rates.into_iter() {
+        let rate = monitor.refresh_rate.to_string() + "Hz";
+        if is_gnome() && converted_rates.contains(&rate) {
+            // gnome requires ids
+            continue;
         }
+        converted_rates.push(rate);
+        if refresh_rate.0 == monitor.refresh_rate {
+            index = iter;
+        }
+        iter += 1;
     }
 
     let refresh_rates: Vec<&str> = converted_rates.iter().map(|x| x.as_str()).collect();
