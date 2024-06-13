@@ -873,9 +873,9 @@ dependencies = [
 
 [[package]]
 name = "re_set-lib"
-version = "5.2.4"
+version = "5.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1f1aa52c35d115b4efc5de2d41d0288f20705dd7f3ca6a49a68f2bab9c31a8e"
+checksum = "69ec9fc4d9e919feb030e5382de1aa49447404a57ecc19361bf7710f1cf9063e"
 dependencies = [
  "dbus",
  "dbus-crossroads",
